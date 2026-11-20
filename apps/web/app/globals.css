@@ -1,0 +1,43 @@
+/* Тема Modern Light як базова для службових сторінок (інсталятор, вхід).
+   Публічні сторінки отримуватимуть токени активної теми з БД (Етап 3). */
+:root{
+  --c-primary:#3D5AFE; --c-secondary:#E8ECFF; --c-bg:#F7F8FA; --c-card:#FFFFFF; --c-text:#1A1D23; --c-muted:#5B6270;
+  --c-link:#2F49D1; --c-border:#E3E6EB; --c-heading:#0F1115; --c-success:#157F3B; --c-warning:#A15C00; --c-danger:#C62828;
+  --c-brand:#F5C518; --c-brand-ink:#11141A; --c-panel:#11141A; --c-panel-ink:#C5CBD6;
+  --r-btn:10px; --r-card:14px; --shadow:0 1px 2px rgba(16,24,40,.06),0 6px 20px rgba(16,24,40,.07);
+  --font:var(--font-inter),system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--c-bg);color:var(--c-text);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{color:var(--c-heading);line-height:1.2;margin:0;letter-spacing:-.01em;text-wrap:balance}
+a{color:var(--c-link)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--c-primary);outline-offset:2px}
+
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.02em;font-size:18px}
+.logo i{width:36px;height:34px;border-radius:9px;background:var(--c-brand);color:var(--c-brand-ink);display:grid;place-items:center;font-style:normal;font-size:14px;letter-spacing:-.03em}
+.logo small{display:block;font-size:11.5px;font-weight:700;letter-spacing:.01em;color:var(--c-brand);margin-top:1px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 20px;border-radius:var(--r-btn);border:1.5px solid var(--c-border);background:var(--c-card);font-weight:700;cursor:pointer;text-decoration:none;color:var(--c-text)}
+.btn:hover{border-color:var(--c-muted)}
+.btn.pri{background:var(--c-primary);border-color:var(--c-primary);color:#fff}
+.btn.pri:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-weight:600;font-size:14px}
+.field .hint{font-size:13px;color:var(--c-muted)}
+.input{height:46px;border:1.5px solid var(--c-border);border-radius:var(--r-btn);padding:0 14px;background:var(--c-card);width:100%;min-width:0}
+.input:focus{border-color:var(--c-primary);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--c-primary) 18%,transparent)}
+.input.err{border-color:var(--c-danger)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+@media (max-width:560px){.grid2,.grid3{grid-template-columns:1fr}}
+.alert{border-radius:var(--r-btn);padding:12px 14px;font-size:14px;display:flex;gap:10px;align-items:flex-start}
+.alert.bad{background:color-mix(in srgb,var(--c-danger) 9%,#fff);color:var(--c-danger)}
+.alert.ok{background:color-mix(in srgb,var(--c-success) 9%,#fff);color:var(--c-success)}
+.alert.info{background:var(--c-secondary);color:var(--c-text)}
+.alert.warn{background:color-mix(in srgb,var(--c-warning) 10%,#fff);color:#6B3F00}
+.card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-card);box-shadow:var(--shadow)}
+.check{display:flex;align-items:center;gap:8px;font-size:14px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}

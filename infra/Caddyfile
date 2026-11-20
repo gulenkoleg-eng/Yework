@@ -1,0 +1,14 @@
+# Caddy сам отримує й оновлює сертифікат Let's Encrypt для SITE_DOMAIN.
+{$SITE_DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	handle /api/* {
+		reverse_proxy api:4000
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}

@@ -1,0 +1,32 @@
+/** 6 стандартних тем (дизайн-токени, схема v1). Ті самі значення, що в погодженому макеті. */
+export interface ThemeTokens { base: Record<string, string | number>; light: Record<string, string>; dark: Record<string, string>; }
+export interface SystemTheme extends ThemeTokens { id: string; name: string; desc: string; defaultMode: 'light' | 'dark'; }
+const DARK_STATUS={success:'#4ADE80',warning:'#FBBF24',danger:'#F87171',info:'#60A5FA'};
+const LIGHT_STATUS={success:'#157F3B',warning:'#A15C00',danger:'#C62828',info:'#1F6FB2'};
+
+export const SYSTEM_THEMES: SystemTheme[]=[
+ {id:'modern-light',name:'Modern Light',desc:'Світлий фон, мінімалізм, стримані акценти',defaultMode:'light',
+  base:{font:'Inter',headingFont:'Inter',size:16,scale:1.24,weight:700,lineHeight:1.5,density:'normal',radiusBtn:10,radiusCard:12,shadow:'soft',borderW:1,input:'outline',tabs:'pills',msg:'tinted',homeLayout:'tiles'},
+  light:{primary:'#3D5AFE',secondary:'#E8ECFF',bgPage:'#F7F8FA',bgCard:'#FFFFFF',text:'#1A1D23',muted:'#5B6270',link:'#2F49D1',button:'#3D5AFE',buttonText:'#FFFFFF',menu:'#FFFFFF',menuText:'#1A1D23',heading:'#0F1115',border:'#E3E6EB',message:'#EEF1FF',...LIGHT_STATUS},
+  dark:{primary:'#6F86FF',secondary:'#23283A',bgPage:'#0F1115',bgCard:'#171A21',text:'#E7E9EE',muted:'#9AA1AE',link:'#8EA2FF',button:'#4461F2',buttonText:'#FFFFFF',menu:'#171A21',menuText:'#E7E9EE',heading:'#FFFFFF',border:'#2A2F3A',message:'#1E2440',...DARK_STATUS}},
+ {id:'modern-dark',name:'Modern Dark',desc:'Темний фон, контраст, технологічний стиль',defaultMode:'dark',
+  base:{font:'Inter',headingFont:'Unbounded',size:15,scale:1.22,weight:600,lineHeight:1.5,density:'compact',radiusBtn:10,radiusCard:12,shadow:'none',borderW:1,input:'filled',tabs:'segmented',msg:'bordered',homeLayout:'feed'},
+  light:{primary:'#3462EE',secondary:'#E6ECFD',bgPage:'#F4F6FA',bgCard:'#FFFFFF',text:'#10131A',muted:'#586174',link:'#2A55D9',button:'#3462EE',buttonText:'#FFFFFF',menu:'#10131A',menuText:'#F4F6FA',heading:'#0A0D12',border:'#DDE2EA',message:'#E9EFFE',...LIGHT_STATUS},
+  dark:{primary:'#7C9CFF',secondary:'#1C2333',bgPage:'#0A0D12',bgCard:'#131821',text:'#E6EAF2',muted:'#8B95A7',link:'#8FB0FF',button:'#3462EE',buttonText:'#FFFFFF',menu:'#0F131A',menuText:'#E6EAF2',heading:'#FFFFFF',border:'#232B38',message:'#172036',success:'#34D399',warning:'#FBBF24',danger:'#F87171',info:'#38BDF8'}},
+ {id:'corporate-blue',name:'Corporate Blue',desc:'Синьо-біла палітра, стримані картки',defaultMode:'light',
+  base:{font:'IBM Plex Sans',headingFont:'IBM Plex Sans',size:15,scale:1.2,weight:600,lineHeight:1.5,density:'normal',radiusBtn:4,radiusCard:6,shadow:'none',borderW:1,input:'outline',tabs:'underline',msg:'bordered',homeLayout:'tiles'},
+  light:{primary:'#0B4F9C',secondary:'#E7EFF8',bgPage:'#F2F5F9',bgCard:'#FFFFFF',text:'#1B2430',muted:'#5A6575',link:'#0B4F9C',button:'#0B4F9C',buttonText:'#FFFFFF',menu:'#0B3D75',menuText:'#FFFFFF',heading:'#0B2A4F',border:'#D5DDE8',message:'#E7EFF8',success:'#1E7B34',warning:'#9A5B00',danger:'#B42318',info:'#0B62B8'},
+  dark:{primary:'#5B9BE6',secondary:'#16263B',bgPage:'#0C1420',bgCard:'#121D2C',text:'#E3EAF3',muted:'#93A3B8',link:'#7FB2F0',button:'#1F63B5',buttonText:'#FFFFFF',menu:'#0A1F3C',menuText:'#E3EAF3',heading:'#FFFFFF',border:'#22324A',message:'#14243A',...DARK_STATUS}},
+ {id:'emerald',name:'Emerald',desc:'Білий фон, зелені акценти, легкий стиль',defaultMode:'light',
+  base:{font:'Manrope',headingFont:'Manrope',size:16,scale:1.25,weight:800,lineHeight:1.55,density:'normal',radiusBtn:12,radiusCard:14,shadow:'soft',borderW:1,input:'outline',tabs:'pills',msg:'tinted',homeLayout:'tiles'},
+  light:{primary:'#059669',secondary:'#E7F7F0',bgPage:'#FFFFFF',bgCard:'#F6FBF9',text:'#14231C',muted:'#52645B',link:'#047857',button:'#047857',buttonText:'#FFFFFF',menu:'#FFFFFF',menuText:'#14231C',heading:'#0B1F17',border:'#DCEBE4',message:'#E7F7F0',success:'#047857',warning:'#A15C00',danger:'#C62828',info:'#0E7490'},
+  dark:{primary:'#34D399',secondary:'#12261E',bgPage:'#0B1411',bgCard:'#111D18',text:'#E3F1EA',muted:'#93AFA2',link:'#5EE0AE',button:'#34D399',buttonText:'#052E1F',menu:'#0E1915',menuText:'#E3F1EA',heading:'#FFFFFF',border:'#1F3329',message:'#12261E',...DARK_STATUS}},
+ {id:'premium',name:'Premium',desc:'Стримані преміальні кольори, виразна типографіка',defaultMode:'light',
+  base:{font:'Inter',headingFont:'Playfair Display',size:16,scale:1.3,weight:700,lineHeight:1.6,density:'comfortable',radiusBtn:2,radiusCard:4,shadow:'none',borderW:1,input:'underline',tabs:'underline',msg:'bordered',homeLayout:'feed'},
+  light:{primary:'#1E1B18',secondary:'#B08D57',bgPage:'#FAF8F5',bgCard:'#FFFFFF',text:'#1E1B18',muted:'#6B645B',link:'#8A6A35',button:'#1E1B18',buttonText:'#FAF8F5',menu:'#1E1B18',menuText:'#F3EEE6',heading:'#14110E',border:'#E7E1D8',message:'#F4EFE7',success:'#2F6B3A',warning:'#8A5A00',danger:'#9F2A2A',info:'#2C5282'},
+  dark:{primary:'#D8B67A',secondary:'#C9A56A',bgPage:'#12100E',bgCard:'#1A1714',text:'#EDE7DD',muted:'#A79E91',link:'#D8B67A',button:'#D8B67A',buttonText:'#1A1714',menu:'#0D0B09',menuText:'#EDE7DD',heading:'#FFFFFF',border:'#2E2923',message:'#221E19',...DARK_STATUS}},
+ {id:'soft-ui',name:'Soft UI',desc:'М’які кольори, округлені картки, дружній інтерфейс',defaultMode:'light',
+  base:{font:'Nunito',headingFont:'Nunito',size:16,scale:1.22,weight:800,lineHeight:1.55,density:'comfortable',radiusBtn:22,radiusCard:22,shadow:'medium',borderW:0,input:'filled',tabs:'segmented',msg:'tinted',homeLayout:'tiles'},
+  light:{primary:'#6C5CE7',secondary:'#EEEBFF',bgPage:'#F2F3F9',bgCard:'#FFFFFF',text:'#2B2D42',muted:'#6B6F86',link:'#5B4BD6',button:'#6C5CE7',buttonText:'#FFFFFF',menu:'#FFFFFF',menuText:'#2B2D42',heading:'#23243A',border:'#E6E7F2',message:'#EEEBFF',success:'#2E8B57',warning:'#B26B00',danger:'#D64545',info:'#3B82C4'},
+  dark:{primary:'#A79BFF',secondary:'#2A2745',bgPage:'#17172A',bgCard:'#1F1F36',text:'#E8E8F5',muted:'#A3A4C2',link:'#B7ADFF',button:'#6857E6',buttonText:'#FFFFFF',menu:'#1F1F36',menuText:'#E8E8F5',heading:'#FFFFFF',border:'#2E2E4A',message:'#2A2745',...DARK_STATUS}}
+];

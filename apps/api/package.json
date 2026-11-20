@@ -1,0 +1,39 @@
+{
+  "name": "@yework/api",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "dev": "tsc -p tsconfig.build.json --watch & node --watch dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nestjs/common": "11.1.6",
+    "@nestjs/core": "11.1.6",
+    "@nestjs/platform-express": "11.1.6",
+    "@node-rs/argon2": "2.0.2",
+    "@yework/db": "workspace:*",
+    "@yework/permissions": "workspace:*",
+    "cookie-parser": "1.4.7",
+    "drizzle-orm": "0.45.4",
+    "pg": "8.23.1",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "1.4.9",
+    "@types/express": "5.0.6",
+    "@types/node": "22.20.5",
+    "@types/pg": "8.23.1",
+    "@types/supertest": "6.0.3",
+    "supertest": "7.1.4",
+    "typescript": "5.8.3",
+    "unplugin-swc": "1.5.5",
+    "@swc/core": "1.13.5",
+    "vitest": "3.2.7"
+  }
+}
