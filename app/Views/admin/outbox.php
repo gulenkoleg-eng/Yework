@@ -1,0 +1,6 @@
+<div class="adm-h"><h1>Повідомлення</h1></div>
+<div class="alert info"><div>Тут видно останні SMS і листи сайту. <b>SMS-провайдера ще не підключено</b>, тому коди з SMS показуються тут (статус «записано»). Користувачам, що реєструються за телефоном, поки можна продиктувати код вручну або попросити зареєструватися через email.</div></div>
+<div class="card tbl-wrap"><table class="tbl"><thead><tr><th>Час</th><th>Канал</th><th>Кому</th><th>Текст</th><th>Статус</th></tr></thead><tbody>
+<?php foreach ($rows as $r): ?><tr><td class="small muted" style="white-space:nowrap"><?= e(local_date($r['created_at'], 'd.m H:i')) ?></td><td><?= $r['channel'] === 'sms' ? 'SMS' : 'Email' ?></td><td class="small"><?= e($r['channel'] === 'sms' ? phone_pretty($r['to']) : $r['to']) ?></td><td class="small"><?= e($r['body']) ?><?php if ($r['error']): ?><div style="color:var(--c-danger)"><?= e($r['error']) ?></div><?php endif ?></td>
+<td><span class="tag <?= ['sent' => 'ok', 'logged' => 'muted', 'failed' => 'bad'][$r['status']] ?? 'muted' ?>"><?= ['sent' => 'надіслано', 'logged' => 'записано', 'failed' => 'помилка', 'queued' => 'у черзі'][$r['status']] ?? e($r['status']) ?></span></td></tr><?php endforeach ?>
+<?php if (!$rows): ?><tr><td colspan="5" class="muted">Повідомлень ще не було.</td></tr><?php endif ?></tbody></table></div>

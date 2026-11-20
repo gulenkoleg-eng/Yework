@@ -1,0 +1,305 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Controllers\Admin;
+
+use App\Core\App;
+use App\Core\Audit;
+use App\Core\Crypto;
+use App\Core\Db;
+use App\Core\HttpException;
+use App\Core\Installer;
+use App\Core\Messaging;
+use App\Core\Request;
+use App\Core\Response;
+use App\Core\Stats;
+use App\Core\ValidationException;
+use App\Core\View;
+use App\Permissions;
+
+final class AdminController
+{
+    private const VACANCY_DAYS = 30;
+
+    private function render(string $view, string $nav, array $data = []): Response
+    {
+        return new Response(View::render('admin/' . $view, [...$data, 'nav' => $nav], 'admin'));
+    }
+
+    private function staff(): array
+    {
+        $u = App::auth()->user();
+        if (!$u || !$u['is_staff']) throw new HttpException(403, 'Адмін-панель доступна лише персоналу.');
+        return $u;
+    }
+
+    public static function pendingCount(): int
+    {
+        return (int) App::db()->value("SELECT COUNT(*) FROM {p}vacancies WHERE status = 'pending' AND deleted_at IS NULL");
+    }
+
+    public function dashboard(Request $req): Response
+    {
+        $me = $this->staff();
+        $db = App::db();
+        $one = static fn (string $sql, array $p = []) => (int) $db->value($sql, $p);
+        $k = [
+            'users' => $one('SELECT COUNT(*) FROM {p}users WHERE deleted_at IS NULL'),
+            'usersToday' => $one('SELECT COUNT(*) FROM {p}users WHERE created_at >= ?', [Stats::kyivDayStartUtc()]),
+            'pending' => self::pendingCount(),
+            'published' => $one("SELECT COUNT(*) FROM {p}vacancies WHERE status = 'published' AND deleted_at IS NULL"),
+            'employers' => $one('SELECT COUNT(*) FROM {p}employers WHERE deleted_at IS NULL'),
+            'applications' => $one('SELECT COUNT(*) FROM {p}applications'),
+            'failedMessages' => $one("SELECT COUNT(*) FROM {p}outbox WHERE status = 'failed' AND created_at > UTC_TIMESTAMP() - INTERVAL 1 DAY"),
+        ];
+        $pub = Stats::public();
+        $recent = App::auth()->can('audit.log:view') ? $db->all('SELECT a.*, u.display_name FROM {p}audit_log a LEFT JOIN {p}users u ON u.id = a.actor_id ORDER BY a.id DESC LIMIT 8') : [];
+        $mfa = (bool) App::setting('security.admin_2fa_required', true);
+        return $this->render('dashboard', 'dashboard', ['title' => 'Огляд', 'k' => $k, 'pub' => $pub, 'recent' => $recent, 'me' => $me, 'mfa' => $mfa]);
+    }
+
+    /* ---------------- модерація ---------------- */
+
+    public function moderation(Request $req): Response
+    {
+        $status = in_array($req->query['status'] ?? 'pending', ['pending', 'published', 'rejected'], true) ? (string) ($req->query['status'] ?? 'pending') : 'pending';
+        $rows = App::db()->all("SELECT v.*, e.name AS employer, e.is_verified, e.edrpou, s.name AS settlement, c.name AS category, u.display_name AS author,
+            (SELECT COUNT(*) FROM {p}vacancies v2 WHERE v2.author_id = v.author_id AND v2.status = 'rejected') AS author_rejected
+            FROM {p}vacancies v JOIN {p}employers e ON e.id = v.employer_id JOIN {p}settlements s ON s.id = v.settlement_id JOIN {p}job_categories c ON c.id = v.category_id JOIN {p}users u ON u.id = v.author_id
+            WHERE v.status = ? AND v.deleted_at IS NULL ORDER BY " . ($status === 'pending' ? 'v.submitted_at ASC' : 'v.moderated_at DESC') . ' LIMIT 100', [$status]);
+        return $this->render('moderation', 'moderation', ['title' => 'Модерація вакансій', 'rows' => $rows, 'status' => $status, 'me' => App::auth()->user()]);
+    }
+
+    public function moderate(Request $req): Response
+    {
+        $me = App::auth()->user();
+        $id = (int) $req->params['id'];
+        $decision = $req->str('decision', 10);
+        $db = App::db();
+        $v = $db->one('SELECT * FROM {p}vacancies WHERE id = ? AND deleted_at IS NULL', [$id]);
+        if (!$v) throw new HttpException(404, 'Вакансію не знайдено.');
+        if ((int) $v['author_id'] === (int) $me['id']) throw new HttpException(403, 'Не можна модерувати власну вакансію.');
+        if ($decision === 'approve') {
+            if ($v['status'] !== 'pending') throw new HttpException(409, 'Вакансію вже оброблено.');
+            $db->update('vacancies', ['status' => 'published', 'moderated_by' => $me['id'], 'moderated_at' => Db::now(), 'published_at' => Db::now(), 'expires_at' => Db::now(self::VACANCY_DAYS * 86400), 'reject_reason' => null], 'id = ?', [$id]);
+            Audit::log('jobs.vacancy_approved', 'vacancy', $id);
+            flash('ok', 'Вакансію опубліковано.');
+        } elseif ($decision === 'reject') {
+            $reason = $req->str('reason', 500);
+            if (mb_strlen($reason) < 5) { flash('bad', 'Вкажіть причину відхилення — її побачить роботодавець.'); return Response::redirect(url('/admin/moderation')); }
+            if (!in_array($v['status'], ['pending', 'published'], true)) throw new HttpException(409, 'Вакансію вже оброблено.');
+            $db->update('vacancies', ['status' => 'rejected', 'moderated_by' => $me['id'], 'moderated_at' => Db::now(), 'reject_reason' => $reason], 'id = ?', [$id]);
+            Audit::log('jobs.vacancy_rejected', 'vacancy', $id, ['reason' => $reason]);
+            flash('ok', 'Вакансію відхилено. Роботодавець побачить причину в кабінеті.');
+        } elseif ($decision === 'verify' && App::auth()->can('identity.user:update')) {
+            $db->update('employers', ['is_verified' => 1], 'id = ?', [$v['employer_id']]);
+            Audit::log('jobs.employer_verified', 'employer', $v['employer_id']);
+            flash('ok', 'Роботодавця позначено як перевіреного.');
+        }
+        Stats::forget();
+        return Response::redirect(url('/admin/moderation', ['status' => $req->str('back', 12) ?: null]));
+    }
+
+    /* ---------------- користувачі ---------------- */
+
+    public function users(Request $req): Response
+    {
+        $db = App::db();
+        $q = mb_substr(trim((string) ($req->query['q'] ?? '')), 0, 100);
+        $filter = (string) ($req->query['filter'] ?? '');
+        $w = ['u.deleted_at IS NULL'];
+        $p = [];
+        if ($q !== '') {
+            $c = Crypto::parseContact($q);
+            if ($c) { $w[] = ($c['kind'] === 'phone' ? 'u.phone_hash' : 'u.email_hash') . ' = ?'; $p[] = Crypto::hmac($c['value']); }
+            else { $w[] = '(u.display_name LIKE ? OR u.login LIKE ?)'; $like = '%' . addcslashes($q, '%_\\') . '%'; array_push($p, $like, $like); }
+        }
+        if ($filter === 'blocked') $w[] = "u.status = 'blocked'";
+        if ($filter === 'staff') $w[] = '(u.owner_flag = 1 OR EXISTS (SELECT 1 FROM {p}user_roles ur WHERE ur.user_id = u.id))';
+        $where = ' WHERE ' . implode(' AND ', $w);
+        $total = (int) $db->value('SELECT COUNT(*) FROM {p}users u' . $where, $p);
+        $page = max(1, (int) ($req->query['page'] ?? 1));
+        $rows = $db->all('SELECT u.id, u.login, u.display_name, u.status, u.owner_flag, u.phone_hash, u.email_hash, u.created_at, u.last_login_at,
+            (SELECT GROUP_CONCAT(r.name SEPARATOR ", ") FROM {p}user_roles ur JOIN {p}roles r ON r.id = ur.role_id WHERE ur.user_id = u.id) AS roles
+            FROM {p}users u' . $where . ' ORDER BY u.id DESC LIMIT 30 OFFSET ' . (($page - 1) * 30), $p);
+        return $this->render('users', 'users', ['title' => 'Користувачі', 'rows' => $rows, 'total' => $total, 'page' => $page, 'q' => $q, 'filter' => $filter]);
+    }
+
+    public function user(Request $req): Response
+    {
+        $db = App::db();
+        $id = (int) $req->params['id'];
+        $u = $db->one('SELECT * FROM {p}users WHERE id = ?', [$id]);
+        if (!$u) throw new HttpException(404, 'Користувача не знайдено.');
+        $full = App::auth()->can('identity.user:view_contacts');
+        $phone = Crypto::decrypt($u['phone_enc']);
+        $email = Crypto::decrypt($u['email_enc']);
+        $roles = App::auth()->rolesOf($id);
+        $allRoles = $db->all("SELECT slug, name, description FROM {p}roles WHERE deleted_at IS NULL AND slug <> 'owner' ORDER BY id");
+        $audit = $db->all("SELECT * FROM {p}audit_log WHERE actor_id = ? OR (entity_type = 'user' AND entity_id = ?) ORDER BY id DESC LIMIT 20", [$id, (string) $id]);
+        $employers = $db->all('SELECT id, name, is_verified FROM {p}employers WHERE owner_id = ?', [$id]);
+        $stats = ['vacancies' => (int) $db->value('SELECT COUNT(*) FROM {p}vacancies WHERE author_id = ?', [$id]), 'applications' => (int) $db->value('SELECT COUNT(*) FROM {p}applications WHERE user_id = ?', [$id])];
+        return $this->render('user', 'users', ['title' => $u['display_name'], 'u' => $u, 'phone' => $full ? $phone : mask_contact($phone), 'email' => $full ? $email : mask_contact($email), 'masked' => !$full,
+            'roles' => $roles, 'allRoles' => $allRoles, 'audit' => $audit, 'employers' => $employers, 'stats' => $stats, 'me' => App::auth()->user()]);
+    }
+
+    public function userStatus(Request $req): Response
+    {
+        $me = App::auth()->user();
+        $id = (int) $req->params['id'];
+        $status = $req->str('status', 10);
+        $reason = $req->str('reason', 300);
+        if (!in_array($status, ['active', 'blocked'], true)) throw new HttpException(400, 'Невідомий статус.');
+        if ($id === (int) $me['id']) throw new HttpException(403, 'Не можна змінити статус власного акаунта.');
+        $u = App::db()->one('SELECT * FROM {p}users WHERE id = ?', [$id]);
+        if (!$u) throw new HttpException(404, 'Користувача не знайдено.');
+        if ((int) $u['owner_flag'] === 1) throw new HttpException(403, 'Головного адміністратора заблокувати не можна.');
+        if (!$me['is_owner'] && App::auth()->rolesOf($id)) throw new HttpException(403, 'Блокувати персонал може лише головний адміністратор.');
+        if (mb_strlen($reason) < 3) { flash('bad', 'Вкажіть причину.'); return Response::redirect(url('/admin/users/' . $id)); }
+        App::db()->update('users', ['status' => $status, 'updated_at' => Db::now()], 'id = ?', [$id]);
+        if ($status === 'blocked') App::auth()->revokeAll($id);
+        Audit::log($status === 'blocked' ? 'user.blocked' : 'user.unblocked', 'user', $id, ['reason' => $reason]);
+        flash('ok', $status === 'blocked' ? 'Користувача заблоковано, усі його сесії завершено.' : 'Користувача розблоковано.');
+        return Response::redirect(url('/admin/users/' . $id));
+    }
+
+    /** Видача / зняття ролі. Критичне право; не можна змінювати ролі собі; роль власника не передається. */
+    public function userRoles(Request $req): Response
+    {
+        $me = App::auth()->user();
+        $id = (int) $req->params['id'];
+        $slug = $req->str('role', 64);
+        $op = $req->str('op', 6);
+        if ($id === (int) $me['id']) throw new HttpException(403, 'Не можна змінювати ролі самому собі.');
+        if ($slug === 'owner') throw new HttpException(403, 'Роль головного адміністратора не передається.');
+        $db = App::db();
+        $role = $db->one('SELECT * FROM {p}roles WHERE slug = ? AND deleted_at IS NULL', [$slug]);
+        $u = $db->one('SELECT * FROM {p}users WHERE id = ? AND deleted_at IS NULL', [$id]);
+        if (!$role || !$u) throw new HttpException(404, 'Не знайдено.');
+        if ($op === 'grant') {
+            if ($u['status'] !== 'active') { flash('bad', 'Спочатку розблокуйте користувача.'); return Response::redirect(url('/admin/users/' . $id)); }
+            $db->run('INSERT IGNORE INTO {p}user_roles (user_id, role_id, granted_by) VALUES (?, ?, ?)', [$id, $role['id'], $me['id']]);
+            Audit::log('access.role_granted', 'user', $id, ['role' => $slug]);
+            flash('ok', 'Роль «' . $role['name'] . '» видано. Користувач має увійти заново.');
+        } else {
+            $db->run('DELETE FROM {p}user_roles WHERE user_id = ? AND role_id = ?', [$id, $role['id']]);
+            Audit::log('access.role_revoked', 'user', $id, ['role' => $slug]);
+            flash('ok', 'Роль «' . $role['name'] . '» знято.');
+        }
+        App::auth()->revokeAll($id); // персонал отримує короткі сесії, тож просимо увійти заново
+        return Response::redirect(url('/admin/users/' . $id));
+    }
+
+    public function roles(Request $req): Response
+    {
+        $db = App::db();
+        $roles = $db->all('SELECT r.*, (SELECT COUNT(*) FROM {p}user_roles ur WHERE ur.role_id = r.id) AS members FROM {p}roles r WHERE r.deleted_at IS NULL ORDER BY r.id');
+        $rp = [];
+        foreach ($db->all('SELECT role_id, permission_code FROM {p}role_permissions') as $x) $rp[$x['role_id']][] = $x['permission_code'];
+        return $this->render('roles', 'roles', ['title' => 'Ролі та права', 'roles' => $roles, 'rp' => $rp, 'perms' => Permissions::all()]);
+    }
+
+    public function audit(Request $req): Response
+    {
+        $page = max(1, (int) ($req->query['page'] ?? 1));
+        $action = preg_replace('/[^a-z_.]/', '', (string) ($req->query['action'] ?? ''));
+        $p = [];
+        $w = '';
+        if ($action !== '') { $w = ' WHERE a.action LIKE ?'; $p[] = $action . '%'; }
+        $rows = App::db()->all('SELECT a.*, u.display_name, u.login FROM {p}audit_log a LEFT JOIN {p}users u ON u.id = a.actor_id' . $w . ' ORDER BY a.id DESC LIMIT 50 OFFSET ' . (($page - 1) * 50), $p);
+        return $this->render('audit', 'audit', ['title' => 'Журнал дій', 'rows' => $rows, 'page' => $page, 'action' => $action]);
+    }
+
+    /* ---------------- теми ---------------- */
+
+    public function themes(Request $req): Response
+    {
+        $rows = App::db()->all('SELECT t.*, tv.id AS vid, tv.tokens, tv.version, (SELECT active_flag FROM {p}theme_publications p WHERE p.theme_version_id = tv.id AND p.active_flag = 1) AS active
+            FROM {p}themes t JOIN {p}theme_versions tv ON tv.theme_id = t.id AND tv.version = (SELECT MAX(version) FROM {p}theme_versions x WHERE x.theme_id = t.id)
+            WHERE t.deleted_at IS NULL ORDER BY t.id');
+        $history = App::db()->all('SELECT p.*, t.name, u.display_name FROM {p}theme_publications p JOIN {p}theme_versions tv ON tv.id = p.theme_version_id JOIN {p}themes t ON t.id = tv.theme_id LEFT JOIN {p}users u ON u.id = p.published_by ORDER BY p.id DESC LIMIT 10');
+        return $this->render('themes', 'themes', ['title' => 'Теми оформлення', 'rows' => $rows, 'history' => $history]);
+    }
+
+    public function themePublish(Request $req): Response
+    {
+        $vid = (int) $req->input('version_id');
+        $db = App::db();
+        $v = $db->one('SELECT tv.id, t.name FROM {p}theme_versions tv JOIN {p}themes t ON t.id = tv.theme_id WHERE tv.id = ?', [$vid]);
+        if (!$v) throw new HttpException(404, 'Тему не знайдено.');
+        $db->tx(function (Db $db) use ($vid) {
+            $db->run('UPDATE {p}theme_publications SET active_flag = NULL WHERE active_flag = 1');
+            $db->insert('theme_publications', ['theme_version_id' => $vid, 'published_by' => App::auth()->id(), 'active_flag' => 1]);
+        });
+        Audit::log('theming.theme_published', 'theme_version', $vid, ['name' => $v['name']]);
+        flash('ok', 'Тему «' . $v['name'] . '» застосовано до всього сайту.');
+        return Response::redirect(url('/admin/themes'));
+    }
+
+    /* ---------------- налаштування ---------------- */
+
+    public function settings(Request $req): Response
+    {
+        $email = (array) App::setting('messaging.email', ['driver' => 'mail']);
+        return $this->render('settings', 'settings', ['title' => 'Налаштування', 'email' => $email,
+            'site' => ['name' => App::setting('site.name'), 'slogan' => App::setting('site.slogan'), 'url' => App::setting('site.url')],
+            'pre' => (array) App::setting('moderation.premoderation', ['jobs' => true]), 'version' => YW_VERSION,
+            'pendingMigrations' => $this->pendingMigrations()]);
+    }
+
+    private function pendingMigrations(): array
+    {
+        $done = array_column(App::db()->all('SELECT name FROM {p}schema_migrations'), 'name');
+        return array_values(array_diff(array_map('basename', glob(YW_ROOT . '/database/migrations/*.sql') ?: []), $done));
+    }
+
+    public function settingsSave(Request $req): Response
+    {
+        $section = $req->str('section', 20);
+        $me = App::auth()->id();
+        if ($section === 'site') {
+            $name = $req->str('name', 60);
+            if (mb_strlen($name) < 2) throw new ValidationException(['name' => 'Вкажіть назву']);
+            App::setSetting('site.name', $name, $me);
+            App::setSetting('site.slogan', $req->str('slogan', 80), $me);
+            App::setSetting('site.url', rtrim($req->str('url', 200), '/'), $me);
+            App::setSetting('moderation.premoderation', ['jobs' => !empty($req->post['pre_jobs']), 'gigs' => true, 'services' => true], $me);
+        } elseif ($section === 'email') {
+            $driver = $req->str('driver', 10);
+            $prev = (array) App::setting('messaging.email', []);
+            $v = match ($driver) {
+                'smtp' => ['driver' => 'smtp', 'host' => $req->str('host', 255), 'port' => (int) $req->str('port', 5) ?: 587, 'secure' => in_array($req->str('secure', 4), ['ssl', 'tls', 'none'], true) ? $req->str('secure', 4) : 'tls',
+                    'user' => $req->str('user', 254), 'from' => $req->str('from', 254),
+                    'passEnc' => ($req->post['pass'] ?? '') !== '' ? Crypto::encrypt((string) $req->post['pass']) : ($prev['passEnc'] ?? null)],
+                'log' => ['driver' => 'log'],
+                default => ['driver' => 'mail', 'from' => $req->str('from', 254)],
+            };
+            if ($driver === 'smtp' && ($v['host'] === '' || !filter_var($v['from'], FILTER_VALIDATE_EMAIL))) throw new ValidationException(['host' => $v['host'] === '' ? 'Вкажіть SMTP-сервер' : null, 'from' => 'Вкажіть адресу відправника']);
+            App::setSetting('messaging.email', $v, $me);
+            if (($t = $req->str('test_to', 254)) !== '') {
+                $r = Messaging::send('email', $t, 'Якщо ви бачите цей лист, пошта на сайті налаштована правильно.', 'test', 'Тестовий лист');
+                flash($r['ok'] ? 'ok' : 'bad', $r['ok'] ? "Тестовий лист надіслано на $t." : 'Лист не надіслано. Перевірте налаштування (деталі — у розділі «Повідомлення»).');
+                Audit::log('settings.updated', 'settings', 'messaging.email', ['driver' => $v['driver']]);
+                return Response::redirect(url('/admin/settings'));
+            }
+        }
+        Audit::log('settings.updated', 'settings', $section);
+        flash('ok', 'Налаштування збережено.');
+        return Response::redirect(url('/admin/settings'));
+    }
+
+    public function outbox(Request $req): Response
+    {
+        $rows = App::db()->all('SELECT * FROM {p}outbox ORDER BY id DESC LIMIT 50');
+        foreach ($rows as &$r) { $r['to'] = Crypto::decrypt($r['to_enc']); $r['body'] = Crypto::decrypt($r['body_enc']); unset($r['to_enc'], $r['body_enc']); }
+        return $this->render('outbox', 'outbox', ['title' => 'Повідомлення', 'rows' => $rows]);
+    }
+
+    public function upgrade(Request $req): Response
+    {
+        $w = Installer::upgrade(App::db());
+        Audit::log('system.upgraded', null, null, ['warnings' => $w]);
+        flash('ok', 'Базу даних оновлено.' . ($w ? ' Попередження: ' . implode('; ', $w) : ''));
+        return Response::redirect(url('/admin/settings'));
+    }
+}

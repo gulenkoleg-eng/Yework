@@ -1,13 +1,13 @@
-node_modules/
-dist/
-.next/
-coverage/
-*.log
-.env
-# runtime data written by the installer (secrets!)
-storage/
-config/*.json
-config/install.lock
-config/setup-key.txt
-.env
-.ccr-ca.crt
+# Секрети та дані конкретного сайту — ніколи не в репозиторій
+/config/*
+!/config/.htaccess
+!/config/index.php
+/storage/logs/*
+/storage/cache/*
+/storage/sessions/*
+!/storage/**/.gitkeep
+!/storage/cache/rl/
+/storage/cache/rl/*
+!/storage/cache/rl/.gitkeep
+/dist/
+.DS_Store

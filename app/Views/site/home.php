@@ -1,0 +1,36 @@
+<?php $site = App\Core\App::setting('site.name', 'YEWORK'); ?>
+<section class="hero">
+  <h1>Робота поруч з домом. <b>Є робота!</b></h1>
+  <p class="lead">Вакансії, підробіток і послуги в Миронівці, Богуславі та Кагарлику. Без посередників і зайвих кроків.</p>
+  <form class="search" action="<?= url('/jobs') ?>" method="get" role="search">
+    <input class="input" name="q" placeholder="Посада, компанія або ключове слово" aria-label="Пошук">
+    <select class="input" name="settlement" aria-label="Населений пункт"><option value="">Усі громади</option><?php foreach ($settlements as $s): ?><option value="<?= (int) $s['id'] ?>"><?= e($s['name']) ?></option><?php endforeach ?></select>
+    <button class="btn pri"><?= icon('search') ?>Знайти</button>
+  </form>
+</section>
+
+<section class="stats" style="margin-top:22px" aria-label="Статистика сайту">
+  <div class="card stat"><b><?= (int) $stats['vacanciesToday'] ?></b><span>нових вакансій сьогодні</span></div>
+  <div class="card stat"><b><?= (int) $stats['employersHiring'] ?></b><span>роботодавців шукають працівників</span></div>
+  <div class="card stat"><b><?= (int) $stats['visitorsToday'] ?></b><span>відвідувачів сьогодні</span></div>
+  <div class="card stat"><b><?= (int) $stats['visitorsMonth'] ?></b><span>відвідувачів за місяць</span></div>
+</section>
+
+<div class="sec-h"><h2>Три напрямки</h2></div>
+<section class="dirs">
+  <a class="card dir" href="<?= url('/jobs') ?>"><span class="ic"><?= icon('briefcase', 22) ?></span><h3>Вакансії</h3><p>Постійна робота у місцевих підприємствах, магазинах, школах і фермерських господарствах.</p><span class="small"><b><?= (int) $stats['vacanciesActive'] ?></b> активних</span></a>
+  <a class="card dir" href="<?= url('/jobs', ['employment' => 'one_time']) ?>"><span class="ic"><?= icon('bolt', 22) ?></span><h3>Підробіток</h3><p>Разова робота на день чи тиждень: допомога на городі, переїзд, сезонні роботи.</p><span class="small muted">Окремий розділ з’явиться найближчим часом</span></a>
+  <div class="card dir soon"><span class="ic"><?= icon('tool', 22) ?></span><h3>Послуги</h3><p>Майстри поруч: ремонт, сантехніка, електрика, репетитори, перевезення.</p><span class="tag muted" style="align-self:flex-start">Скоро</span></div>
+</section>
+
+<div class="sec-h"><h2>Категорії</h2><a href="<?= url('/jobs') ?>">Усі вакансії →</a></div>
+<section class="cats">
+  <?php foreach ($categories as $c): ?><a class="card cat" href="<?= url('/jobs', ['category' => $c['slug']]) ?>"><span><?= e($c['name']) ?></span><em><?= (int) $c['cnt'] ?></em></a><?php endforeach ?>
+</section>
+
+<div class="sec-h"><h2>Нові вакансії</h2><a href="<?= url('/jobs') ?>">Дивитися всі →</a></div>
+<?php if ($latest): ?>
+  <section class="jlist"><?php foreach ($latest as $j) echo App\Core\View::partial('partials/job_card', ['j' => $j]) ?></section>
+<?php else: ?>
+  <div class="card empty"><h3>Тут з’являться перші вакансії</h3><p class="muted">Ви роботодавець? Розмістіть вакансію безкоштовно, і її побачать люди з вашої громади.</p><a class="btn pri" href="<?= url('/cabinet/vacancies/new') ?>"><?= icon('plus') ?>Розмістити вакансію</a></div>
+<?php endif ?>
