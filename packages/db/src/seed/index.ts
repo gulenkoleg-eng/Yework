@@ -56,3 +56,30 @@ export async function seedReference(db: Db) {
   }
 }
 export { SYSTEM_THEMES };
+
+export const JOB_CATEGORIES: [string, string, string][] = [
+  ['trade', 'Торгівля та продажі', 'shop'],
+  ['agro', 'Сільське господарство', 'leaf'],
+  ['construction', 'Будівництво та ремонт', 'hammer'],
+  ['transport', 'Водії та логістика', 'truck'],
+  ['production', 'Виробництво', 'factory'],
+  ['food', 'Кафе, ресторани, кухня', 'cup'],
+  ['education', 'Освіта', 'book'],
+  ['medicine', 'Медицина та фармація', 'heart'],
+  ['office', 'Офіс і адміністрування', 'folder'],
+  ['accounting', 'Бухгалтерія та фінанси', 'calc'],
+  ['it', 'IT та комп’ютери', 'code'],
+  ['beauty', 'Краса та здоров’я', 'spark'],
+  ['security', 'Охорона', 'shield'],
+  ['cleaning', 'Прибирання та побут', 'home'],
+  ['public', 'Державна служба', 'bank'],
+  ['other', 'Інше', 'dots'],
+];
+
+/** Категорії вакансій. Ідемпотентно. */
+export async function seedJobCategories(db: Db) {
+  let i = 0;
+  for (const [slug, name, icon] of JOB_CATEGORIES) {
+    await db.insert(s.categories).values({ slug, name, icon, sort: (i += 10) }).onConflictDoNothing();
+  }
+}

@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { Injectable, Logger, BadRequestException, ConflictException } from '@nestjs/common';
 import { Client } from 'pg';
 import { eq } from 'drizzle-orm';
-import { createDb, runMigrations, syncPermissions, seedThemes, seedReference, schema as s } from '@yework/db';
+import { createDb, runMigrations, syncPermissions, seedThemes, seedReference, seedJobCategories, schema as s } from '@yework/db';
 import { CRITICAL_PERMISSIONS } from '@yework/permissions';
 import { RuntimeConfig, type InstalledConfig } from '../config/runtime-config';
 import { hashPassword, encrypt, hmac, normalizeUaPhone } from '../common/crypto';
@@ -89,7 +89,7 @@ export class InstallService {
         const passwordHash = await hashPassword(input.admin.password);
         await db.transaction(async (tx) => {
           await syncPermissions(tx as any); mark('Права та стартові ролі');
-          await seedReference(tx as any); mark('Довідник громад запуску');
+          await seedReference(tx as any); await seedJobCategories(tx as any); mark('Довідник громад і категорій');
           const email = input.admin.email || null;
           const [owner] = await tx.insert(s.users).values({
             login: input.admin.login, displayName: input.admin.displayName, passwordHash, isOwner: true,
