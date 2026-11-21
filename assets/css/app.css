@@ -280,3 +280,20 @@ table.tbl{width:100%;border-collapse:collapse;font-size:14.5px}
 .theme-card .pv u{display:block;height:6px;border-radius:3px;width:45%;opacity:.5}
 .theme-card .pv b{display:inline-block;height:22px;width:90px;border-radius:6px;margin-top:auto}
 .code-out{background:#0F1115;color:#E7E9EE;border-radius:10px;padding:14px;font-family:ui-monospace,Menlo,monospace;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+/* ---------- оновлення ---------- */
+.upd-new{border-color:color-mix(in srgb,var(--c-success) 40%,var(--c-border))}
+.upd-notes{border-top:1px solid var(--c-border);padding-top:10px}
+.upd-notes summary,.upd-cfg>summary{cursor:pointer;display:flex;gap:8px;align-items:center;flex-wrap:wrap;list-style:none}
+.upd-notes summary::before,.upd-cfg>summary::before{content:"▸";color:var(--c-muted);transition:transform .15s}
+.upd-notes[open] summary::before,.upd-cfg[open]>summary::before{transform:rotate(90deg)}
+.upd-notes summary::-webkit-details-marker,.upd-cfg>summary::-webkit-details-marker,.upd-act>summary::-webkit-details-marker{display:none}
+.upd-md{overflow-wrap:anywhere;margin-top:8px}
+.upd-md ul,.upd-md ol{margin:4px 0 8px;padding-left:22px}
+.upd-md li{margin:3px 0}
+.upd-md h4{font-size:15px;margin:10px 0 4px}
+.upd-md p{margin:4px 0}
+.upd-md code{background:var(--c-bg);border:1px solid var(--c-border);border-radius:5px;padding:0 5px;font-size:.92em}
+.upd-bk{border-top:1px solid var(--c-border);padding-top:12px;display:flex;flex-direction:column;gap:10px}
+.upd-act>summary{list-style:none;display:inline-flex;width:max-content}
+.upd-act[open]>summary{margin-bottom:10px}
+.upd-act form.stack{background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--r-btn);padding:14px;gap:12px}

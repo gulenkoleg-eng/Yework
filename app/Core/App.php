@@ -111,11 +111,12 @@ final class App
             return self::errorPage($req, 410, 'Сайт уже встановлено. Інсталятор вимкнено назавжди.');
         }
 
+        Updater::autoUpgrade();
         if ($req->method === 'POST') Csrf::verify($req);
         Stats::trackVisit($req);
 
         $router = new Router();
-        require YW_ROOT . '/app/routes.php';
+        require yw_file('app/routes.php');
         return $router->dispatch($req);
     }
 

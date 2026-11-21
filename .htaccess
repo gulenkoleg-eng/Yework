@@ -1,5 +1,5 @@
 # YEWORK: маршрутизація та захист службових папок (Apache / LiteSpeed).
-Options -Indexes
+# Перелік файлів у папках вимкнено через index.html у кожній папці assets/ (директива Options на частині хостингів дає помилку 500).
 DirectoryIndex index.php
 
 <IfModule mod_rewrite.c>
