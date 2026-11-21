@@ -370,3 +370,6 @@ fieldset.field legend{font-weight:600;font-size:14.5px;margin-bottom:6px;padding
 .pg-help{background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--r-btn);padding:12px 14px;font-size:13.5px}
 .pg-help code{font-family:ui-monospace,monospace;font-size:13px}
 .pg-edit textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;line-height:1.55;min-height:420px}
+.upd-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:14px}
+.upd-links a{font-weight:600;text-decoration:none}
+.upd-links a:hover{text-decoration:underline}
