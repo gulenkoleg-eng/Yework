@@ -31,6 +31,7 @@ final class Permissions
         }
         array_push($list,
             $p('moderation', 'policy', 'manage_settings', 'Налаштування модерації'),
+            $p('ads', 'banner', 'moderate', 'Модерація банерної реклами роботодавців'),
             $p('messaging', 'support', 'view', 'Звернення в підтримку'),
             $p('theming', 'theme', 'view', 'Перегляд тем оформлення'),
             $p('theming', 'theme', 'update', 'Створення та редагування тем (чернетки)'),
@@ -72,11 +73,11 @@ final class Permissions
         return [
             ['slug' => 'owner', 'name' => 'Головний адміністратор', 'description' => 'Власник платформи. Єдиний, хто видає критичні права.', 'permissions' => '*'],
             ['slug' => 'senior_admin', 'name' => 'Старший адміністратор', 'description' => 'Користувачі, контент, модерація, налаштування без критичних прав.', 'permissions' => self::codes()],
-            ['slug' => 'moderator_jobs', 'name' => 'Модератор вакансій', 'description' => 'Модерація вакансій.', 'permissions' => $content(['jobs'], ['view', 'moderate'])],
+            ['slug' => 'moderator_jobs', 'name' => 'Модератор вакансій', 'description' => 'Модерація вакансій і рекламних банерів.', 'permissions' => [...$content(['jobs'], ['view', 'moderate']), 'ads.banner:moderate']],
             ['slug' => 'moderator_services', 'name' => 'Модератор послуг', 'description' => 'Модерація карток послуг і відгуків.', 'permissions' => $content(['services'], ['view', 'moderate'])],
             ['slug' => 'moderator_regional', 'name' => 'Регіональний модератор', 'description' => 'Модерація всіх напрямків у призначеному регіоні.', 'permissions' => $content(['jobs', 'gigs', 'services'], ['view', 'moderate'])],
             ['slug' => 'operator', 'name' => 'Оператор підтримки', 'description' => 'Звернення та перегляд користувачів без контактів.', 'permissions' => ['identity.user:view', 'messaging.support:view']],
-            ['slug' => 'finance_admin', 'name' => 'Фінансовий адміністратор', 'description' => 'Тарифи й платежі. Перемикач монетизації — лише окремим критичним правом.', 'permissions' => ['billing.plan:view', 'billing.plan:update']],
+            ['slug' => 'finance_admin', 'name' => 'Фінансовий адміністратор', 'description' => 'Тарифи, ціни й оплати банерів. Перемикач монетизації — лише окремим критичним правом.', 'permissions' => ['billing.plan:view', 'billing.plan:update']],
             ['slug' => 'analyst', 'name' => 'Аналітик', 'description' => 'Лише агрегована статистика, без персональних даних.', 'permissions' => ['stats.dashboard:view', 'ai.usage:view']],
             ['slug' => 'designer', 'name' => 'Дизайнер', 'description' => 'Чернетки тем без права публікації.', 'permissions' => ['theming.theme:view', 'theming.theme:update']],
         ];

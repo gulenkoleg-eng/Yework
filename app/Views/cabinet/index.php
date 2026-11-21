@@ -3,9 +3,9 @@
   <div class="stack">
     <h1 style="font-size:28px">Вітаємо, <?= e($me['display_name']) ?></h1>
     <div class="dirs">
-      <a class="card dir" href="<?= url('/jobs') ?>"><span class="ic"><?= icon('search', 22) ?></span><h3>Шукаю роботу</h3><p>Перегляньте вакансії і відгукніться в один клік.</p></a>
+      <a class="card dir" href="<?= url('/cabinet/resume') ?>"><span class="ic"><?= icon('user', 22) ?></span><h3>Шукаю роботу</h3><p><?= ($resume ?? null) ? 'Моє резюме: ' . e(App\Core\Resumes::STATUS[$resume['status']][0] ?? '') . '. Відгукуйтеся на вакансії з резюме.' : 'Створіть резюме з фото, і роботодавці знайдуть вас самі.' ?></p></a>
+      <a class="card dir" href="<?= url('/jobs') ?>"><span class="ic"><?= icon('search', 22) ?></span><h3>Вакансії</h3><p>Перегляньте вакансії і відгукніться в один клік.</p></a>
       <a class="card dir" href="<?= url('/cabinet/vacancies/new') ?>"><span class="ic"><?= icon('plus', 22) ?></span><h3>Шукаю працівника</h3><p><?= $employer ? 'Розмістіть нову вакансію.' : 'Заповніть профіль роботодавця й розмістіть вакансію.' ?></p></a>
-      <a class="card dir" href="<?= url('/cabinet/applications') ?>"><span class="ic"><?= icon('check', 22) ?></span><h3>Мої відгуки</h3><p><?= plural((int) $counts['applications'], 'відгук', 'відгуки', 'відгуків') ?></p></a>
     </div>
     <form class="card pad stack" method="post" action="<?= url('/cabinet/profile') ?>"><?= csrf_field() ?>
       <h2 style="font-size:20px">Профіль</h2>

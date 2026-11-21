@@ -1,5 +1,17 @@
-<?php $q = fn (array $over) => url('/jobs', array_merge(array_filter(['q' => $f['q'], 'settlement' => $f['settlement'] ?: null, 'category' => $f['category'], 'employment' => $f['employment'], 'salary' => $f['salary'] ?: null, 'noexp' => $f['noexp'] ? 1 : null, 'sort' => $f['sort'] === 'salary' ? 'salary' : null]), $over)); ?>
-<div class="row" style="margin-bottom:16px"><h1 style="font-size:30px">Вакансії</h1><span class="muted"><?= plural($total, 'вакансія', 'вакансії', 'вакансій') ?></span>
+<?php $q = fn (array $over) => url('/jobs', array_merge(array_filter(['q' => $f['q'], 'settlement' => $f['settlement'] ?: null, 'category' => $f['category'], 'employment' => $f['employment'], 'salary' => $f['salary'] ?: null, 'noexp' => $f['noexp'] ? 1 : null, 'sort' => $f['sort'] === 'salary' ? 'salary' : null, 'employer' => $f['employer'] ?: null]), $over)); ?>
+<?php if (!empty($employer)): $en = employer_name($employer['legal_form'], $employer['name']); ?>
+<div class="card emp-head">
+  <?= $employer['logo'] ? employer_logo($employer['logo'], $en, 64, 'elogo lg') : '<span class="elogo lg ph">' . e(initials($employer['name'])) . '</span>' ?>
+  <div class="stack" style="gap:6px;min-width:0">
+    <h1 style="font-size:26px"><?= e($en) ?><?= $employer['is_verified'] ? ' <span class="tag ok">' . icon('shield', 13) . ' Перевірений</span>' : '' ?></h1>
+    <?php if ($employerPromo): ?><p><b><?= e($employerPromo['title']) ?>.</b> <?= e($employerPromo['body']) ?></p>
+    <?php elseif ($employer['about']): ?><p class="muted"><?= e(mb_strimwidth($employer['about'], 0, 300, '…')) ?></p><?php endif ?>
+    <a class="small" href="<?= url('/jobs') ?>">← Усі вакансії</a>
+  </div>
+</div>
+<?php endif ?>
+<?php if (!empty($promos)) echo App\Core\View::partial('partials/promo', ['b' => $promos[0], 'wide' => true]) ?>
+<div class="row" style="margin-bottom:16px"><h1 style="font-size:30px"><?= !empty($employer) ? 'Вакансії роботодавця' : 'Вакансії' ?></h1><span class="muted"><?= plural($total, 'вакансія', 'вакансії', 'вакансій') ?></span>
   <span class="spacer"></span>
   <div class="seg" style="background:var(--c-secondary)"><a class="<?= $f['sort'] === 'new' ? 'on' : '' ?>" href="<?= $q(['sort' => null, 'page' => null]) ?>">Нові</a><a class="<?= $f['sort'] === 'salary' ? 'on' : '' ?>" href="<?= $q(['sort' => 'salary', 'page' => null]) ?>">Більша зарплата</a></div>
 </div>
@@ -12,6 +24,7 @@
     <div class="field"><label for="sal">Зарплата від, грн</label><input id="sal" class="input" name="salary" inputmode="numeric" value="<?= $f['salary'] ?: '' ?>" placeholder="напр. 12000"></div>
     <label class="check"><input type="checkbox" name="noexp" value="1" <?= $f['noexp'] ? 'checked' : '' ?>> Без досвіду</label>
     <?php if ($f['sort'] === 'salary'): ?><input type="hidden" name="sort" value="salary"><?php endif ?>
+    <?php if ($f['employer']): ?><input type="hidden" name="employer" value="<?= (int) $f['employer'] ?>"><?php endif ?>
     <button class="btn pri block">Показати</button>
     <a class="btn ghost block" href="<?= url('/jobs') ?>">Скинути фільтри</a>
   </form>

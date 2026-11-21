@@ -7,7 +7,7 @@ namespace App\Core;
 final class Smtp
 {
     /** @param array{host:string,port:int,secure:string,user:string,passEnc?:string,from:string,fromName?:string} $c */
-    public static function send(array $c, string $to, string $subject, string $text): void
+    public static function send(array $c, string $to, string $subject, string $text, array $attachments = []): void
     {
         $host = (string) $c['host'];
         $port = (int) $c['port'];
@@ -49,8 +49,13 @@ final class Smtp
         $name = (string) ($c['fromName'] ?? (App::setting('site.name') ?: 'YEWORK'));
         $msg = 'From: =?UTF-8?B?' . base64_encode($name) . "?= <$from>\r\nTo: <$to>\r\nSubject: =?UTF-8?B?" . base64_encode($subject) . "?=\r\n"
             . 'Date: ' . date('r') . "\r\nMessage-ID: <" . bin2hex(random_bytes(8)) . '@' . preg_replace('/^.*@/', '', $from) . ">\r\n"
-            . "MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
-            . chunk_split(base64_encode($text));
+            . "MIME-Version: 1.0\r\n";
+        if ($attachments) {
+            [$ctype, $body] = Messaging::mimeBody($text, $attachments);
+            $msg .= "Content-Type: $ctype\r\n\r\n" . $body;
+        } else {
+            $msg .= "Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . chunk_split(base64_encode($text));
+        }
         $cmd($msg . "\r\n.", [250]);
         $cmd('QUIT', [221]);
         fclose($s);

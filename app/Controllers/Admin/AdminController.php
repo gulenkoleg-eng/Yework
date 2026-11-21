@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Controllers\Admin;
 
+use App\Core\Ads;
 use App\Core\App;
 use App\Core\Audit;
 use App\Core\Crypto;
@@ -100,6 +101,105 @@ final class AdminController
         }
         Stats::forget();
         return Response::redirect(url('/admin/moderation', ['status' => $req->str('back', 12) ?: null]));
+    }
+
+    /* ---------------- банерна реклама ---------------- */
+
+    public static function pendingBanners(): int
+    {
+        try { return (int) App::db()->value("SELECT COUNT(*) FROM {p}banners WHERE status = 'pending'"); } catch (\PDOException) { return 0; }
+    }
+
+    public function banners(Request $req): Response
+    {
+        $status = in_array($req->query['status'] ?? 'pending', ['pending', 'approved', 'rejected', 'cancelled'], true) ? (string) ($req->query['status'] ?? 'pending') : 'pending';
+        $rows = App::db()->all("SELECT b.*, e.name AS employer, e.legal_form, e.logo, e.is_verified, e.owner_id, u.display_name AS author,
+            (SELECT COUNT(*) FROM {p}vacancies v WHERE v.employer_id = b.employer_id AND v.status = 'published' AND v.deleted_at IS NULL) AS vacancies,
+            (SELECT COALESCE(SUM(impressions),0) FROM {p}banner_stats s WHERE s.banner_id = b.id) AS impressions,
+            (SELECT COALESCE(SUM(clicks),0) FROM {p}banner_stats s WHERE s.banner_id = b.id) AS clicks
+            FROM {p}banners b JOIN {p}employers e ON e.id = b.employer_id JOIN {p}users u ON u.id = b.created_by
+            WHERE b.status = ? ORDER BY " . ($status === 'pending' ? 'b.id ASC' : 'b.id DESC') . ' LIMIT 100', [$status]);
+        return $this->render('banners', 'banners', ['title' => 'Банери', 'rows' => $rows, 'status' => $status, 'me' => App::auth()->user(), 'canPay' => App::auth()->can('billing.plan:update')]);
+    }
+
+    public function bannerModerate(Request $req): Response
+    {
+        $me = App::auth()->user();
+        $db = App::db();
+        $b = $db->one('SELECT b.*, e.owner_id FROM {p}banners b JOIN {p}employers e ON e.id = b.employer_id WHERE b.id = ?', [(int) $req->params['id']]);
+        if (!$b) throw new HttpException(404, 'Банер не знайдено.');
+        $decision = $req->str('decision', 10);
+        $back = url('/admin/banners', ['status' => $req->str('back', 12) ?: null]);
+        if ($decision === 'paid') {
+            if (!App::auth()->can('billing.plan:update')) throw new HttpException(403, 'Позначати оплату може фінансовий адміністратор.');
+            $db->update('banners', ['paid_at' => Db::now(), 'updated_at' => Db::now()], 'id = ?', [$b['id']]);
+            Audit::log('ads.banner_paid', 'banner', $b['id'], ['price' => (int) $b['price']]);
+            flash('ok', 'Оплату позначено.');
+            return Response::redirect($back);
+        }
+        if ((int) $b['owner_id'] === (int) $me['id'] || (int) $b['created_by'] === (int) $me['id']) throw new HttpException(403, 'Не можна модерувати власний банер.');
+        if ($decision === 'approve') {
+            if ($b['status'] !== 'pending') throw new HttpException(409, 'Банер уже оброблено.');
+            $db->update('banners', ['status' => 'approved', 'moderated_by' => $me['id'], 'moderated_at' => Db::now(), 'reject_reason' => null, 'updated_at' => Db::now()], 'id = ?', [$b['id']]);
+            Audit::log('ads.banner_approved', 'banner', $b['id']);
+            flash('ok', 'Банер схвалено. Він показуватиметься в обрані дні.');
+        } elseif ($decision === 'reject') {
+            $reason = $req->str('reason', 500);
+            if (mb_strlen($reason) < 5) { flash('bad', 'Вкажіть причину — її побачить роботодавець.'); return Response::redirect($back); }
+            if (!in_array($b['status'], ['pending', 'approved'], true)) throw new HttpException(409, 'Банер уже оброблено.');
+            $db->update('banners', ['status' => 'rejected', 'moderated_by' => $me['id'], 'moderated_at' => Db::now(), 'reject_reason' => $reason, 'updated_at' => Db::now()], 'id = ?', [$b['id']]);
+            Audit::log('ads.banner_rejected', 'banner', $b['id'], ['reason' => $reason]);
+            flash('ok', $b['status'] === 'approved' ? 'Банер знято з показу.' : 'Банер відхилено.');
+        }
+        return Response::redirect($back);
+    }
+
+    /* ---------------- монетизація ---------------- */
+
+    public function billing(Request $req): Response
+    {
+        $a = App::auth();
+        $db = App::db();
+        $t = Ads::today();
+        $k = [
+            'live' => (int) $db->value('SELECT COUNT(*) FROM {p}banners b WHERE ' . Ads::LIVE_SQL, [$t, $t]),
+            'pending' => self::pendingBanners(),
+            'unpaid' => (int) $db->value("SELECT COUNT(*) FROM {p}banners WHERE status = 'approved' AND price > 0 AND paid_at IS NULL AND ends_on >= ?", [$t]),
+            'withLogo' => (int) $db->value('SELECT COUNT(*) FROM {p}employers WHERE logo IS NOT NULL AND deleted_at IS NULL'),
+            'employers' => (int) $db->value('SELECT COUNT(*) FROM {p}employers WHERE deleted_at IS NULL'),
+        ];
+        return $this->render('billing', 'billing', ['title' => 'Монетизація', 'on' => Ads::monetizationOn(), 'prices' => Ads::prices(), 'slots' => Ads::slots(),
+            'req' => (array) App::setting('billing.requisites', []), 'k' => $k,
+            'canToggle' => $a->can('billing.monetization:manage_settings'), 'canEdit' => $a->can('billing.plan:update')]);
+    }
+
+    public function billingSave(Request $req): Response
+    {
+        $a = App::auth();
+        $me = $a->id();
+        $section = $req->str('section', 20);
+        if ($section === 'toggle') {
+            // Критичне право: видає лише головний адміністратор.
+            if (!$a->can('billing.monetization:manage_settings')) throw new HttpException(403, 'Вмикати монетизацію може лише той, кому головний адміністратор видав це право.');
+            $on = $req->str('enabled', 1) === '1';
+            App::setSetting('monetization.enabled', $on, $me);
+            Audit::log('billing.monetization_' . ($on ? 'enabled' : 'disabled'), 'settings', 'monetization.enabled');
+            flash('ok', $on ? 'Монетизацію ввімкнено. Нові банери тепер платні, а роботодавці бачать ціни.' : 'Монетизацію вимкнено. Усе знову безкоштовно.');
+        } elseif ($section === 'prices') {
+            if (!$a->can('billing.plan:update')) throw new HttpException(403, 'Недостатньо прав для зміни цін.');
+            $prices = [];
+            foreach (Ads::DEFAULT_PRICES as $key => $def) {
+                $v = preg_replace('/\D/', '', (string) ($req->post[$key] ?? ''));
+                $prices[$key] = $v === '' ? $def : min(str_starts_with($key, 'discount') ? 90 : 1_000_000, (int) $v);
+            }
+            App::setSetting('billing.prices', $prices, $me);
+            App::setSetting('ads.slots', max(1, min(10, (int) $req->input('slots', Ads::DEFAULT_SLOTS))), $me);
+            App::setSetting('billing.requisites', ['name' => $req->str('req_name', 200), 'code' => preg_replace('/\D/', '', $req->str('req_code', 12)), 'iban' => strtoupper(preg_replace('/\s/', '', $req->str('req_iban', 40))),
+                'bank' => $req->str('req_bank', 120), 'note' => $req->str('req_note', 300)], $me);
+            Audit::log('billing.prices_updated', 'settings', 'billing.prices', $prices);
+            flash('ok', 'Ціни збережено.');
+        }
+        return Response::redirect(url('/admin/billing'));
     }
 
     /* ---------------- користувачі ---------------- */
@@ -245,7 +345,7 @@ final class AdminController
         $email = (array) App::setting('messaging.email', ['driver' => 'mail']);
         return $this->render('settings', 'settings', ['title' => 'Налаштування', 'email' => $email,
             'site' => ['name' => App::setting('site.name'), 'slogan' => App::setting('site.slogan'), 'url' => App::setting('site.url')],
-            'pre' => (array) App::setting('moderation.premoderation', ['jobs' => true]), 'version' => YW_VERSION,
+            'pre' => (array) App::setting('moderation.premoderation', ['jobs' => true]), 'version' => YW_VERSION, 'logo' => logo_settings(),
             'pendingMigrations' => $this->pendingMigrations()]);
     }
 
@@ -266,6 +366,9 @@ final class AdminController
             App::setSetting('site.slogan', $req->str('slogan', 80), $me);
             App::setSetting('site.url', rtrim($req->str('url', 200), '/'), $me);
             App::setSetting('moderation.premoderation', ['jobs' => !empty($req->post['pre_jobs']), 'gigs' => true, 'services' => true], $me);
+        } elseif ($section === 'logo') {
+            App::setSetting('employers.logo', ['hint' => !empty($req->post['hint']), 'hintText' => $req->str('hintText', 300) ?: logo_settings()['hintText'],
+                'perk' => !empty($req->post['perk']), 'perkText' => $req->str('perkText', 200)], $me);
         } elseif ($section === 'email') {
             $driver = $req->str('driver', 10);
             $prev = (array) App::setting('messaging.email', []);

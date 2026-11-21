@@ -19,8 +19,10 @@
     <p class="small muted">Опубліковано <?= e(ago($v['published_at'])) ?> · <?= icon('eye', 13) ?> <?= (int) $v['views'] ?> переглядів</p>
   </article>
   <aside class="card side-card">
-    <div class="row" style="flex-wrap:nowrap"><span class="dir" style="padding:0"><span class="ic"><?= icon('briefcase', 20) ?></span></span><div><b><?= e($v['employer']) ?></b><?php if ($v['is_verified']): ?><div class="small" style="color:var(--c-success)"><?= icon('shield', 13) ?> Перевірений роботодавець</div><?php endif ?></div></div>
+    <?php $en = employer_name($v['legal_form'], $v['employer']); ?>
+    <div class="row" style="flex-wrap:nowrap"><?= $v['logo'] ? employer_logo($v['logo'], $en, 56, 'elogo lg') : '<span class="dir" style="padding:0"><span class="ic">' . icon('briefcase', 20) . '</span></span>' ?><div><b><?= e($en) ?></b><?php if ($v['is_verified']): ?><div class="small" style="color:var(--c-success)"><?= icon('shield', 13) ?> Перевірений роботодавець</div><?php endif ?></div></div>
     <?php if ($v['employer_about']): ?><p class="small muted"><?= e(mb_strimwidth($v['employer_about'], 0, 220, '…')) ?></p><?php endif ?>
+    <a class="small" href="<?= url('/jobs', ['employer' => $v['employer_id']]) ?>">Усі вакансії роботодавця →</a>
     <?php if ($v['contact_phone']): ?>
       <a class="btn block" href="tel:<?= e($v['contact_phone']) ?>"><?= icon('phone') ?><?= e(phone_pretty($v['contact_phone'])) ?></a>
       <?php if ($v['contact_name']): ?><p class="small muted" style="text-align:center">Контактна особа: <?= e($v['contact_name']) ?></p><?php endif ?>
@@ -33,7 +35,14 @@
       <?php if ($me): ?>
         <form method="post" action="<?= url('/jobs/' . $v['id'] . '/apply') ?>" class="stack" style="gap:10px"><?= csrf_field() ?>
           <textarea class="input" name="message" rows="3" maxlength="2000" placeholder="Коротко про себе (необов’язково)"></textarea>
-          <button class="btn pri block">Відгукнутися</button>
+          <?php if ($myResume && $myResume['status'] === 'published'): ?>
+            <label class="check small"><input type="checkbox" name="with_resume" value="1" checked> <span>Додати моє резюме «<?= e($myResume['title']) ?>». Роботодавець отримає його у PDF.</span></label>
+          <?php elseif ($myResume && $myResume['status'] === 'pending'): ?>
+            <p class="small muted" style="margin:0">Ваше резюме ще на перевірці, тож цей відгук піде без нього.</p>
+          <?php elseif (!$myResume): ?>
+            <p class="small muted" style="margin:0"><a href="<?= url('/cabinet/resume') ?>">Створіть резюме</a>, щоб відгукуватися з ним в один клік.</p>
+          <?php endif ?>
+          <button class="btn pri block"><?= $myResume && $myResume['status'] === 'published' ? 'Відгукнутися з резюме' : 'Відгукнутися' ?></button>
         </form>
       <?php else: ?>
         <a class="btn pri block" href="<?= url('/login', ['next' => '/jobs/' . $v['id']]) ?>">Увійдіть, щоб відгукнутися</a>
