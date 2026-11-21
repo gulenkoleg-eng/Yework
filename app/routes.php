@@ -55,3 +55,13 @@ $router->get('/admin/settings', [AdminController::class, 'settings'], ['settings
 $router->post('/admin/settings', [AdminController::class, 'settingsSave'], ['settings.system:manage_settings']);
 $router->get('/admin/outbox', [AdminController::class, 'outbox'], ['settings.system:manage_settings']);
 $router->post('/admin/upgrade', [AdminController::class, 'upgrade'], ['settings.system:manage_settings']);
+
+// Оновлення сайту з GitHub, резервні копії, відкат (головний і старший адміністратор)
+$router->get('/admin/updates', [AdminController::class, 'updates'], ['system.update:run']);
+$router->post('/admin/updates/check', [AdminController::class, 'updatesCheck'], ['system.update:run']);
+$router->post('/admin/updates/install', [AdminController::class, 'updatesInstall'], ['system.update:run']);
+$router->get('/admin/updates/finish', [AdminController::class, 'updatesFinish'], ['system.update:run']);
+$router->post('/admin/updates/backup', [AdminController::class, 'updatesBackup'], ['system.update:run']);
+$router->post('/admin/updates/restore', [AdminController::class, 'updatesRestore'], ['system.update:run']);
+$router->post('/admin/updates/delete', [AdminController::class, 'updatesDelete'], ['system.update:run']);
+$router->post('/admin/updates/settings', [AdminController::class, 'updatesSettings'], ['settings.system:manage_settings']);

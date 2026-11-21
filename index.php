@@ -91,6 +91,17 @@ set_exception_handler(static function (Throwable $e) use ($ywInstalled): void {
     }
 });
 
+// 5. Під час оновлення сайту відвідувачі бачать коротке повідомлення (адмінка й вхід працюють).
+$ywMaint = YW_ROOT . '/storage/maintenance.json';
+if ($ywInstalled && is_file($ywMaint) && filemtime($ywMaint) > time() - 900) {
+    $ywPath = (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+    if (!preg_match('#/(admin|login|assets)(/|$)#', $ywPath)) {
+        header('Retry-After: 60');
+        yw_fail('Сайт оновлюється', '<p>Встановлюємо нову версію. Це займе хвилину, оновіть сторінку трохи згодом.</p>', 503);
+        exit;
+    }
+}
+
 require YW_ROOT . '/app/bootstrap.php';
 
 App\Core\App::run();

@@ -19,6 +19,6 @@
 <div class="card pad stack"><h3>SMS</h3><p class="muted">Провайдера ще не обрано. Коли оберете (TurboSMS, AlphaSMS, Kyivstar тощо), підключимо його без змін у решті сайту. Поки що SMS-коди видно в розділі «Повідомлення».</p></div>
 <div class="card pad stack"><h3>Оновлення</h3>
   <p>Версія: <b><?= e($version) ?></b>. <?= $pendingMigrations ? 'Є нові зміни структури бази: ' . e(implode(', ', $pendingMigrations)) : 'База даних актуальна.' ?></p>
-  <p class="small muted">Після завантаження нових файлів сайту натисніть «Оновити базу».</p>
+  <p class="small muted">Нові версії тепер встановлюються з розділу <a href="<?= url('/admin/updates') ?>">«Оновлення»</a>. Якщо ви завантажили файли по FTP, база оновиться автоматично, а ця кнопка — на всякий випадок.</p>
   <form method="post" action="<?= url('/admin/upgrade') ?>"><?= csrf_field() ?><button class="btn <?= $pendingMigrations ? 'pri' : '' ?>">Оновити базу</button></form>
 </div>

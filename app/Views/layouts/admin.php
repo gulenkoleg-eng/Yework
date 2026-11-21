@@ -15,6 +15,7 @@ $items = [
   ['themes', 'Теми оформлення', '/admin/themes', 'theming.theme:view'],
   ['outbox', 'Повідомлення', '/admin/outbox', 'settings.system:manage_settings'],
   ['settings', 'Налаштування', '/admin/settings', 'settings.system:manage_settings'],
+  ['updates', 'Оновлення', '/admin/updates', 'system.update:run', $a->can('system.update:run') && \App\Core\Updater::cachedNewer() ? 'нове' : 0],
 ];
 ?><!doctype html>
 <html lang="uk">
@@ -28,7 +29,7 @@ $items = [
     <a class="logo" href="<?= url('/admin') ?>"><i>YE</i><span><?= e($site) ?><small>Адмін-панель</small></span></a>
     <nav class="adm-nav">
       <?php foreach ($items as $it): if ($it[1] === null) { echo '<div class="t">' . e($it[0]) . '</div>'; continue; } if ($it[3] && !$a->can($it[3])) continue; ?>
-        <a href="<?= url($it[2]) ?>" class="<?= $nav === $it[0] ? 'on' : '' ?>"><?= e($it[1]) ?><?php if (!empty($it[4])): ?><em><?= (int) $it[4] ?></em><?php endif ?></a>
+        <a href="<?= url($it[2]) ?>" class="<?= $nav === $it[0] ? 'on' : '' ?>"><?= e($it[1]) ?><?php if (!empty($it[4])): ?><em><?= e(is_int($it[4]) ? (string) $it[4] : $it[4]) ?></em><?php endif ?></a>
       <?php endforeach ?>
     </nav>
     <div class="adm-side-f">

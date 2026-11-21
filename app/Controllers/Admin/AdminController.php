@@ -13,6 +13,7 @@ use App\Core\Messaging;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Stats;
+use App\Core\Updater;
 use App\Core\ValidationException;
 use App\Core\View;
 use App\Permissions;
@@ -301,5 +302,117 @@ final class AdminController
         Audit::log('system.upgraded', null, null, ['warnings' => $w]);
         flash('ok', 'Базу даних оновлено.' . ($w ? ' Попередження: ' . implode('; ', $w) : ''));
         return Response::redirect(url('/admin/settings'));
+    }
+
+    // ---------- Оновлення сайту ----------
+
+    public function updates(Request $req): Response
+    {
+        $info = Updater::check(!empty($req->query['refresh']));
+        $local = Updater::localChangelog();
+        $users = [];
+        $backups = Updater::backups();
+        $ids = array_values(array_unique(array_filter(array_column($backups, 'by'))));
+        if ($ids) foreach (App::db()->all('SELECT id, display_name FROM {p}users WHERE id IN (' . implode(',', array_map('intval', $ids)) . ')') as $u) $users[(int) $u['id']] = $u['display_name'];
+        $history = App::db()->all("SELECT a.*, u.display_name FROM {p}audit_log a LEFT JOIN {p}users u ON u.id = a.actor_id
+            WHERE a.action IN ('system.updated','system.update_failed','system.restored','system.upgraded') ORDER BY a.id DESC LIMIT 10");
+        return $this->render('updates', 'updates', ['title' => 'Оновлення', 'info' => $info, 'version' => YW_VERSION, 'local' => $local,
+            'backups' => $backups, 'users' => $users, 'history' => $history, 'problems' => Updater::serverProblems(),
+            'cfg' => Updater::config(), 'canConfigure' => App::auth()->can('settings.system:manage_settings'), 'pending' => Updater::pending()]);
+    }
+
+    public function updatesCheck(Request $req): Response
+    {
+        $info = Updater::check(true);
+        if ($info['error']) flash('bad', $info['error']);
+        elseif ($info['latest'] && version_compare($info['latest'], YW_VERSION, '>')) flash('ok', 'Є нова версія ' . $info['latest'] . '.');
+        else flash('ok', 'У вас найновіша версія ' . YW_VERSION . '.');
+        return Response::redirect(url('/admin/updates'));
+    }
+
+    public function updatesInstall(Request $req): Response
+    {
+        $version = $req->str('version', 40);
+        try {
+            Updater::install($version, App::auth()->id());
+        } catch (\Throwable $e) {
+            error_log('[YEWORK] update failed: ' . $e->getMessage());
+            Audit::log('system.update_failed', 'version', $version, ['from' => YW_VERSION, 'to' => $version, 'error' => mb_substr($e->getMessage(), 0, 500)]);
+            flash('bad', 'Оновлення не встановлено: ' . $e->getMessage());
+            return Response::redirect(url('/admin/updates'));
+        }
+        // Міграції запускає вже новий код — окремим запитом.
+        return Response::redirect(url('/admin/updates/finish'));
+    }
+
+    public function updatesFinish(Request $req): Response
+    {
+        $r = Updater::finish(App::auth()->id());
+        if (!empty($r['nothing'])) return Response::redirect(url('/admin/updates'));
+        if ($r['ok']) {
+            flash('ok', 'Готово! Сайт оновлено з версії ' . $r['from'] . ' до ' . $r['to'] . '.'
+                . ($r['migrations'] ? ' Оновлено структуру бази (' . count($r['migrations']) . ').' : '')
+                . ' Якщо щось працює не так, внизу є кнопка «Повернути цю копію».');
+        } else {
+            flash('bad', 'Оновлення до ' . $r['to'] . ' не вдалося на кроці оновлення бази (' . $r['error'] . '). Сайт автоматично повернуто до версії ' . $r['from'] . ', нічого не втрачено.');
+        }
+        return Response::redirect(url('/admin/updates'));
+    }
+
+    public function updatesBackup(Request $req): Response
+    {
+        try {
+            $id = Updater::createBackup('manual', $req->str('note', 120) ?: 'Створено вручну', App::auth()->id());
+            Audit::log('system.backup_created', 'backup', $id);
+            flash('ok', 'Резервну копію створено.');
+        } catch (\Throwable $e) {
+            flash('bad', $e->getMessage());
+        }
+        return Response::redirect(url('/admin/updates'));
+    }
+
+    public function updatesRestore(Request $req): Response
+    {
+        $id = $req->str('id', 80);
+        if (($req->post['confirm'] ?? '') !== '1') {
+            flash('bad', 'Поставте галочку підтвердження, щоб відновити копію.');
+            return Response::redirect(url('/admin/updates'));
+        }
+        try {
+            $r = Updater::restore($id, !empty($req->post['with_db']), App::auth()->id());
+            flash('ok', 'Сайт повернуто до версії ' . $r['version'] . '. Стан перед відновленням теж збережено копією, тож це можна скасувати.');
+        } catch (\Throwable $e) {
+            error_log('[YEWORK] restore failed: ' . $e->getMessage());
+            flash('bad', 'Не вдалося відновити: ' . $e->getMessage());
+        }
+        return Response::redirect(url('/admin/updates'));
+    }
+
+    public function updatesDelete(Request $req): Response
+    {
+        $id = $req->str('id', 80);
+        try {
+            Updater::deleteBackup($id);
+            Audit::log('system.backup_deleted', 'backup', $id);
+            flash('ok', 'Копію видалено.');
+        } catch (\Throwable $e) {
+            flash('bad', $e->getMessage());
+        }
+        return Response::redirect(url('/admin/updates'));
+    }
+
+    public function updatesSettings(Request $req): Response
+    {
+        $token = isset($req->post['token']) ? (string) $req->post['token'] : null;
+        try {
+            Updater::saveConfig($req->str('repo', 200), $req->str('branch', 100), $token, !empty($req->post['clear_token']), App::auth()->id());
+        } catch (ValidationException $e) {
+            flash('bad', implode(' ', array_filter($e->errors)));
+            return Response::redirect(url('/admin/updates'));
+        }
+        Audit::log('system.update_settings', 'settings', 'updates.github', ['repo' => Updater::config()['repo'], 'tokenChanged' => ($token !== null && trim($token) !== '') || !empty($req->post['clear_token'])]);
+        $info = Updater::check(true);
+        flash($info['error'] ? 'bad' : 'ok', $info['error'] ? 'Збережено, але перевірка не вдалася: ' . $info['error'] : 'Збережено. Зв’язок з GitHub працює.');
+        return Response::redirect(url('/admin/updates'));
     }
 }
