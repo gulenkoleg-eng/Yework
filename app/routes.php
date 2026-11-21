@@ -14,6 +14,8 @@ $router->get('/jobs', [SiteController::class, 'jobs']);
 $router->get('/jobs/{id}', [SiteController::class, 'vacancy']);
 $router->post('/jobs/{id}/apply', [SiteController::class, 'apply'], []);
 $router->get('/rules', [SiteController::class, 'rules']);
+$router->get('/about', [SiteController::class, 'about']);
+$router->get('/contacts', [SiteController::class, 'contacts']);
 
 // Вхід і реєстрація
 $router->get('/login', [AuthController::class, 'loginForm']);
@@ -53,6 +55,9 @@ $router->get('/admin/themes', [AdminController::class, 'themes'], ['theming.them
 $router->post('/admin/themes', [AdminController::class, 'themePublish'], ['theming.theme:publish']);
 $router->get('/admin/settings', [AdminController::class, 'settings'], ['settings.system:manage_settings']);
 $router->post('/admin/settings', [AdminController::class, 'settingsSave'], ['settings.system:manage_settings']);
+$router->get('/admin/pages', [AdminController::class, 'pages'], ['content.page:update']);
+$router->get('/admin/pages/{slug}', [AdminController::class, 'pageForm'], ['content.page:update']);
+$router->post('/admin/pages/{slug}', [AdminController::class, 'pageSave'], ['content.page:update']);
 $router->get('/admin/outbox', [AdminController::class, 'outbox'], ['settings.system:manage_settings']);
 $router->post('/admin/upgrade', [AdminController::class, 'upgrade'], ['settings.system:manage_settings']);
 

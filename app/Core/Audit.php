@@ -31,6 +31,7 @@ final class Audit
         'system.updated' => 'Сайт оновлено', 'system.update_failed' => 'Оновлення не вдалося (повернуто як було)',
         'system.restored' => 'Відновлено з резервної копії', 'system.backup_created' => 'Створено резервну копію',
         'system.backup_deleted' => 'Видалено резервну копію', 'system.update_settings' => 'Змінено підключення до GitHub',
+        'content.page_updated' => 'Змінено сторінку сайту', 'content.page_reset' => 'Сторінку повернуто до тексту за замовчуванням',
     ];
 
     public static function label(string $action): string

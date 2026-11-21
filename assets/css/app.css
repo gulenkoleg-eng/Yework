@@ -297,3 +297,12 @@ table.tbl{width:100%;border-collapse:collapse;font-size:14.5px}
 .upd-act>summary{list-style:none;display:inline-flex;width:max-content}
 .upd-act[open]>summary{margin-bottom:10px}
 .upd-act form.stack{background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--r-btn);padding:14px;gap:12px}
+/* Статичні сторінки (Про нас, Правила, Контакти) */
+.page-text h2{font-size:21px;margin-top:8px}
+.page-text h3{font-size:17px}
+.page-text ul{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+.page-text p,.page-text li{line-height:1.6}
+.page-text a{text-decoration:underline}
+.pg-help{background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--r-btn);padding:12px 14px;font-size:13.5px}
+.pg-help code{font-family:ui-monospace,monospace;font-size:13px}
+.pg-edit textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;line-height:1.55;min-height:420px}

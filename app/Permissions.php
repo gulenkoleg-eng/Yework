@@ -47,6 +47,7 @@ final class Permissions
             $p('data', 'restore', 'run', 'Відновлення з резервної копії', true),
             $p('settings', 'system', 'manage_settings', 'Системні налаштування', true),
             $p('audit', 'log', 'view', 'Перегляд журналу дій'),
+            $p('content', 'page', 'update', 'Редагування сторінок сайту (Про нас, Правила, Контакти)'),
             $p('system', 'update', 'run', 'Оновлення сайту з GitHub, резервні копії та відкат'),
         );
         return $list;

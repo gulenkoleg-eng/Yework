@@ -27,6 +27,7 @@ $on = fn ($p) => str_starts_with(parse_url($path, PHP_URL_PATH) ?: '/', App::bas
       <a href="<?= url('/jobs') ?>"<?= $on('/jobs') ?>>Вакансії</a>
       <a href="<?= url('/jobs', ['employment' => 'one_time']) ?>">Підробіток</a>
       <a href="<?= url('/cabinet/vacancies/new') ?>">Розмістити вакансію</a>
+      <a href="<?= url('/about') ?>"<?= $on('/about') ?>>Про нас</a>
     </nav>
     <div class="hdr-act">
       <button class="btn ghost mode-btn" type="button" id="modeBtn" aria-label="Світла / темна тема" title="Світла / темна тема"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
@@ -45,7 +46,7 @@ $on = fn ($p) => str_starts_with(parse_url($path, PHP_URL_PATH) ?: '/', App::bas
 <footer class="ftr">
   <div class="wrap">
     <div><b><?= e($site) ?></b> — <?= e($slogan) ?><br>Миронівська, Богуславська та Кагарлицька громади</div>
-    <div class="row"><a href="<?= url('/jobs') ?>">Вакансії</a><a href="<?= url('/rules') ?>">Правила</a><?php if (!$me): ?><a href="<?= url('/login') ?>">Вхід</a><?php endif ?></div>
+    <div class="row"><a href="<?= url('/jobs') ?>">Вакансії</a><?php foreach (\App\Core\Pages::visible() as $pg): ?><a href="<?= url($pg['path']) ?>"><?= e($pg['slug'] === 'rules' ? 'Правила' : $pg['title']) ?></a><?php endforeach ?><?php if (!$me): ?><a href="<?= url('/login') ?>">Вхід</a><?php endif ?></div>
   </div>
 </footer>
 <script>
