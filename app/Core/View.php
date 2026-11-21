@@ -15,7 +15,7 @@ final class View
 
     public static function partial(string $name, array $data = []): string
     {
-        $file = YW_ROOT . '/app/Views/' . $name . '.php';
+        $file = yw_file('app/Views/' . $name . '.php');
         if (!is_file($file)) throw new \RuntimeException("Шаблон не знайдено: $name");
         extract($data, EXTR_SKIP);
         ob_start();

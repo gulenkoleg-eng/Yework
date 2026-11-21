@@ -115,7 +115,7 @@ final class App
         Stats::trackVisit($req);
 
         $router = new Router();
-        require YW_ROOT . '/app/routes.php';
+        require yw_file('app/routes.php');
         return $router->dispatch($req);
     }
 
