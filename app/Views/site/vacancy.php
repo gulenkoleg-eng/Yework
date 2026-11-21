@@ -33,7 +33,14 @@
       <?php if ($me): ?>
         <form method="post" action="<?= url('/jobs/' . $v['id'] . '/apply') ?>" class="stack" style="gap:10px"><?= csrf_field() ?>
           <textarea class="input" name="message" rows="3" maxlength="2000" placeholder="Коротко про себе (необов’язково)"></textarea>
-          <button class="btn pri block">Відгукнутися</button>
+          <?php if ($myResume && $myResume['status'] === 'published'): ?>
+            <label class="check small"><input type="checkbox" name="with_resume" value="1" checked> <span>Додати моє резюме «<?= e($myResume['title']) ?>». Роботодавець отримає його у PDF.</span></label>
+          <?php elseif ($myResume && $myResume['status'] === 'pending'): ?>
+            <p class="small muted" style="margin:0">Ваше резюме ще на перевірці, тож цей відгук піде без нього.</p>
+          <?php elseif (!$myResume): ?>
+            <p class="small muted" style="margin:0"><a href="<?= url('/cabinet/resume') ?>">Створіть резюме</a>, щоб відгукуватися з ним в один клік.</p>
+          <?php endif ?>
+          <button class="btn pri block"><?= $myResume && $myResume['status'] === 'published' ? 'Відгукнутися з резюме' : 'Відгукнутися' ?></button>
         </form>
       <?php else: ?>
         <a class="btn pri block" href="<?= url('/login', ['next' => '/jobs/' . $v['id']]) ?>">Увійдіть, щоб відгукнутися</a>

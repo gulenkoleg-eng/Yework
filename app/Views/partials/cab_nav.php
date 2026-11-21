@@ -1,5 +1,6 @@
 <nav class="card cab-nav" aria-label="Кабінет">
   <a href="<?= url('/cabinet') ?>" class="<?= $tab === 'profile' ? 'on' : '' ?>">Профіль</a>
+  <a href="<?= url('/cabinet/resume') ?>" class="<?= $tab === 'resume' ? 'on' : '' ?>">Моє резюме</a>
   <a href="<?= url('/cabinet/applications') ?>" class="<?= $tab === 'applications' ? 'on' : '' ?>">Мої відгуки <span class="muted"><?= (int) $counts['applications'] ?></span></a>
   <a href="<?= url('/cabinet/vacancies') ?>" class="<?= $tab === 'vacancies' ? 'on' : '' ?>">Мої вакансії <span class="muted"><?= (int) $counts['vacancies'] ?></span></a>
   <a href="<?= url('/cabinet/employer') ?>" class="<?= $tab === 'employer' ? 'on' : '' ?>">Роботодавець</a>

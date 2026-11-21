@@ -16,6 +16,7 @@ $on = fn ($p) => str_starts_with(parse_url($path, PHP_URL_PATH) ?: '/', App::bas
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="<?= e(Theme::fontsUrl($theme)) ?>">
 <link rel="stylesheet" href="<?= asset('css/app.css') ?>">
+<link rel="stylesheet" href="<?= asset('css/resume.css') ?>">
 <style><?= Theme::css($theme) ?></style>
 <script>try{var m=localStorage.getItem('yw-mode');if(m)document.documentElement.dataset.mode=m}catch(e){}</script>
 </head>
@@ -26,6 +27,7 @@ $on = fn ($p) => str_starts_with(parse_url($path, PHP_URL_PATH) ?: '/', App::bas
     <nav class="nav" id="nav">
       <a href="<?= url('/jobs') ?>"<?= $on('/jobs') ?>>Вакансії</a>
       <a href="<?= url('/jobs', ['employment' => 'one_time']) ?>">Підробіток</a>
+      <a href="<?= url('/resumes') ?>"<?= $on('/resumes') ?>>Резюме</a>
       <a href="<?= url('/cabinet/vacancies/new') ?>">Розмістити вакансію</a>
     </nav>
     <div class="hdr-act">

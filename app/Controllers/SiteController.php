@@ -4,9 +4,12 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\App;
+use App\Core\Crypto;
 use App\Core\HttpException;
+use App\Core\Messaging;
 use App\Core\Request;
 use App\Core\Response;
+use App\Core\Resumes;
 use App\Core\Stats;
 use App\Core\ValidationException;
 
@@ -78,8 +81,9 @@ final class SiteController
         if (!$v || ($v['status'] !== 'published' && !$isOwner && !$canModerate)) throw new HttpException(404, 'Вакансію не знайдено або її знято з публікації.');
         if ($v['status'] === 'published' && !$isOwner) $db->run('UPDATE {p}vacancies SET views = views + 1 WHERE id = ?', [$id]);
         $applied = $me ? (bool) $db->value('SELECT 1 FROM {p}applications WHERE vacancy_id = ? AND user_id = ?', [$id, $me['id']]) : false;
+        $myResume = $me && !$isOwner ? Resumes::ofUser((int) $me['id']) : null;
         $similar = $db->all(self::LIST_SQL . " WHERE v.status = 'published' AND v.deleted_at IS NULL AND v.id <> ? AND v.category_id = ? ORDER BY v.published_at DESC LIMIT 3", [$id, $v['category_id']]);
-        return new Response(view('site/vacancy', ['v' => $v, 'isOwner' => $isOwner, 'applied' => $applied, 'similar' => $similar, 'title' => $v['title'], 'description' => mb_substr(preg_replace('/\s+/', ' ', $v['description']), 0, 160)]));
+        return new Response(view('site/vacancy', ['v' => $v, 'isOwner' => $isOwner, 'applied' => $applied, 'myResume' => $myResume, 'similar' => $similar, 'title' => $v['title'], 'description' => mb_substr(preg_replace('/\s+/', ' ', $v['description']), 0, 160)]));
     }
 
     public function apply(Request $req): Response
@@ -87,13 +91,42 @@ final class SiteController
         $id = (int) $req->params['id'];
         $db = App::db();
         $me = App::auth()->user();
-        $v = $db->one("SELECT v.id, e.owner_id FROM {p}vacancies v JOIN {p}employers e ON e.id = v.employer_id WHERE v.id = ? AND v.status = 'published' AND v.deleted_at IS NULL", [$id]);
+        $v = $db->one("SELECT v.id, v.title, e.owner_id, e.name AS employer FROM {p}vacancies v JOIN {p}employers e ON e.id = v.employer_id WHERE v.id = ? AND v.status = 'published' AND v.deleted_at IS NULL", [$id]);
         if (!$v) throw new HttpException(404, 'Вакансію не знайдено.');
         if ((int) $v['owner_id'] === (int) $me['id']) throw new ValidationException([], 'Це ваша вакансія.');
         $msg = $req->str('message', 2000);
-        $db->run('INSERT IGNORE INTO {p}applications (vacancy_id, user_id, message) VALUES (?, ?, ?)', [$id, $me['id'], $msg]);
-        flash('ok', 'Відгук надіслано. Роботодавець побачить ваше ім’я та контакти й зв’яжеться з вами.');
+        // Резюме додається, лише якщо його вже схвалив модератор.
+        $resume = !empty($req->post['with_resume']) ? Resumes::ofUser((int) $me['id']) : null;
+        $resumeId = $resume && $resume['status'] === 'published' ? (int) $resume['id'] : null;
+        $new = $db->run('INSERT IGNORE INTO {p}applications (vacancy_id, user_id, message, resume_id) VALUES (?, ?, ?, ?)', [$id, $me['id'], $msg, $resumeId])->rowCount() > 0;
+        if ($new) self::notifyEmployer($v, $me, $msg, $resumeId);
+        flash('ok', $resumeId ? 'Відгук із резюме надіслано. Роботодавець отримає ваше резюме у PDF і контакти.' : 'Відгук надіслано. Роботодавець побачить ваше ім’я та контакти й зв’яжеться з вами.');
         return Response::redirect(url('/jobs/' . $id));
+    }
+
+    /** Лист роботодавцю про новий відгук; якщо відгук із резюме — з PDF у вкладенні. Помилка пошти не заважає відгуку. */
+    private static function notifyEmployer(array $v, array $me, string $msg, ?int $resumeId): void
+    {
+        try {
+            $owner = App::db()->one('SELECT email_enc FROM {p}users WHERE id = ? AND deleted_at IS NULL', [$v['owner_id']]);
+            $to = Crypto::decrypt($owner['email_enc'] ?? null);
+            if (!$to) return;
+            $site = (string) App::setting('site.name', 'YEWORK');
+            $base = rtrim((string) App::setting('site.url', ''), '/');
+            $r = $resumeId ? Resumes::find($resumeId) : null;
+            $name = $r ? $r['name'] : $me['display_name'];
+            $phone = Crypto::decrypt($me['phone_enc']);
+            $email = Crypto::decrypt($me['email_enc']);
+            $text = "Новий відгук на вакансію «{$v['title']}».\n\nКандидат: $name" . ($r ? "\nБажана посада: {$r['title']}" : '')
+                . ($phone ? "\nТелефон: " . phone_pretty($phone) : '') . ($email ? "\nEmail: $email" : '')
+                . (trim($msg) !== '' ? "\n\nПовідомлення:\n$msg" : '')
+                . ($r ? "\n\nРезюме кандидата — у вкладенні (PDF)." : '')
+                . "\n\nУсі відгуки: " . $base . url('/cabinet/vacancies/' . $v['id']) . "\n\n— $site";
+            $files = $r ? [['name' => Resumes::fileName($r), 'mime' => 'application/pdf', 'data' => Resumes::pdf($r, true, (bool) $r['profile']['show_photo'])]] : [];
+            Messaging::send('email', $to, $text, $r ? 'application_resume' : 'application', "Новий відгук: {$v['title']}", $files);
+        } catch (\Throwable $e) {
+            error_log('[YEWORK] application notify failed: ' . $e->getMessage());
+        }
     }
 
     public function rules(Request $req): Response

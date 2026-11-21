@@ -3,8 +3,10 @@ declare(strict_types=1);
 
 use App\Controllers\AuthController;
 use App\Controllers\CabinetController;
+use App\Controllers\ResumeController;
 use App\Controllers\SiteController;
 use App\Controllers\Admin\AdminController;
+use App\Controllers\Admin\ResumeModerationController;
 
 /** @var App\Core\Router $router */
 
@@ -14,6 +16,13 @@ $router->get('/jobs', [SiteController::class, 'jobs']);
 $router->get('/jobs/{id}', [SiteController::class, 'vacancy']);
 $router->post('/jobs/{id}/apply', [SiteController::class, 'apply'], []);
 $router->get('/rules', [SiteController::class, 'rules']);
+
+// Резюме: пошук для роботодавців, сторінка резюме, PDF, запрошення, фото профілю
+$router->get('/resumes', [ResumeController::class, 'index']);
+$router->get('/resumes/{id}', [ResumeController::class, 'show']);
+$router->get('/resumes/{id}/pdf', [ResumeController::class, 'pdf']);
+$router->post('/resumes/{id}/invite', [ResumeController::class, 'invite'], []);
+$router->get('/photo/{id}', [ResumeController::class, 'photo']);
 
 // Вхід і реєстрація
 $router->get('/login', [AuthController::class, 'loginForm']);
@@ -38,11 +47,20 @@ $router->get('/cabinet/vacancies/{id}/edit', [CabinetController::class, 'vacancy
 $router->post('/cabinet/vacancies/{id}/edit', [CabinetController::class, 'vacancySave'], []);
 $router->post('/cabinet/vacancies/{id}/archive', [CabinetController::class, 'vacancyArchive'], []);
 $router->get('/cabinet/applications', [CabinetController::class, 'applications'], []);
+$router->get('/cabinet/resume', [ResumeController::class, 'form'], []);
+$router->post('/cabinet/resume', [ResumeController::class, 'save'], []);
+$router->get('/cabinet/resume/pdf', [ResumeController::class, 'myPdf'], []);
+$router->post('/cabinet/resume/visibility', [ResumeController::class, 'visibility'], []);
+$router->post('/cabinet/resume/delete', [ResumeController::class, 'delete'], []);
+$router->get('/cabinet/person', [ResumeController::class, 'form'], []);
+$router->post('/cabinet/person', [ResumeController::class, 'personSave'], []);
 
 // Адмін-панель (права перевіряються і тут, і в контролері)
 $router->get('/admin', [AdminController::class, 'dashboard'], []);
 $router->get('/admin/moderation', [AdminController::class, 'moderation'], ['jobs.listing:moderate']);
 $router->post('/admin/moderation/{id}', [AdminController::class, 'moderate'], ['jobs.listing:moderate']);
+$router->get('/admin/resumes', [ResumeModerationController::class, 'index'], ['jobs.listing:moderate']);
+$router->post('/admin/resumes/{id}', [ResumeModerationController::class, 'decide'], ['jobs.listing:moderate']);
 $router->get('/admin/users', [AdminController::class, 'users'], ['identity.user:view']);
 $router->get('/admin/users/{id}', [AdminController::class, 'user'], ['identity.user:view']);
 $router->post('/admin/users/{id}/status', [AdminController::class, 'userStatus'], ['identity.user:update']);

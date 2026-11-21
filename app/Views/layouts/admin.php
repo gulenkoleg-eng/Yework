@@ -7,6 +7,7 @@ $items = [
   ['Робота', null],
   ['dashboard', 'Огляд', '/admin', null],
   ['moderation', 'Модерація', '/admin/moderation', 'jobs.listing:moderate', $pending],
+  ['resumes', 'Модерація резюме', '/admin/resumes', 'jobs.listing:moderate', $a->can('jobs.listing:moderate') ? \App\Controllers\Admin\ResumeModerationController::pendingCount() : 0],
   ['Люди та доступ', null],
   ['users', 'Користувачі', '/admin/users', 'identity.user:view'],
   ['roles', 'Ролі та права', '/admin/roles', 'access.role:view'],
