@@ -19,8 +19,10 @@
     <p class="small muted">Опубліковано <?= e(ago($v['published_at'])) ?> · <?= icon('eye', 13) ?> <?= (int) $v['views'] ?> переглядів</p>
   </article>
   <aside class="card side-card">
-    <div class="row" style="flex-wrap:nowrap"><span class="dir" style="padding:0"><span class="ic"><?= icon('briefcase', 20) ?></span></span><div><b><?= e($v['employer']) ?></b><?php if ($v['is_verified']): ?><div class="small" style="color:var(--c-success)"><?= icon('shield', 13) ?> Перевірений роботодавець</div><?php endif ?></div></div>
+    <?php $en = employer_name($v['legal_form'], $v['employer']); ?>
+    <div class="row" style="flex-wrap:nowrap"><?= $v['logo'] ? employer_logo($v['logo'], $en, 56, 'elogo lg') : '<span class="dir" style="padding:0"><span class="ic">' . icon('briefcase', 20) . '</span></span>' ?><div><b><?= e($en) ?></b><?php if ($v['is_verified']): ?><div class="small" style="color:var(--c-success)"><?= icon('shield', 13) ?> Перевірений роботодавець</div><?php endif ?></div></div>
     <?php if ($v['employer_about']): ?><p class="small muted"><?= e(mb_strimwidth($v['employer_about'], 0, 220, '…')) ?></p><?php endif ?>
+    <a class="small" href="<?= url('/jobs', ['employer' => $v['employer_id']]) ?>">Усі вакансії роботодавця →</a>
     <?php if ($v['contact_phone']): ?>
       <a class="btn block" href="tel:<?= e($v['contact_phone']) ?>"><?= icon('phone') ?><?= e(phone_pretty($v['contact_phone'])) ?></a>
       <?php if ($v['contact_name']): ?><p class="small muted" style="text-align:center">Контактна особа: <?= e($v['contact_name']) ?></p><?php endif ?>

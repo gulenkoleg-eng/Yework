@@ -16,6 +16,11 @@
   <div class="card stat"><b><?= (int) $stats['visitorsMonth'] ?></b><span>відвідувачів за місяць</span></div>
 </section>
 
+<?php if (!empty($promos)): ?>
+<div class="sec-h"><h2>Шукають працівників</h2><a href="<?= url('/cabinet/ads') ?>">Розмістити свій банер →</a></div>
+<section class="promos"><?php foreach ($promos as $b) echo App\Core\View::partial('partials/promo', ['b' => $b]) ?></section>
+<?php endif ?>
+
 <div class="sec-h"><h2>Три напрямки</h2></div>
 <section class="dirs">
   <a class="card dir" href="<?= url('/jobs') ?>"><span class="ic"><?= icon('briefcase', 22) ?></span><h3>Вакансії</h3><p>Постійна робота у місцевих підприємствах, магазинах, школах і фермерських господарствах.</p><span class="small"><b><?= (int) $stats['vacanciesActive'] ?></b> активних</span></a>

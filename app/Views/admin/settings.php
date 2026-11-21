@@ -7,6 +7,15 @@
   <label class="check"><input type="checkbox" name="pre_jobs" value="1" <?= !empty($pre['jobs']) ? 'checked' : '' ?>> Премодерація вакансій (публікація лише після перевірки модератором)</label>
   <div><button class="btn pri">Зберегти</button></div>
 </form>
+<form class="card pad stack" method="post" action="<?= url('/admin/settings') ?>"><?= csrf_field() ?><input type="hidden" name="section" value="logo">
+  <h3>Логотипи роботодавців</h3>
+  <p class="small muted">Вакансії з логотипом виділяються в списку. Підказка показується в кабінеті роботодавцям, які ще не додали логотип.</p>
+  <label class="check"><input type="checkbox" name="hint" value="1" <?= $logo['hint'] ? 'checked' : '' ?>> Показувати підказку «З логотипом вас помітять швидше»</label>
+  <?= input_field('hintText', 'Текст підказки', ['type' => 'textarea', 'rows' => 2, 'value' => $logo['hintText']]) ?>
+  <label class="check"><input type="checkbox" name="perk" value="1" <?= $logo['perk'] ? 'checked' : '' ?>> Бонус за логотип (додатково до підказки)</label>
+  <?= input_field('perkText', 'Який бонус отримає роботодавець', ['value' => $logo['perkText'], 'placeholder' => 'Наприклад: перший банер на 7 днів — у подарунок', 'hint' => 'Поки бонус не визначено, залиште вимкненим. Текст побачить роботодавець у підказці.']) ?>
+  <div><button class="btn pri">Зберегти</button></div>
+</form>
 <form class="card pad stack" method="post" action="<?= url('/admin/settings') ?>"><?= csrf_field() ?><input type="hidden" name="section" value="email">
   <h3>Пошта (коди підтвердження, сповіщення)</h3>
   <?= input_field('driver', 'Спосіб надсилання', ['type' => 'select', 'value' => $email['driver'] ?? 'mail', 'options' => ['mail' => 'Пошта хостингу (функція mail)', 'smtp' => 'SMTP-сервер (Gmail, Ukr.net, поштова скринька хостингу)', 'log' => 'Не надсилати, лише записувати (для перевірки)']]) ?>

@@ -8,6 +8,7 @@ use App\Core\Audit;
 use App\Core\Crypto;
 use App\Core\Db;
 use App\Core\HttpException;
+use App\Core\Media;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Stats;
@@ -24,12 +25,13 @@ final class CabinetController
     {
         $db = App::db();
         return [
+            'ads' => (int) ($db->value('SELECT COUNT(*) FROM {p}banners b JOIN {p}employers e ON e.id = b.employer_id WHERE e.owner_id = ? AND b.status IN (\'pending\', \'approved\') AND b.ends_on >= ?', [$uid, date('Y-m-d')]) ?? 0),
             'vacancies' => (int) $db->value('SELECT COUNT(*) FROM {p}vacancies v JOIN {p}employers e ON e.id = v.employer_id WHERE e.owner_id = ? AND v.deleted_at IS NULL', [$uid]),
             'applications' => (int) $db->value('SELECT COUNT(*) FROM {p}applications WHERE user_id = ?', [$uid]),
         ];
     }
 
-    private function page(string $view, string $tab, array $data): Response
+    public function page(string $view, string $tab, array $data): Response
     {
         $me = $this->me();
         return new Response(view('cabinet/' . $view, [...$data, 'me' => $me, 'tab' => $tab, 'counts' => $this->counts((int) $me['id'])]));
@@ -72,7 +74,7 @@ final class CabinetController
 
     /* ---------------- роботодавець ---------------- */
 
-    private function employer(int $uid): ?array
+    public function employer(int $uid): ?array
     {
         return App::db()->one('SELECT * FROM {p}employers WHERE owner_id = ? AND deleted_at IS NULL ORDER BY id LIMIT 1', [$uid]);
     }
@@ -86,8 +88,11 @@ final class CabinetController
     public function employerSave(Request $req): Response
     {
         $me = $this->me();
+        $form = $req->str('legal_form', 16);
+        if ($form !== '' && !array_key_exists($form, LEGAL_FORMS)) $form = 'other';
         $d = [
-            'kind' => in_array($req->str('kind', 10), ['company', 'fop', 'person'], true) ? $req->str('kind', 10) : 'company',
+            'kind' => match ($form) { 'person' => 'person', 'ФОП' => 'fop', default => 'company' },
+            'legal_form' => in_array($form, ['', 'person'], true) ? null : $form,
             'name' => $req->str('name', 120), 'edrpou' => preg_replace('/\D/', '', $req->str('edrpou', 12)) ?: null,
             'about' => $req->str('about', 3000), 'settlement_id' => ((int) $req->input('settlement_id')) ?: null,
             'website' => $req->str('website', 200) ?: null,
@@ -99,15 +104,31 @@ final class CabinetController
         if ($err) throw new ValidationException($err);
         $db = App::db();
         $e = $this->employer((int) $me['id']);
+        $logo = Media::store('logo', 'logo', 'e' . ($e['id'] ?? 'new'));
+        if ($logo) $d += ['logo' => $logo, 'logo_updated_at' => Db::now()];
         if ($e) {
             $db->update('employers', [...$d, 'updated_at' => Db::now()], 'id = ?', [$e['id']]);
+            if ($logo) Media::delete('logo', $e['logo']);
         } else {
             $id = $db->insert('employers', [...$d, 'owner_id' => $me['id']]);
             Audit::log('jobs.employer_created', 'employer', $id);
         }
-        flash('ok', 'Профіль роботодавця збережено.');
+        if ($logo) Audit::log('jobs.employer_logo', 'employer', $e['id'] ?? $id);
+        flash('ok', $logo ? 'Профіль і логотип збережено.' : 'Профіль роботодавця збережено.');
         $next = (string) $req->input('next', '');
         return Response::redirect(url($next === 'vacancy' ? '/cabinet/vacancies/new' : '/cabinet/employer'));
+    }
+
+    public function logoDelete(Request $req): Response
+    {
+        $e = $this->employer((int) $this->me()['id']);
+        if ($e && $e['logo']) {
+            App::db()->update('employers', ['logo' => null, 'logo_updated_at' => Db::now(), 'updated_at' => Db::now()], 'id = ?', [$e['id']]);
+            Media::delete('logo', $e['logo']);
+            Audit::log('jobs.employer_logo_removed', 'employer', $e['id']);
+            flash('ok', 'Логотип видалено.');
+        }
+        return Response::redirect(url('/cabinet/employer'));
     }
 
     /* ---------------- вакансії ---------------- */
