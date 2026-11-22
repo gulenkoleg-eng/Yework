@@ -59,6 +59,7 @@ final class Telegram
         return (is_array($c) ? $c : []) + [
             'tokenEnc' => null, 'botUsername' => '', 'botName' => '', 'chatId' => '', 'chatTitle' => '',
             'moderation' => true, 'updates' => true, 'secret' => '', 'siteUrl' => '', 'webhookAt' => null, 'seenChats' => [],
+            'topicModeration' => null, 'topicUpdates' => null, 'topicNames' => [],
         ];
     }
 
@@ -158,12 +159,36 @@ final class Telegram
         return 'Telegram: ' . ($d ?: 'помилка ' . $code);
     }
 
-    public static function send(string|int $chatId, string $html, ?array $keyboard = null): ?array
+    public static function send(string|int $chatId, string $html, ?array $keyboard = null, ?int $topic = null): ?array
     {
         $p = ['chat_id' => $chatId, 'text' => self::cut($html), 'parse_mode' => 'HTML', 'disable_web_page_preview' => true];
         if ($keyboard !== null) $p['reply_markup'] = ['inline_keyboard' => $keyboard];
-        $r = self::api('sendMessage', $p);
+        if ($topic) $p['message_thread_id'] = $topic;
+        try {
+            $r = self::api('sendMessage', $p);
+        } catch (RuntimeException $e) {
+            // Тему видалили — пишемо в групу загалом, щоб повідомлення не загубилось.
+            if (!$topic || !str_contains($e->getMessage(), 'thread not found')) throw $e;
+            unset($p['message_thread_id']);
+            $r = self::api('sendMessage', $p);
+        }
         return is_array($r) ? $r : null;
+    }
+
+    /** Надіслати в робочу групу: $kind = 'moderation' або 'updates' — у відповідну тему, якщо її обрано. */
+    public static function sendToGroup(string $kind, string $html, ?array $keyboard = null): ?array
+    {
+        $c = self::config();
+        $topic = $kind === 'updates' ? $c['topicUpdates'] : $c['topicModeration'];
+        return self::send($c['chatId'], $html, $keyboard, $topic ? (int) $topic : null);
+    }
+
+    /** Назва теми для показу в адмінці. */
+    public static function topicLabel(?int $topic): string
+    {
+        if (!$topic) return 'Загальний чат групи';
+        $n = self::config()['topicNames'][(string) $topic] ?? '';
+        return $n !== '' ? '«' . $n . '»' : 'тема №' . $topic;
     }
 
     private static function cut(string $html): string
@@ -325,8 +350,7 @@ final class Telegram
     {
         [$text, $kb, $pending] = self::render($type, $id);
         if (!$pending) return;
-        $chatId ??= self::config()['chatId'];
-        $m = self::send($chatId, ($chatId === self::config()['chatId'] ? '🆕 Нове на модерації' . "\n\n" : '') . $text, $kb);
+        $m = $chatId === null ? self::sendToGroup('moderation', '🆕 Нове на модерації' . "\n\n" . $text, $kb) : self::send($chatId, $text, $kb);
         if ($m && isset($m['message_id'])) {
             App::db()->insert('telegram_messages', ['entity_type' => $type, 'entity_id' => $id, 'chat_id' => (int) $m['chat']['id'], 'message_id' => (int) $m['message_id']]);
         }
@@ -383,7 +407,7 @@ final class Telegram
     {
         if (!self::groupReady()) return false;
         if (!$force && App::setting('telegram.announced') === YW_VERSION) return false;
-        self::send(self::config()['chatId'], self::versionText(YW_VERSION));
+        self::sendToGroup('updates', self::versionText(YW_VERSION));
         App::setSetting('telegram.announced', YW_VERSION);
         return true;
     }
@@ -477,7 +501,9 @@ final class Telegram
         if (!is_array($m) || !isset($m['chat']['id'])) return;
         $chat = $m['chat'];
         $private = ($chat['type'] ?? '') === 'private';
+        if (isset($m['migrate_to_chat_id'])) { self::migrateChat((string) $chat['id'], (string) $m['migrate_to_chat_id']); return; }
         if (!$private) self::rememberChat($chat);
+        self::rememberTopic($m);
         $text = trim((string) ($m['text'] ?? ''));
         if (!preg_match('~^/([a-z_]+)(?:@(\w+))?(?:\s+(.+))?$~i', $text, $c)) {
             if ($private) self::reply($chat['id'], self::helpText());
@@ -493,7 +519,12 @@ final class Telegram
                 if ($private) self::reply($chat['id'], self::helpText());
                 return;
             case 'id':
-                self::reply($chat['id'], 'ID цього чату: <code>' . self::h((string) $chat['id']) . '</code>' . ($private ? '' : "\nВставте його в адмінці: Telegram → ID групи."));
+                self::replyIn($m, 'ID цього чату: <code>' . self::h((string) $chat['id']) . '</code>' . ($private ? '' : "\nВставте його в адмінці: Telegram → ID групи.")
+                    . (!empty($m['is_topic_message']) ? "\nЩоб бот писав у цю тему, напишіть тут /moderation або /updates." : ''));
+                return;
+            case 'moderation':
+            case 'updates':
+                if (!$private) self::chooseTopic($cmd, $m);
                 return;
             case 'pending':
             case 'queue':
@@ -515,7 +546,65 @@ final class Telegram
         $site = self::h((string) App::setting('site.name', 'YEWORK'));
         return "Це службовий бот сайту <b>$site</b> для персоналу.\n\n"
             . "Щоб прив’язати акаунт: увійдіть на сайт → Адмін-панель → <b>Telegram</b> → «Прив’язати Telegram».\n\n"
-            . "Команди:\n/pending — оголошення, що чекають на модерацію\n/id — ID цього чату\n/unlink — відв’язати Telegram";
+            . "Команди:\n/pending — оголошення, що чекають на модерацію\n/id — ID цього чату\n/unlink — відв’язати Telegram\n\n"
+            . "У групі з темами (адміністратор сайту):\n/moderation — надсилати модерацію в цю тему\n/updates — надсилати новини про версії в цю тему";
+    }
+
+    /** Звичайна група стала супергрупою (наприклад, після ввімкнення тем) — у неї новий ID. */
+    private static function migrateChat(string $old, string $new): void
+    {
+        $c = self::config();
+        if (isset($c['seenChats'][$old])) {
+            $title = $c['seenChats'][$old];
+            unset($c['seenChats'][$old]);
+            $c['seenChats'] = [$new => $title] + $c['seenChats'];
+        }
+        if ($c['chatId'] === $old) { $c['chatId'] = $new; $c['topicModeration'] = null; $c['topicUpdates'] = null; }
+        self::saveConfig($c);
+    }
+
+    /** Запам'ятати назву теми (Telegram додає до повідомлень у темі її «перше повідомлення» з назвою). */
+    private static function rememberTopic(array $m): void
+    {
+        $tid = (int) ($m['message_thread_id'] ?? 0);
+        $name = $m['forum_topic_created']['name'] ?? $m['reply_to_message']['forum_topic_created']['name'] ?? $m['forum_topic_edited']['name'] ?? null;
+        if (!$tid || !is_string($name) || $name === '') return;
+        $c = self::config();
+        $names = is_array($c['topicNames']) ? $c['topicNames'] : [];
+        $name = mb_substr($name, 0, 100);
+        if (($names[(string) $tid] ?? null) === $name) return;
+        unset($names[(string) $tid]);
+        $c['topicNames'] = [(string) $tid => $name] + array_slice($names, 0, 19, true);
+        self::saveConfig($c);
+    }
+
+    /** /moderation або /updates у темі групи: надсилати сюди відповідні повідомлення. Лише для адміністраторів сайту. */
+    private static function chooseTopic(string $cmd, array $m): void
+    {
+        $chatId = (string) $m['chat']['id'];
+        $staff = self::staffByTg((int) ($m['from']['id'] ?? 0));
+        if (!$staff || !isset($staff['perms']['settings.system:manage_settings'])) {
+            self::replyIn($m, 'Змінювати, куди пише бот, може лише адміністратор сайту з прив’язаним Telegram.');
+            return;
+        }
+        $c = self::config();
+        $topic = !empty($m['is_topic_message']) && !empty($m['message_thread_id']) ? (int) $m['message_thread_id'] : null;
+        if ($c['chatId'] !== $chatId) {
+            $c['chatId'] = $chatId;
+            $c['chatTitle'] = (string) ($m['chat']['title'] ?? '');
+            $c['topicModeration'] = $c['topicUpdates'] = null;
+        }
+        $c[$cmd === 'updates' ? 'topicUpdates' : 'topicModeration'] = $topic;
+        self::saveConfig($c, (int) $staff['id']);
+        Audit::log('telegram.settings', 'settings', 'telegram', ['chat' => $chatId, $cmd => $topic ?? 'general', 'tg' => true], (int) $staff['id']);
+        self::replyIn($m, '✅ Готово. ' . ($cmd === 'updates' ? 'Новини про нові версії сайту' : 'Вакансії й резюме на модерацію') . ' тепер надходитимуть ' . ($topic ? 'в цю тему.' : 'в загальний чат групи.'));
+    }
+
+    /** Відповідь у тому ж чаті і в тій самій темі. */
+    private static function replyIn(array $m, string $html): void
+    {
+        $topic = !empty($m['is_topic_message']) && !empty($m['message_thread_id']) ? (int) $m['message_thread_id'] : null;
+        try { self::send($m['chat']['id'], $html, null, $topic); } catch (RuntimeException $e) { error_log('[YEWORK] telegram reply: ' . $e->getMessage()); }
     }
 
     private static function reply(string|int $chatId, string $html): void
@@ -530,6 +619,7 @@ final class Telegram
         $seen = is_array($c['seenChats']) ? $c['seenChats'] : [];
         $id = (string) $chat['id'];
         $title = mb_substr((string) ($chat['title'] ?? ''), 0, 100);
+        if ($title === '' && isset($seen[$id])) return;
         if (($seen[$id] ?? null) === $title) return;
         unset($seen[$id]);
         $seen = [$id => $title] + array_slice($seen, 0, 4, true);
@@ -656,6 +746,17 @@ final class Telegram
         $c['siteUrl'] = rtrim($siteUrl, '/');
         $c['webhookAt'] = Db::now();
         self::saveConfig($c);
+        try {
+            self::api('setMyCommands', ['commands' => [
+                ['command' => 'pending', 'description' => 'Що чекає на модерацію'],
+                ['command' => 'moderation', 'description' => 'Модерацію надсилати в цю тему'],
+                ['command' => 'updates', 'description' => 'Новини про версії надсилати в цю тему'],
+                ['command' => 'id', 'description' => 'ID цього чату'],
+                ['command' => 'unlink', 'description' => 'Відв’язати Telegram'],
+            ]]);
+        } catch (RuntimeException $e) {
+            error_log('[YEWORK] telegram commands: ' . $e->getMessage());
+        }
     }
 
     public static function disconnectWebhook(): void
