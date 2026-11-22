@@ -46,7 +46,7 @@ final class ServicesController
         $cat = null;
         foreach ($cats as $c) if ($c['slug'] === $f['category']) $cat = $c;
         if ($cat) { $where[] = '(m.category_id = ? OR m.category2_id = ?)'; array_push($p, $cat['id'], $cat['id']); }
-        if ($f['settlement']) { $where[] = 'm.settlement_id = ?'; $p[] = $f['settlement']; }
+        if ($f['settlement']) { $where[] = Services::IN_SETTLEMENT_SQL; array_push($p, $f['settlement'], $f['settlement']); }
         if ($f['q'] !== '') {
             $like = '%' . addcslashes($f['q'], '%_\\') . '%';
             $where[] = '(m.name LIKE ? OR m.about LIKE ? OR m.areas LIKE ? OR c.name LIKE ? OR EXISTS (SELECT 1 FROM {p}master_prices pq WHERE pq.master_id = m.id AND pq.title LIKE ?))';
@@ -62,11 +62,13 @@ final class ServicesController
             'price' => "$minPrice IS NULL, $minPrice ASC, m.published_at DESC",
             default => '(m.rating_count > 0) DESC, (m.rating_sum + 4 * 3) / (m.rating_count + 3) DESC, m.orders_done DESC, m.published_at DESC',
         };
-        $items = $db->all("SELECT m.id, m.name, m.photo, m.legal_form, m.experience_years, m.areas, m.payments, m.rating_sum, m.rating_count, m.orders_done, m.published_at,
+        $items = $db->all("SELECT m.id, m.name, m.photo, m.legal_form, m.experience_years, m.areas, m.travel_all, m.settlement_id, m.payments, m.rating_sum, m.rating_count, m.orders_done, m.published_at,
             c.name AS category, s.name AS settlement, $minPrice AS min_price,
             (SELECT COUNT(*) FROM {p}master_works w WHERE w.master_id = m.id) AS works,
             (SELECT f.file FROM {p}master_work_photos f JOIN {p}master_works w ON w.id = f.work_id WHERE w.master_id = m.id ORDER BY w.sort, w.id DESC, f.sort, f.id LIMIT 1) AS cover"
             . $from . " ORDER BY $order LIMIT " . self::PAGE . ' OFFSET ' . (($page - 1) * self::PAGE), $p);
+        foreach ($items as &$it) $it['travel'] = Services::travelText($it, Services::travelAreas((int) $it['id']));
+        unset($it);
         return new Response(view('site/services', ['f' => $f, 'cat' => $cat, 'cats' => $cats, 'settlements' => $settlements, 'items' => $items, 'total' => $total, 'page' => $page,
             'mine' => ($me = $this->me()) ? Services::ofUser((int) $me['id']) : null,
             'title' => $cat ? $cat['name'] . ' — майстри' : 'Послуги майстрів', 'description' => 'Майстри в Миронівці, Богуславі та Кагарлику: ціни, фото робіт і відгуки клієнтів.']));
@@ -104,6 +106,7 @@ final class ServicesController
         $dist = array_fill(1, 5, 0);
         foreach ($reviews as $r) if (!$r['is_hidden']) $dist[(int) $r['rating']]++;
         return new Response(view('site/master', [
+            'travel' => Services::travelText($m, Services::travelAreas((int) $m['id'])),
             'm' => $m, 'isOwner' => $isOwner, 'isMod' => $isMod, 'me' => $me, 'prices' => Services::prices((int) $m['id']), 'works' => Services::works((int) $m['id']),
             'reviews' => $reviews, 'dist' => $dist, 'active' => $active, 'myReview' => $myReview, 'canReview' => $canReview,
             'myPhone' => $me ? Crypto::decrypt($me['phone_enc']) : null,
@@ -165,6 +168,7 @@ final class ServicesController
         $paid = Ads::monetizationOn();
         return $this->cab('master', 'master', [
             'title' => 'Я майстер', 'm' => $m, 'cats' => Services::categories(false), 'settlements' => $settlements,
+            'travelIds' => $m ? array_map('intval', array_column(Services::travelAreas((int) $m['id']), 'id')) : [],
             'prices' => $m ? Services::prices((int) $m['id']) : [], 'works' => $m ? Services::works((int) $m['id']) : [],
             'limits' => Services::limits(), 'myPhone' => Crypto::decrypt($me['phone_enc']), 'premod' => Services::premoderation(),
             'paid' => $paid, 'billPrices' => Ads::prices(),
@@ -209,6 +213,7 @@ final class ServicesController
             'category2_id' => ((int) $req->input('category2_id')) ?: null,
             'settlement_id' => ((int) $req->input('settlement_id')) ?: null,
             'areas' => $req->str('areas', 200) ?: null,
+            'travel_all' => !empty($req->post['travel_all']) ? 1 : 0,
             'experience_years' => $exp === '' ? null : min(70, (int) $exp),
             'about' => $req->str('about', 4000) ?: null,
             'contact_phone' => $phone,
@@ -231,6 +236,9 @@ final class ServicesController
             if (!$pays) $err['payments'] = 'Позначте хоча б один спосіб оплати';
         }
         if ($err) throw new ValidationException($err);
+        $travel = array_values(array_unique(array_filter(array_map('intval', (array) ($req->post['travel'] ?? [])))));
+        if ($travel) $travel = array_map('intval', array_column($db->all('SELECT id FROM {p}settlements WHERE id IN (' . implode(',', $travel) . ')'), 'id'));
+        $travel = array_values(array_filter($travel, static fn ($id) => $id !== $d['settlement_id']));
 
         $photo = null;
         if (!empty($req->post['photo_delete']) && $cur && $cur['photo']) {
@@ -250,6 +258,7 @@ final class ServicesController
             $id = $db->insert('masters', [...$d, 'user_id' => $uid, 'status' => 'draft']);
             Audit::log('services.master_created', 'master', $id);
             $cur = ['id' => $id, 'status' => 'draft', 'period_months' => $d['period_months']];
+            $isNew = true;
         } else {
             $id = (int) $cur['id'];
             $changed = false;
@@ -262,22 +271,25 @@ final class ServicesController
             $db->update('masters', $set, 'id = ?', [$id]);
         }
 
+        $db->run('DELETE FROM {p}master_areas WHERE master_id = ?', [$id]);
+        foreach ($d['travel_all'] ? [] : $travel as $sid) $db->insert('master_areas', ['master_id' => $id, 'settlement_id' => $sid]);
+
         if ($submit && in_array($cur['status'], ['draft', 'rejected'], true)) {
             if ($premod) {
                 $db->update('masters', ['status' => 'pending', 'submitted_at' => Db::now(), 'reject_reason' => null], 'id = ?', [$id]);
                 Audit::log('services.master_submitted', 'master', $id);
-                flash('ok', 'Профіль надіслано на перевірку. Зазвичай це займає кілька годин. Поки що додайте прайс і фото робіт.');
+                flash('ok', 'Профіль надіслано на перевірку. Зазвичай це займає кілька годин. Поки що додайте прайс і галерею робіт (фото об’єктів) нижче.');
             } else {
                 Services::goLive($id);
                 Audit::log('services.master_published', 'master', $id);
-                flash('ok', 'Профіль опубліковано в розділі «Послуги».');
+                flash('ok', 'Профіль опубліковано в розділі «Послуги». Додайте прайс і галерею робіт нижче.');
             }
         } elseif (!$submit && $cur['status'] === 'draft') {
-            flash('ok', 'Чернетку збережено. Коли все заповните, натисніть «Опублікувати».');
+            flash('ok', !empty($isNew) ? 'Чернетку збережено. Тепер додайте прайс і галерею робіт (фото об’єктів) нижче, а потім натисніть «Надіслати на перевірку».' : 'Чернетку збережено. Коли все заповните, натисніть «Надіслати на перевірку».');
         } else {
             flash('ok', $cur['status'] === 'published' ? 'Зміни збережено й уже видно на сайті.' : 'Профіль збережено.');
         }
-        return Response::redirect(url('/cabinet/master'));
+        return Response::redirect(url('/cabinet/master') . (!empty($isNew) ? '#prices' : ''));
     }
 
     private function pricesSave(Request $req): Response

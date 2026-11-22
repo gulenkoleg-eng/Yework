@@ -101,6 +101,27 @@ final class Services
         return $m['status'] === 'published' && !(int) $m['is_hidden'] && ($m['user_status'] ?? 'active') === 'active';
     }
 
+    /** Населені пункти, куди виїжджає майстер (крім основного місця). */
+    public static function travelAreas(int $masterId): array
+    {
+        try {
+            return App::db()->all('SELECT s.id, s.name FROM {p}master_areas a JOIN {p}settlements s ON s.id = a.settlement_id WHERE a.master_id = ? ORDER BY s.name', [$masterId]);
+        } catch (\PDOException) {
+            return []; // міграція 009 ще не застосована
+        }
+    }
+
+    /** «Виїзд: Богуслав, Кагарлик» або «Виїзд у всі громади»; null — лише основне місце. */
+    public static function travelText(array $m, array $areas): ?string
+    {
+        if (!empty($m['travel_all'])) return 'Виїжджає в усі громади';
+        $names = array_values(array_filter(array_column($areas, 'name'), static fn ($n) => $n !== ($m['settlement'] ?? null)));
+        return $names ? 'Виїжджає: ' . implode(', ', $names) : null;
+    }
+
+    /** Умова пошуку «працює в цьому населеному пункті»: основне місце, виїзд туди або виїзд усюди. */
+    public const IN_SETTLEMENT_SQL = '(m.settlement_id = ? OR m.travel_all = 1 OR EXISTS (SELECT 1 FROM {p}master_areas ma WHERE ma.master_id = m.id AND ma.settlement_id = ?))';
+
     public static function prices(int $masterId): array
     {
         return App::db()->all('SELECT * FROM {p}master_prices WHERE master_id = ? ORDER BY sort, id', [$masterId]);

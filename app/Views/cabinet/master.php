@@ -50,9 +50,13 @@ $nWorks = count($works);
       </form>
     <?php endif ?>
     <?= form_alert() ?>
+    <nav class="svc-cats" aria-label="Розділи профілю майстра" style="margin:0">
+      <a class="on" href="#profile">1. Профіль</a><a href="<?= $m ? '#prices' : '#next' ?>">2. Прайс</a><a href="<?= $m ? '#works' : '#next' ?>">3. Галерея робіт (фото об’єктів)</a>
+    </nav>
 
     <form id="profile" class="card pad stack" method="post" action="<?= url('/cabinet/master') ?>" enctype="multipart/form-data"><?= csrf_field() ?><input type="hidden" name="section" value="profile">
       <div><h2 style="font-size:20px">Профіль майстра</h2><p class="small muted">Це бачать клієнти в каталозі «Послуги» і на вашій сторінці.</p></div>
+      <?php if (!$m): ?><div class="gal-tip"><?= icon('image', 20) ?><div><b>Галерея робіт і прайс — на наступному кроці.</b> Заповніть профіль і натисніть «Зберегти чернетку»: нижче відкриються «Прайс» і «Галерея робіт», куди можна додати виконані об’єкти з фото (до <?= plural((int) $limits['works'], 'об’єкта', 'об’єктів', 'об’єктів') ?>, у кожному до <?= (int) $limits['photos'] ?> фото).</div></div><?php endif ?>
       <div class="rz-person">
         <div class="rz-photo">
           <div class="m-ava lg"><?php if ($m && $m['photo']): ?><img src="<?= e(S::photoUrl($m['photo'])) ?>" alt="Ваше фото"><?php else: ?><?= icon('tool', 40) ?><?php endif ?></div>
@@ -72,10 +76,15 @@ $nWorks = count($works);
         <?= input_field('category_id', 'Чим займаєтеся', ['type' => 'select', 'value' => $pv('category_id', $m['category_id'] ?? ''), 'options' => ['' => '— оберіть —'] + array_column($cats, 'name', 'id')]) ?>
         <?= input_field('category2_id', 'Ще один напрям (необов’язково)', ['type' => 'select', 'value' => $pv('category2_id', $m['category2_id'] ?? ''), 'options' => ['' => '—'] + array_column($cats, 'name', 'id')]) ?>
       </div>
-      <div class="grid2">
-        <?= input_field('settlement_id', 'Де ви працюєте', ['type' => 'select', 'value' => $pv('settlement_id', $m['settlement_id'] ?? ''), 'options' => ['' => '—'] + array_column($settlements, 'name', 'id')]) ?>
-        <?= input_field('areas', 'Куди виїжджаєте', ['value' => $m['areas'] ?? '', 'maxlength' => 200, 'placeholder' => 'Миронівка й села до 30 км, Кагарлик']) ?>
-      </div>
+      <?php $mainId = (string) $pv('settlement_id', $m['settlement_id'] ?? ''); $tAll = (bool) $pv('travel_all', $m['travel_all'] ?? 0); $tIds = array_map('intval', (array) $pv('travel', $travelIds)); ?>
+      <?= input_field('settlement_id', 'Основне місце роботи', ['type' => 'select', 'value' => $mainId, 'options' => ['' => '—'] + array_column($settlements, 'name', 'id')]) ?>
+      <fieldset class="field" style="border:0;padding:0;margin:0" id="travel"><legend class="lbl">Куди ще виїжджаєте</legend>
+        <div class="chips">
+          <label><input type="checkbox" name="travel_all" value="1" <?= $tAll ? 'checked' : '' ?> data-all> Усі громади</label>
+          <?php foreach ($settlements as $s): ?><label data-sid="<?= (int) $s['id'] ?>"><input type="checkbox" name="travel[]" value="<?= (int) $s['id'] ?>" <?= in_array((int) $s['id'], $tIds, true) ? 'checked' : '' ?>> <?= e($s['name']) ?></label><?php endforeach ?>
+        </div>
+        <span class="hint">Клієнти з цих міст знайдуть вас у пошуку так само, як і з основного місця.</span></fieldset>
+      <?= input_field('areas', 'Уточнення про виїзд (необов’язково)', ['value' => $m['areas'] ?? '', 'maxlength' => 200, 'placeholder' => 'Також села навколо, до 30 км. Виїзд за місто — від 200 грн']) ?>
       <div class="grid2">
         <?= input_field('experience_years', 'Досвід, років', ['value' => $m['experience_years'] ?? '', 'inputmode' => 'numeric', 'maxlength' => 2, 'placeholder' => '8']) ?>
         <?= input_field('contact_phone', 'Робочий телефон', ['type' => 'tel', 'value' => $m ? phone_pretty($m['contact_phone']) : ($myPhone ? phone_pretty($myPhone) : ''), 'placeholder' => '+380 67 123 45 67', 'hint' => 'Клієнти бачать його після натискання «Показати номер»']) ?>
@@ -89,12 +98,19 @@ $nWorks = count($works);
           <button class="btn pri" name="action" value="submit"><?= $premod ? 'Надіслати на перевірку' : 'Опублікувати' ?></button>
           <button class="btn" name="action" value="draft">Зберегти чернетку</button>
           <?php if ($premod): ?><span class="small muted">Перший раз профіль перевіряє модератор, далі зміни видно одразу.</span><?php endif ?>
+          <?php if (!$m): ?><span class="small muted" style="flex-basis:100%">Прайс і галерею робіт (фото об’єктів) додасте одразу після збереження.</span><?php endif ?>
         <?php else: ?>
           <button class="btn pri" name="action" value="save">Зберегти</button>
         <?php endif ?>
       </div>
     </form>
 
+    <?php if (!$m): ?>
+      <div id="next" class="card pad stack" style="border-style:dashed">
+        <h2 style="font-size:20px">Далі: прайс і галерея робіт</h2>
+        <p class="muted" style="margin:0">Після першого збереження профілю тут з’являться ще два блоки: <b>«Прайс»</b> (послуги й обладнання з цінами) і <b>«Галерея робіт»</b> — виконані об’єкти, до <?= plural((int) $limits['works'], 'об’єкта', 'об’єктів', 'об’єктів') ?> з фото, у кожному до <?= (int) $limits['photos'] ?> фото. Натисніть «Зберегти чернетку» вище, якщо хочете спершу додати прайс і фото, а вже потім надіслати профіль на перевірку.</p>
+      </div>
+    <?php endif ?>
     <?php if ($m): ?>
     <form id="prices" class="card pad stack" method="post" action="<?= url('/cabinet/master') ?>"><?= csrf_field() ?><input type="hidden" name="section" value="prices">
       <div><h2 style="font-size:20px">Прайс</h2><p class="small muted">Послуги з ціною «від – до» або точною сумою, а також обладнання й матеріали, які ви продаєте разом із роботою (наприклад, сам кондиціонер). Зміни прайсу видно одразу.</p></div>
@@ -105,7 +121,7 @@ $nWorks = count($works);
     </form>
 
     <section id="works" class="card pad stack">
-      <div class="row"><div style="flex:1;min-width:220px"><h2 style="font-size:20px">Мої роботи <span class="muted"><?= $nWorks ?> з <?= (int) $limits['works'] ?></span></h2><p class="small muted">Виконані об’єкти з фото: до <?= plural((int) $limits['works'], 'об’єкта', 'об’єктів', 'об’єктів') ?>, у кожному до <?= (int) $limits['photos'] ?> фото. Фото роботи переконують краще за будь-який опис.</p></div>
+      <div class="row"><div style="flex:1;min-width:220px"><h2 style="font-size:20px">Галерея робіт <span class="muted"><?= $nWorks ?> з <?= (int) $limits['works'] ?></span></h2><p class="small muted">Виконані об’єкти з фото: до <?= plural((int) $limits['works'], 'об’єкта', 'об’єктів', 'об’єктів') ?>, у кожному до <?= (int) $limits['photos'] ?> фото. Фото роботи переконують краще за будь-який опис.</p></div>
         <?php if ($nWorks < $limits['works']): ?><a class="btn pri" href="<?= url('/cabinet/master/works/new') ?>"><?= icon('plus') ?>Додати об’єкт</a><?php endif ?></div>
       <?php if ($works): ?><div class="wk-list"><?php foreach ($works as $w): $ph = $w['photos'][0]['file'] ?? null; ?>
         <div class="wk">
@@ -143,6 +159,9 @@ $nWorks = count($works);
     root.querySelectorAll('[data-del]').forEach(function(b){b.onclick=function(){var row=b.closest('[data-row]'),list=row.parentNode;if(list.querySelectorAll('[data-row]').length>1){row.remove()}else{row.querySelectorAll('input').forEach(function(i){i.value=''})}}});
     root.querySelectorAll('[data-type]').forEach(function(s){function upd(){var row=s.closest('[data-row]'),v=s.value;row.querySelector('[data-to]').hidden=v!=='range';row.querySelector('[data-fromf]').hidden=v==='deal';row.querySelector('[data-froml]').textContent=v==='range'?'Від, грн':'Сума, грн'}s.onchange=upd;upd()});
   }
+  var tr=document.getElementById('travel'),main=document.getElementById('f_settlement_id');
+  if(tr&&main){var all=tr.querySelector('[data-all]');function tupd(){tr.querySelectorAll('[data-sid]').forEach(function(l){var i=l.querySelector('input'),isMain=l.dataset.sid===main.value;l.hidden=isMain;if(isMain)i.checked=false;i.disabled=all.checked;l.style.opacity=all.checked?.5:1})}
+    main.addEventListener('change',tupd);all.addEventListener('change',tupd);tupd()}
   var add=document.getElementById('price-add');
   if(add)add.onclick=function(){var list=document.getElementById('price-list');if(list.querySelectorAll('[data-row]').length>=<?= S::MAX_PRICES ?>)return;var n=+list.dataset.next;list.dataset.next=n+1;
     var t=document.createElement('div');t.innerHTML=document.getElementById('price-tpl').innerHTML.replace(/\[999\]/g,'['+n+']');var row=t.firstElementChild;list.appendChild(row);wire(row);row.querySelector('input[name$="[title]"]').focus()};

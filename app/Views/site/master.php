@@ -26,7 +26,7 @@ $err = App::$errors;
           <?php if ($m['experience_years']): ?><span class="tag">Досвід <?= plural((int) $m['experience_years'], 'рік', 'роки', 'років') ?></span><?php endif ?>
           <?php if (in_array($m['legal_form'], ['ФОП', 'ТОВ', 'ПП'], true)): ?><span class="tag ok"><?= icon('shield', 13) ?><?= e($m['legal_form']) ?></span><?php endif ?>
         </div>
-        <?php if ($m['areas']): ?><div class="small muted">Виїзд: <?= e($m['areas']) ?></div><?php endif ?>
+        <?php if ($travel || $m['areas']): ?><div class="small"><?php if ($travel): ?><b><?= e($travel) ?></b><?php endif ?><?php if ($m['areas']): ?><span class="muted"><?= $travel ? ' · ' : 'Виїзд: ' ?><?= e($m['areas']) ?></span><?php endif ?></div><?php endif ?>
       </div>
     </section>
 

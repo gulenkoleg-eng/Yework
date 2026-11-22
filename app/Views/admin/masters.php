@@ -27,7 +27,7 @@
           <span class="m-ava sm"><?php if ($m['photo']): ?><img src="<?= e(S::photoUrl($m['photo'])) ?>" alt=""><?php else: ?><?= e(initials((string) $m['name'])) ?><?php endif ?></span>
           <div><h3 style="font-size:19px"><?= e($m['name']) ?></h3>
             <div class="small muted"><?= e($m['category']) ?><?= $m['category2'] ? ' + ' . e($m['category2']) : '' ?><?= $m['settlement'] ? ' · ' . e($m['settlement']) : '' ?> · <?= e(S::LEGAL[$m['legal_form']] ?? 'Приватна особа') ?> · оплата: <?= e(mb_strtolower(implode(', ', S::payments($m['payments'])) ?: '—')) ?> · термін <?= e(S::PERIODS[(int) $m['period_months']] ?? '') ?></div>
-            <div class="small muted">Телефон: <?= e(phone_pretty($m['contact_phone'])) ?><?= $m['areas'] ? ' · виїзд: ' . e($m['areas']) : '' ?><?= $m['status'] === 'published' ? ' · до ' . e(date('d.m.Y', strtotime((string) $m['show_to']))) : '' ?></div>
+            <div class="small muted">Телефон: <?= e(phone_pretty($m['contact_phone'])) ?><?= ($t = S::travelText($m, S::travelAreas((int) $m['id']))) ? ' · ' . e(mb_strtolower($t)) : '' ?><?= $m['areas'] ? ' · ' . e($m['areas']) : '' ?><?= $m['status'] === 'published' ? ' · до ' . e(date('d.m.Y', strtotime((string) $m['show_to']))) : '' ?></div>
           </div>
         </div>
         <div class="small muted" style="text-align:right">Автор: <a href="<?= url('/admin/users/' . $m['user_id']) ?>"><?= e($m['display_name']) ?></a><?php if ($m['rejected_before']): ?><br><span class="tag bad"><?= (int) $m['rejected_before'] ?> відхилень раніше</span><?php endif ?><br><?= e(ago($m['submitted_at'] ?? $m['updated_at'])) ?></div>

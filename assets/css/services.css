@@ -91,3 +91,6 @@
 .ord{display:grid;gap:8px;padding:14px 0;border-bottom:var(--bw) solid var(--c-border)}
 .ord:last-child{border-bottom:0}
 .ord .acts{display:flex;flex-wrap:wrap;gap:8px}
+.chips label[hidden]{display:none}
+.gal-tip{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--r-card);background:color-mix(in srgb,var(--c-primary) 8%,var(--c-card));border:var(--bw) solid color-mix(in srgb,var(--c-primary) 30%,var(--c-border));font-size:14px;line-height:1.45}
+.gal-tip svg{flex:none;color:var(--c-primary);margin-top:1px}

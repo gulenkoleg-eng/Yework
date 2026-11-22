@@ -2,7 +2,7 @@
 <div class="cab">
   <?= App\Core\View::partial('partials/cab_nav', compact('tab', 'counts', 'me')) ?>
   <div class="stack">
-    <nav class="crumbs"><a href="<?= url('/cabinet/master') ?>">Я майстер</a>›<a href="<?= url('/cabinet/master') ?>#works">Мої роботи</a>›<?= $w ? e($w['title']) : 'Новий об’єкт' ?></nav>
+    <nav class="crumbs"><a href="<?= url('/cabinet/master') ?>">Я майстер</a>›<a href="<?= url('/cabinet/master') ?>#works">Галерея робіт</a>›<?= $w ? e($w['title']) : 'Новий об’єкт' ?></nav>
     <h1 style="font-size:28px"><?= $w ? 'Об’єкт' : 'Новий об’єкт' ?></h1>
     <?= form_alert() ?>
     <form class="card pad stack" method="post" action="<?= url($w ? '/cabinet/master/works/' . $w['id'] : '/cabinet/master/works/new') ?>" enctype="multipart/form-data"><?= csrf_field() ?>
