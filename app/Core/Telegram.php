@@ -423,7 +423,8 @@ final class Telegram
         $s = preg_replace('/`([^`]+)`/u', '<code>$1</code>', $s) ?? $s;
         $s = preg_replace('/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/u', '<a href="$2">$1</a>', $s) ?? $s;
         $s = preg_replace('/^\s*[-*]\s+/mu', '• ', $s) ?? $s;
-        $s = preg_replace('/^#+\s*(.+)$/mu', '<b>$1</b>', $s) ?? $s;
+        $icons = ['Що нового' => '🆕 ', 'Де подивитися' => '👀 ', 'Важливо знати' => '⚠️ '];
+        $s = preg_replace_callback('/^#+\s*(.+)$/mu', static fn ($m) => '<b>' . ($icons[trim($m[1])] ?? '') . $m[1] . '</b>', $s) ?? $s;
         return trim($s);
     }
 
