@@ -30,6 +30,7 @@ final class ResumeController
         $counts = [
             'vacancies' => (int) $db->value('SELECT COUNT(*) FROM {p}vacancies v JOIN {p}employers e ON e.id = v.employer_id WHERE e.owner_id = ? AND v.deleted_at IS NULL', [$me['id']]),
             'applications' => (int) $db->value('SELECT COUNT(*) FROM {p}applications WHERE user_id = ?', [$me['id']]),
+            'orders' => \App\Core\Services::newOrdersFor((int) $me['id']),
         ];
         return new Response(view('cabinet/' . $view, [...$data, 'me' => $me, 'tab' => 'resume', 'counts' => $counts]));
     }

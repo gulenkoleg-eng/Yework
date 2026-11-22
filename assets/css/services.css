@@ -1,0 +1,93 @@
+/* YEWORK — розділ «Послуги» (0.5.0): майстри, прайс, портфоліо, відгуки. */
+.stars{--s:16px;display:inline-block;position:relative;width:calc(var(--s) * 5);height:var(--s);vertical-align:-2px;
+  background:no-repeat 0 0/var(--s) var(--s) repeat-x;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23c9ced6' d='M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z'/%3E%3C/svg%3E")}
+.stars>span{position:absolute;inset:0 auto 0 0;overflow:hidden;background:no-repeat 0 0/var(--s) var(--s) repeat-x;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23f5a623' d='M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z'/%3E%3C/svg%3E")}
+.rate{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:700}
+.rate .muted{font-weight:500}
+
+/* Каталог */
+.svc-cats{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px;margin:0 0 14px;scrollbar-width:thin}
+.svc-cats a{flex:none;padding:8px 14px;border-radius:999px;border:var(--bw) solid var(--c-border);background:var(--c-card);text-decoration:none;color:var(--c-text);font-weight:600;font-size:14px;white-space:nowrap}
+.svc-cats a.on{background:var(--c-primary);border-color:var(--c-primary);color:#fff}
+.svc-cats a em{font-style:normal;opacity:.65;margin-left:4px;font-weight:500}
+.mlist{display:grid;gap:12px}
+.mcard{display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;padding:16px;text-decoration:none;color:inherit;transition:border-color .15s}
+.mcard:hover{border-color:color-mix(in srgb,var(--c-primary) 45%,var(--c-border))}
+.mcard h3{font-size:18px;color:var(--c-link)}
+.mcard .meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;color:var(--c-muted)}
+.mcard .meta span{display:inline-flex;align-items:center;gap:5px}
+.mcard .price{font-weight:800;color:var(--c-heading)}
+.m-ava{width:96px;height:96px;border-radius:14px;overflow:hidden;background:var(--c-secondary);display:grid;place-items:center;color:var(--c-primary);font-weight:800;font-size:28px;position:relative;flex:none}
+.m-ava img{width:100%;height:100%;object-fit:cover;display:block}
+.m-ava.lg{width:120px;height:120px;border-radius:18px;font-size:36px}
+.m-ava.sm{width:52px;height:52px;border-radius:10px;font-size:18px}
+@media (max-width:560px){.mcard{grid-template-columns:72px minmax(0,1fr);gap:12px;padding:14px}.mcard .m-ava{width:72px;height:72px;font-size:22px}}
+
+/* Сторінка майстра */
+.mp{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:22px;align-items:start}
+.mp-main{display:grid;gap:18px;min-width:0}
+.mp-head{padding:24px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:20px;align-items:start}
+.mp-head h1{font-size:clamp(24px,3.4vw,32px)}
+.mp-sec{padding:22px;display:grid;gap:14px}
+.mp-sec h2{font-size:21px}
+@media (max-width:900px){.mp{grid-template-columns:1fr}.mp .side-card{position:static}}
+@media (max-width:560px){.mp-head{grid-template-columns:1fr;padding:18px}.mp-sec{padding:18px}}
+.ptable{width:100%;border-collapse:collapse}
+.ptable td{padding:11px 0;border-bottom:var(--bw) solid var(--c-border);vertical-align:top}
+.ptable tr:last-child td{border-bottom:0}
+.ptable td:last-child:not([colspan]){text-align:right;font-weight:800;white-space:nowrap;padding-left:14px;color:var(--c-heading)}
+.ptable .note{display:block;font-size:13px;color:var(--c-muted);font-weight:400;margin-top:2px}
+.ptable h4{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--c-muted);margin:6px 0 0}
+@media (max-width:480px){.ptable td:last-child{white-space:normal}}
+.works{display:grid;gap:18px}
+.work h3{font-size:17px}
+.work .gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:8px}
+.work .gal a{display:block;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--c-secondary)}
+.work .gal img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s}
+.work .gal a:hover img{transform:scale(1.04)}
+.rv{display:grid;gap:6px;padding:14px 0;border-bottom:var(--bw) solid var(--c-border)}
+.rv:last-child{border-bottom:0}
+.rv-reply{margin-left:14px;padding:10px 12px;border-left:3px solid var(--c-primary);background:var(--c-bg);border-radius:0 10px 10px 0;font-size:14px}
+.rdist{display:grid;gap:4px;font-size:13px}
+.rdist div{display:grid;grid-template-columns:28px minmax(0,1fr) 28px;gap:8px;align-items:center}
+.rdist i{display:block;height:8px;border-radius:4px;background:var(--c-secondary);overflow:hidden}
+.rdist i b{display:block;height:100%;background:#f5a623}
+.pays{display:flex;flex-wrap:wrap;gap:6px}
+
+/* Перегляд фото на весь екран */
+.lb{position:fixed;inset:0;background:rgba(10,12,16,.92);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+.lb.open{display:flex}
+.lb img{max-width:100%;max-height:100%;border-radius:8px}
+.lb button{position:absolute;background:rgba(255,255,255,.14);color:#fff;border:0;border-radius:999px;width:48px;height:48px;font-size:26px;cursor:pointer}
+.lb .x{top:14px;right:14px}.lb .p{left:10px;top:50%;transform:translateY(-50%)}.lb .n{right:10px;top:50%;transform:translateY(-50%)}
+
+/* Зірки у формі відгуку */
+.star-in{display:inline-flex;flex-direction:row-reverse;gap:2px}
+.star-in input{position:absolute;opacity:0;width:1px;height:1px}
+.star-in label{font-size:32px;line-height:1;color:#c9ced6;cursor:pointer;padding:2px}
+.star-in input:checked~label,.star-in label:hover,.star-in label:hover~label{color:#f5a623}
+.star-in input:focus-visible+label{outline:2px solid var(--c-primary);border-radius:6px}
+
+/* Кабінет майстра */
+.prow{border:var(--bw) solid var(--c-border);border-radius:var(--r-card);padding:12px;display:grid;gap:10px;background:var(--c-bg)}
+.prow.err{border-color:var(--c-danger)}
+.prow-g{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px}
+.prow-p{display:grid;grid-template-columns:130px 1fr 1fr 130px;gap:10px;align-items:end}
+@media (max-width:700px){.prow-g{grid-template-columns:1fr}.prow-p{grid-template-columns:1fr 1fr}}
+.prow .field>label{font-size:13px}
+.prow [data-to][hidden],.prow [data-fromf][hidden]{display:none}
+.wk-list{display:grid;gap:10px}
+.wk{display:grid;grid-template-columns:84px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px;border:var(--bw) solid var(--c-border);border-radius:var(--r-card)}
+.wk img,.wk .ph{width:84px;height:84px;border-radius:10px;object-fit:cover;background:var(--c-secondary);display:block}
+@media (max-width:560px){.wk{grid-template-columns:64px minmax(0,1fr)}.wk img,.wk .ph{width:64px;height:64px}.wk .row{grid-column:1/-1}}
+.ph-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}
+.ph-grid label{display:grid;gap:6px;font-size:13px}
+.ph-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;display:block}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips label{display:inline-flex;align-items:center;gap:6px;border:var(--bw) solid var(--c-border);border-radius:999px;padding:7px 12px;cursor:pointer;font-weight:600;font-size:14px;background:var(--c-card)}
+.chips label:has(input:checked){border-color:var(--c-primary);background:color-mix(in srgb,var(--c-primary) 8%,var(--c-card))}
+.upsell{border:var(--bw) dashed var(--c-border);border-radius:var(--r-card);padding:14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.ord{display:grid;gap:8px;padding:14px 0;border-bottom:var(--bw) solid var(--c-border)}
+.ord:last-child{border-bottom:0}
+.ord .acts{display:flex;flex-wrap:wrap;gap:8px}

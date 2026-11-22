@@ -8,6 +8,8 @@ $items = [
   ['dashboard', 'Огляд', '/admin', null],
   ['moderation', 'Модерація', '/admin/moderation', 'jobs.listing:moderate', $pending],
   ['resumes', 'Модерація резюме', '/admin/resumes', 'jobs.listing:moderate', $a->can('jobs.listing:moderate') ? \App\Controllers\Admin\ResumeModerationController::pendingCount() : 0],
+  ['masters', 'Майстри', '/admin/masters', 'services.listing:moderate', $a->can('services.listing:moderate') ? \App\Core\Services::pendingCount() : 0],
+  ['svccats', 'Категорії послуг', '/admin/service-categories', 'services.listing:update'],
   ['banners', 'Банери', '/admin/banners', 'ads.banner:moderate', $a->can('ads.banner:moderate') ? AdminController::pendingBanners() : 0],
   ['billing', 'Монетизація', '/admin/billing', 'billing.plan:view'],
   ['Люди та доступ', null],

@@ -17,6 +17,7 @@ $on = fn ($p) => str_starts_with(parse_url($path, PHP_URL_PATH) ?: '/', App::bas
 <link rel="stylesheet" href="<?= e(Theme::fontsUrl($theme)) ?>">
 <link rel="stylesheet" href="<?= asset('css/app.css') ?>">
 <link rel="stylesheet" href="<?= asset('css/resume.css') ?>">
+<link rel="stylesheet" href="<?= asset('css/services.css') ?>">
 <style><?= Theme::css($theme) ?></style>
 <script>try{var m=localStorage.getItem('yw-mode');if(m)document.documentElement.dataset.mode=m}catch(e){}</script>
 </head>
@@ -28,6 +29,7 @@ $on = fn ($p) => str_starts_with(parse_url($path, PHP_URL_PATH) ?: '/', App::bas
       <a href="<?= url('/jobs') ?>"<?= $on('/jobs') ?>>Вакансії</a>
       <a href="<?= url('/jobs', ['employment' => 'one_time']) ?>">Підробіток</a>
       <a href="<?= url('/resumes') ?>"<?= $on('/resumes') ?>>Резюме</a>
+      <a href="<?= url('/services') ?>"<?= $on('/services') ?>>Послуги</a>
       <a href="<?= url('/cabinet/vacancies/new') ?>">Розмістити вакансію</a>
       <a href="<?= url('/about') ?>"<?= $on('/about') ?>>Про нас</a>
     </nav>
@@ -48,7 +50,7 @@ $on = fn ($p) => str_starts_with(parse_url($path, PHP_URL_PATH) ?: '/', App::bas
 <footer class="ftr">
   <div class="wrap">
     <div><b><?= e($site) ?></b> — <?= e($slogan) ?><br>Миронівська, Богуславська та Кагарлицька громади</div>
-    <div class="row"><a href="<?= url('/jobs') ?>">Вакансії</a><?php foreach (\App\Core\Pages::visible() as $pg): ?><a href="<?= url($pg['path']) ?>"><?= e($pg['slug'] === 'rules' ? 'Правила' : $pg['title']) ?></a><?php endforeach ?><?php if (!$me): ?><a href="<?= url('/login') ?>">Вхід</a><?php endif ?></div>
+    <div class="row"><a href="<?= url('/jobs') ?>">Вакансії</a><a href="<?= url('/services') ?>">Послуги</a><?php foreach (\App\Core\Pages::visible() as $pg): ?><a href="<?= url($pg['path']) ?>"><?= e($pg['slug'] === 'rules' ? 'Правила' : $pg['title']) ?></a><?php endforeach ?><?php if (!$me): ?><a href="<?= url('/login') ?>">Вхід</a><?php endif ?></div>
   </div>
 </footer>
 <script>

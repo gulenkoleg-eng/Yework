@@ -5,6 +5,8 @@ use App\Controllers\AdsController;
 use App\Controllers\AuthController;
 use App\Controllers\CabinetController;
 use App\Controllers\ResumeController;
+use App\Controllers\ServicesController;
+use App\Controllers\Admin\ServicesAdminController;
 use App\Controllers\SiteController;
 use App\Controllers\Admin\AdminController;
 use App\Controllers\Admin\ResumeModerationController;
@@ -31,6 +33,12 @@ $router->get('/resumes/{id}/pdf', [ResumeController::class, 'pdf']);
 $router->post('/resumes/{id}/phone', [ResumeController::class, 'phone']);
 $router->post('/resumes/{id}/invite', [ResumeController::class, 'invite'], []);
 $router->get('/photo/{id}', [ResumeController::class, 'photo']);
+
+// Послуги майстрів (0.5.0): каталог, сторінка майстра, замовлення (POST на ту саму адресу — помилки показуються у формі)
+$router->get('/services', [ServicesController::class, 'index']);
+$router->get('/services/{id}', [ServicesController::class, 'show']);
+$router->post('/services/{id}', [ServicesController::class, 'order']);
+$router->post('/services/{id}/phone', [ServicesController::class, 'phone']);
 
 // Вхід і реєстрація
 $router->get('/login', [AuthController::class, 'loginForm']);
@@ -67,6 +75,17 @@ $router->get('/cabinet/person', [ResumeController::class, 'form'], []);
 $router->post('/cabinet/person', [ResumeController::class, 'personSave'], []);
 $router->post('/cabinet/employer/logo-delete', [CabinetController::class, 'logoDelete'], []);
 
+// Кабінет майстра й замовлення послуг
+$router->get('/cabinet/master', [ServicesController::class, 'masterForm'], []);
+$router->post('/cabinet/master', [ServicesController::class, 'masterSave'], []);
+$router->get('/cabinet/master/works/new', [ServicesController::class, 'workForm'], []);
+$router->post('/cabinet/master/works/new', [ServicesController::class, 'workSave'], []);
+$router->get('/cabinet/master/works/{id}', [ServicesController::class, 'workForm'], []);
+$router->post('/cabinet/master/works/{id}', [ServicesController::class, 'workSave'], []);
+$router->post('/cabinet/master/works/{id}/delete', [ServicesController::class, 'workDelete'], []);
+$router->get('/cabinet/orders', [ServicesController::class, 'orders'], []);
+$router->post('/cabinet/orders', [ServicesController::class, 'orderAction'], []);
+
 // Реклама й послуги роботодавця
 $router->get('/cabinet/ads', [AdsController::class, 'index'], []);
 $router->post('/cabinet/ads', [AdsController::class, 'order'], []);
@@ -80,6 +99,11 @@ $router->get('/admin/moderation', [AdminController::class, 'moderation'], ['jobs
 $router->post('/admin/moderation/{id}', [AdminController::class, 'moderate'], ['jobs.listing:moderate']);
 $router->get('/admin/resumes', [ResumeModerationController::class, 'index'], ['jobs.listing:moderate']);
 $router->post('/admin/resumes/{id}', [ResumeModerationController::class, 'decide'], ['jobs.listing:moderate']);
+$router->get('/admin/masters', [ServicesAdminController::class, 'index'], ['services.listing:moderate']);
+$router->post('/admin/masters/{id}', [ServicesAdminController::class, 'decide'], ['services.listing:moderate']);
+$router->post('/admin/reviews/{id}', [ServicesAdminController::class, 'review'], ['services.listing:moderate']);
+$router->get('/admin/service-categories', [ServicesAdminController::class, 'categories'], ['services.listing:update']);
+$router->post('/admin/service-categories', [ServicesAdminController::class, 'categoriesSave'], ['services.listing:update']);
 $router->get('/admin/banners', [AdminController::class, 'banners'], ['ads.banner:moderate']);
 $router->post('/admin/banners/{id}', [AdminController::class, 'bannerModerate'], ['ads.banner:moderate']);
 $router->get('/admin/billing', [AdminController::class, 'billing'], ['billing.plan:view']);
