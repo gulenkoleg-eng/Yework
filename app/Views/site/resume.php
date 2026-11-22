@@ -7,7 +7,7 @@ $isOwner = $acc['reason'] === 'owner';
 ?>
 <nav class="crumbs"><a href="<?= url('/') ?>">Головна</a>›<a href="<?= url('/resumes') ?>">Резюме</a>›<?= e($r['title']) ?></nav>
 <?php if (!Resumes::isPublic($r)): ?><div class="alert warn" style="margin-bottom:14px">Статус: <b><?= e(Resumes::STATUS[$r['status']][0] ?? $r['status']) ?><?= $r['is_hidden'] ? ', приховано з пошуку' : '' ?></b>. <?= $isOwner ? 'Так резюме бачитимуть роботодавці після публікації.' : 'Резюме зараз не показується в пошуку.' ?></div><?php endif ?>
-<?php if ($isOwner): ?><div class="alert info" style="margin-bottom:14px">Це ваше резюме. Роботодавці бачать його так само<?= $prof['show_photo'] ? '' : ', але без фото' ?><?= $prof['show_contacts'] ? '' : ' і без контактів' ?>. <a href="<?= url('/cabinet/resume') ?>">Редагувати</a></div><?php endif ?>
+<?php if ($isOwner): $pvis = Resumes::vis($prof, 'photo'); $tvis = Resumes::vis($prof, 'phone'); ?><div class="alert info" style="margin-bottom:14px">Це ваше резюме. Фото: <b><?= e(mb_strtolower(Resumes::VISIBILITY[$pvis])) ?></b>, телефон: <b><?= e(mb_strtolower(Resumes::VISIBILITY[$tvis])) ?></b>.<?= Resumes::openToAll($prof) ? ' Повне резюме бачать усі відвідувачі.' : ' Гості бачать лише посаду й місто.' ?> <a href="<?= url('/cabinet/resume') ?>#person">Змінити</a></div><?php endif ?>
 <div class="rz">
   <article class="card rz-main">
     <div class="rz-top">
@@ -51,10 +51,18 @@ $isOwner = $acc['reason'] === 'owner';
 
   <aside class="card side-card">
     <?php if ($full): ?>
-      <?php if ($contacts): ?>
+      <?php if ($contacts && $acc['reason'] === 'public'): ?>
         <b>Контакти</b>
-        <?php if ($contacts['phone']): ?><a class="btn block" href="tel:<?= e($contacts['phone']) ?>"><?= icon('phone') ?><?= e(phone_pretty($contacts['phone'])) ?></a><?php endif ?>
-        <?php if ($contacts['email']): ?><a class="btn block" href="mailto:<?= e($contacts['email']) ?>"><?= e($contacts['email']) ?></a><?php endif ?>
+        <button type="button" class="btn pri block" id="showPhone" data-url="<?= url('/resumes/' . $r['id'] . '/phone') ?>"><?= icon('phone') ?>Показати номер</button>
+        <script>document.getElementById('showPhone').onclick=function(){var b=this,m=document.cookie.match(/(?:^|; )yw_csrf=([^;]*)/);b.disabled=true;
+          fetch(b.dataset.url,{method:'POST',headers:{'Accept':'application/json','X-CSRF':m?decodeURIComponent(m[1]):''},credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){
+            if(!d.phone){b.disabled=false;b.textContent=d.message||'Помилка';return}var a=document.createElement('a');a.className='btn pri block';a.href='tel:'+d.phone;a.textContent=d.pretty;b.replaceWith(a)}).catch(function(){b.disabled=false})};</script>
+      <?php elseif ($contacts): ?>
+        <b>Контакти</b>
+        <?php if (!empty($contacts['phone'])): ?><a class="btn block" href="tel:<?= e($contacts['phone']) ?>"><?= icon('phone') ?><?= e(phone_pretty($contacts['phone'])) ?></a><?php endif ?>
+        <?php if (!empty($contacts['email'])): ?><a class="btn block" href="mailto:<?= e($contacts['email']) ?>"><?= e($contacts['email']) ?></a><?php endif ?>
+      <?php elseif (!$isOwner && $acc['reason'] === 'public'): ?>
+        <p class="small muted" style="margin:0">Щоб зв’язатися з кандидатом, увійдіть як роботодавець і надішліть запрошення.</p>
       <?php elseif (!$isOwner): ?>
         <p class="small muted" style="margin:0">Кандидат приховав контакти. Надішліть запрошення: людина отримає його на пошту або SMS і зв’яжеться з вами.</p>
       <?php endif ?>

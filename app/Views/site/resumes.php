@@ -8,8 +8,8 @@ $q = fn (array $over) => url('/resumes', array_merge(array_filter(['q' => $f['q'
 </div>
 <?php if (!$isEmployer): ?>
   <div class="alert info" style="margin-bottom:16px">
-    <?php if ($me): ?>Імена, фото, досвід і PDF резюме бачать роботодавці. <a href="<?= url('/cabinet/employer') ?>">Заповніть профіль роботодавця</a>: це займе хвилину.
-    <?php else: ?>Імена, фото, досвід і PDF резюме бачать зареєстровані роботодавці. <a href="<?= url('/login', ['next' => '/resumes']) ?>">Увійдіть</a> або <a href="<?= url('/register') ?>">зареєструйтеся</a>.<?php endif ?>
+    <?php if ($me): ?>Повні резюме бачать роботодавці, а відкриті для всіх кандидати показують ім’я й фото кожному. <a href="<?= url('/cabinet/employer') ?>">Заповніть профіль роботодавця</a>: це займе хвилину.
+    <?php else: ?>Повні резюме бачать зареєстровані роботодавці, а відкриті для всіх кандидати показують ім’я й фото кожному. <a href="<?= url('/login', ['next' => '/resumes']) ?>">Увійдіть</a> або <a href="<?= url('/register') ?>">зареєструйтеся</a>.<?php endif ?>
   </div>
 <?php endif ?>
 <div class="jobs-layout">

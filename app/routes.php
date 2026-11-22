@@ -26,6 +26,7 @@ $router->get('/go/{id}', [SiteController::class, 'promoClick']);
 $router->get('/resumes', [ResumeController::class, 'index']);
 $router->get('/resumes/{id}', [ResumeController::class, 'show']);
 $router->get('/resumes/{id}/pdf', [ResumeController::class, 'pdf']);
+$router->post('/resumes/{id}/phone', [ResumeController::class, 'phone']);
 $router->post('/resumes/{id}/invite', [ResumeController::class, 'invite'], []);
 $router->get('/photo/{id}', [ResumeController::class, 'photo']);
 

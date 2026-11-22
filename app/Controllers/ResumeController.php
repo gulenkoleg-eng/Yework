@@ -47,9 +47,13 @@ final class ResumeController
             'full_name' => $req->str('full_name', 120) ?: null,
             'birth_year' => $year ?: null,
             'settlement_id' => ((int) $req->input('settlement_id')) ?: null,
-            'show_photo' => !empty($req->post['show_photo']) ? 1 : 0,
-            'show_contacts' => !empty($req->post['show_contacts']) ? 1 : 0,
         ];
+        $vis = static fn (string $k) => array_key_exists((string) ($req->post[$k] ?? ''), Resumes::VISIBILITY) ? (string) $req->post[$k] : 'employers';
+        $set['photo_visibility'] = $vis('photo_visibility');
+        $set['phone_visibility'] = $vis('phone_visibility');
+        // Старі галочки тримаємо узгодженими (на випадок відкату на 0.4.3).
+        $set['show_photo'] = $set['photo_visibility'] !== 'nobody' ? 1 : 0;
+        $set['show_contacts'] = $set['phone_visibility'] !== 'nobody' ? 1 : 0;
         $err = [];
         if ($set['full_name'] !== null && mb_strlen($set['full_name']) < 3) $err['full_name'] = 'Вкажіть ім’я та прізвище';
         if ($set['birth_year'] !== null && ($year < (int) date('Y') - 90 || $year > (int) date('Y') - 14)) $err['birth_year'] = 'Перевірте рік народження';
@@ -222,13 +226,13 @@ final class ResumeController
         $row = Resumes::ofUser((int) $me['id']);
         if (!$row) throw new HttpException(404, 'Спочатку створіть резюме.');
         $r = Resumes::find((int) $row['id']);
-        return self::pdfResponse($r, true, (bool) $r['profile']['show_photo'], ($req->query['dl'] ?? '') === '1');
+        return self::pdfResponse($r, true, true, Resumes::vis($r['profile'], 'photo') !== 'nobody', ($req->query['dl'] ?? '') === '1');
     }
 
-    private static function pdfResponse(array $r, bool $contacts, bool $photo, bool $download): Response
+    private static function pdfResponse(array $r, bool $phone, bool $email, bool $photo, bool $download): Response
     {
         $name = Resumes::fileName($r);
-        return (new Response(Resumes::pdf($r, $contacts, $photo)))
+        return (new Response(Resumes::pdf($r, $phone, $email, $photo)))
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', ($download ? 'attachment' : 'inline') . '; filename="' . $name . '"')
             ->header('Cache-Control', 'private, no-store');
@@ -260,7 +264,7 @@ final class ResumeController
         $total = (int) $db->value('SELECT COUNT(*)' . $from, $p);
         $page = max(1, min((int) ($req->query['page'] ?? 1), max(1, (int) ceil($total / self::PAGE))));
         $items = $db->all('SELECT r.id, r.user_id, r.title, r.employment, r.salary_from, r.experience, r.no_experience, r.published_at, r.driving, u.display_name,
-            pr.full_name, pr.birth_year, pr.photo_file, pr.show_photo, s.name AS settlement, c.name AS category' . $from
+            pr.full_name, pr.birth_year, pr.photo_file, pr.show_photo, pr.show_contacts, pr.photo_visibility, pr.phone_visibility, s.name AS settlement, c.name AS category' . $from
             . ' ORDER BY r.published_at DESC LIMIT ' . self::PAGE . ' OFFSET ' . (($page - 1) * self::PAGE), $p);
         $me = App::auth()->user();
         $isEmployer = $me && Resumes::employerOf((int) $me['id']);
@@ -282,13 +286,13 @@ final class ResumeController
         [$r, $acc] = $this->load($req);
         $me = App::auth()->user();
         $db = App::db();
-        if ($acc['level'] === 'full' && in_array($acc['reason'], ['employer', 'applicant'], true)) $db->run('UPDATE {p}resumes SET views = views + 1 WHERE id = ?', [$r['id']]);
+        if ($acc['level'] === 'full' && in_array($acc['reason'], ['employer', 'applicant', 'public'], true)) $db->run('UPDATE {p}resumes SET views = views + 1 WHERE id = ?', [$r['id']]);
         $employer = $me ? Resumes::employerOf((int) $me['id']) : null;
         $vacancies = $employer ? $db->all("SELECT id, title, contact_phone FROM {p}vacancies WHERE employer_id = ? AND status = 'published' AND deleted_at IS NULL ORDER BY published_at DESC", [$employer['id']]) : [];
         $lastInvite = $employer ? $db->value('SELECT created_at FROM {p}resume_invites WHERE resume_id = ? AND employer_id = ? ORDER BY id DESC LIMIT 1', [$r['id'], $employer['id']]) : null;
         $myPhone = $me ? Crypto::decrypt($me['phone_enc']) : null;
         return new Response(view('site/resume', [
-            'r' => $r, 'acc' => $acc, 'contacts' => $acc['contacts'] ? Resumes::contacts($r) : null, 'me' => $me, 'employer' => $employer,
+            'r' => $r, 'acc' => $acc, 'contacts' => $acc['contacts'] ? array_filter(Resumes::contacts($r), static fn ($v, $k) => $acc[$k], ARRAY_FILTER_USE_BOTH) : null, 'me' => $me, 'employer' => $employer,
             'vacancies' => $vacancies, 'lastInvite' => $lastInvite, 'myPhone' => $myPhone,
             'title' => $r['title'] . ($acc['level'] === 'full' ? ' — ' . $r['name'] : ''),
         ]));
@@ -298,7 +302,20 @@ final class ResumeController
     {
         [$r, $acc] = $this->load($req);
         if ($acc['level'] !== 'full') throw new HttpException(403, 'PDF резюме доступний роботодавцям. Заповніть профіль роботодавця в кабінеті.');
-        return self::pdfResponse($r, $acc['contacts'], $acc['photo'], ($req->query['dl'] ?? '') === '1');
+        return self::pdfResponse($r, $acc['phone'], $acc['email'], $acc['photo'], ($req->query['dl'] ?? '') === '1');
+    }
+
+    /**
+     * Номер для кнопки «Показати номер» (лише якщо людина відкрила телефон усім).
+     * Окремий запит, щоб номера не було в HTML сторінки і боти не збирали його масово.
+     */
+    public function phone(Request $req): Response
+    {
+        RateLimit::hit('phone-reveal:' . $req->ip(), 40, 3600, 'Забагато запитів. Спробуйте пізніше.');
+        [$r, $acc] = $this->load($req);
+        $phone = $acc['phone'] ? Resumes::contacts($r)['phone'] : null;
+        if (!$phone) return Response::json(['message' => 'Номер недоступний.'], 404);
+        return Response::json(['phone' => $phone, 'pretty' => phone_pretty($phone)])->header('Cache-Control', 'private, no-store');
     }
 
     public function invite(Request $req): Response

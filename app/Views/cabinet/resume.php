@@ -64,10 +64,17 @@ $eduRow = static function (int $i, array $x): string {
           <dl class="kv small"><dt>Телефон</dt><dd><?= $phone ? e(phone_pretty($phone)) : '<span class="muted">не вказано</span>' ?></dd><dt>Email</dt><dd><?= $email ? e($email) : '<span class="muted">не вказано</span>' ?></dd></dl>
         </div>
       </div>
+      <?php $pvis = Resumes::vis($person, 'photo'); $tvis = Resumes::vis($person, 'phone'); ?>
       <fieldset class="rz-privacy">
-        <legend>Що бачать роботодавці</legend>
-        <label class="check"><input type="checkbox" name="show_photo" value="1" <?= $person['show_photo'] ? 'checked' : '' ?>><span><b>Показувати фото</b><small>Якщо вимкнути, роботодавці бачать замість фото нейтральний значок, а в PDF фото не буде. Ви своє фото бачите завжди.</small></span></label>
-        <label class="check"><input type="checkbox" name="show_contacts" value="1" <?= $person['show_contacts'] ? 'checked' : '' ?>><span><b>Показувати телефон і email у резюме</b><small>Якщо вимкнути, роботодавець надсилає вам запрошення через сайт, а ви самі вирішуєте, кому відповісти. Коли ви відгукуєтеся на вакансію, роботодавець отримує ваші контакти в будь-якому разі.</small></span></label>
+        <legend>Хто бачить моє фото</legend>
+        <div class="rz-vis"><?php foreach (Resumes::VISIBILITY as $k => $l): ?><label><input type="radio" name="photo_visibility" value="<?= $k ?>" <?= $pvis === $k ? 'checked' : '' ?>> <?= e($l) ?></label><?php endforeach ?></div>
+        <small class="muted rz-vis-hint" data-for="photo_visibility" data-nobody="Роботодавці бачать нейтральний значок, у PDF фото немає. Ви своє фото бачите завжди." data-employers="Фото бачать лише роботодавці, які увійшли на сайт, і воно є у вашому PDF." data-all="Фото, ім’я та резюме побачить будь-хто в інтернеті, навіть без реєстрації."></small>
+      </fieldset>
+      <fieldset class="rz-privacy">
+        <legend>Хто бачить мій телефон</legend>
+        <div class="rz-vis"><?php foreach (Resumes::VISIBILITY as $k => $l): ?><label><input type="radio" name="phone_visibility" value="<?= $k ?>" <?= $tvis === $k ? 'checked' : '' ?>> <?= e($l) ?></label><?php endforeach ?></div>
+        <small class="muted rz-vis-hint" data-for="phone_visibility" data-nobody="Роботодавець надсилає вам запрошення через сайт, а ви самі вирішуєте, кому відповісти." data-employers="Телефон і email бачать лише роботодавці, які увійшли на сайт." data-all="Ваш номер побачить будь-хто в інтернеті (після натискання «Показати номер»). Email бачать лише роботодавці."></small>
+        <small class="muted">Коли ви відгукуєтеся на вакансію, роботодавець отримує ваші контакти в будь-якому разі.</small>
       </fieldset>
       <div><button class="btn pri">Зберегти профіль</button></div>
     </form>
@@ -140,6 +147,7 @@ $eduRow = static function (int $i, array $x): string {
 </div>
 <script>
 (function(){
+  document.querySelectorAll('.rz-vis-hint').forEach(function(h){var n=h.dataset.for;function upd(){var c=document.querySelector('input[name='+n+']:checked');h.textContent=c?h.dataset[c.value]:'';h.classList.toggle('warn',!!c&&c.value==='all')}document.querySelectorAll('input[name='+n+']').forEach(function(i){i.addEventListener('change',upd)});upd()});
   function wire(root){root.querySelectorAll('[data-del]').forEach(function(b){b.onclick=function(){var row=b.closest('[data-row]'),list=row.parentNode;if(list.querySelectorAll('[data-row]').length>1){row.remove()}else{row.querySelectorAll('input,textarea').forEach(function(i){i.value=''})}}})}
   document.querySelectorAll('[data-add]').forEach(function(b){b.onclick=function(){var k=b.dataset.add,list=document.getElementById(k+'-list'),max=k==='exp'?<?= Resumes::MAX_EXPERIENCE ?>:<?= Resumes::MAX_EDUCATION ?>;
     if(list.querySelectorAll('[data-row]').length>=max)return;var n=+list.dataset.next;list.dataset.next=n+1;

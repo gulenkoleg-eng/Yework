@@ -144,7 +144,7 @@ final class SiteController
                 . (trim($msg) !== '' ? "\n\nПовідомлення:\n$msg" : '')
                 . ($r ? "\n\nРезюме кандидата — у вкладенні (PDF)." : '')
                 . "\n\nУсі відгуки: " . $base . url('/cabinet/vacancies/' . $v['id']) . "\n\n— $site";
-            $files = $r ? [['name' => Resumes::fileName($r), 'mime' => 'application/pdf', 'data' => Resumes::pdf($r, true, (bool) $r['profile']['show_photo'])]] : [];
+            $files = $r ? [['name' => Resumes::fileName($r), 'mime' => 'application/pdf', 'data' => Resumes::pdf($r, true, true, Resumes::vis($r['profile'], 'photo') !== 'nobody')]] : [];
             Messaging::send('email', $to, $text, $r ? 'application_resume' : 'application', "Новий відгук: {$v['title']}", $files);
         } catch (\Throwable $e) {
             error_log('[YEWORK] application notify failed: ' . $e->getMessage());

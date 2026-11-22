@@ -12,7 +12,7 @@
         <span class="rz-ph sm"><?php if ($p['photo_file']): ?><img src="<?= e(Resumes::photoUrl($p)) ?>" alt=""><?php else: ?><?= icon('user', 26) ?><?php endif ?></span>
         <div><h3 style="font-size:19px"><?= e($r['title']) ?></h3>
           <div class="small muted"><?= e($r['name']) ?><?= $p['settlement'] ? ' · ' . e($p['settlement']) : '' ?><?= ($a = Resumes::age($p['birth_year'] !== null ? (int) $p['birth_year'] : null)) ? ' · ' . e($a) : '' ?> · <?= e(EMPLOYMENT_TYPES[$r['employment']] ?? '') ?><?= $r['salary_from'] ? ' · від ' . money((int) $r['salary_from']) . ' грн' : '' ?></div>
-          <div class="small muted">Фото <?= $p['photo_file'] ? ($p['show_photo'] ? 'показується' : 'приховане від роботодавців') : 'немає' ?> · контакти <?= $p['show_contacts'] ? 'відкриті' : 'приховані' ?><?= $r['is_hidden'] ? ' · приховано власником' : '' ?></div>
+          <div class="small muted">Фото: <?= $p['photo_file'] ? e(mb_strtolower(Resumes::VISIBILITY[Resumes::vis($p, 'photo')])) : 'немає' ?> · телефон: <?= e(mb_strtolower(Resumes::VISIBILITY[Resumes::vis($p, 'phone')])) ?><?= $r['is_hidden'] ? ' · приховано власником' : '' ?></div>
         </div>
       </div>
       <div class="small muted" style="text-align:right">Автор: <a href="<?= url('/admin/users/' . $r['user_id']) ?>"><?= e($r['display_name']) ?></a><?php if ($r['author_rejected']): ?><br><span class="tag bad"><?= (int) $r['author_rejected'] ?> відхилень раніше</span><?php endif ?><br><?= e(ago($r['submitted_at'])) ?> · версія <?= (int) $r['version'] ?></div>
