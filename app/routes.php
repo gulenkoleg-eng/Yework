@@ -52,6 +52,9 @@ $router->get('/cabinet/vacancies/{id}', [CabinetController::class, 'vacancyView'
 $router->get('/cabinet/vacancies/{id}/edit', [CabinetController::class, 'vacancyForm'], []);
 $router->post('/cabinet/vacancies/{id}/edit', [CabinetController::class, 'vacancySave'], []);
 $router->post('/cabinet/vacancies/{id}/archive', [CabinetController::class, 'vacancyArchive'], []);
+// GET потрібен, щоб при помилці в датах сторінка вакансії показалася знову з підсвіченими полями.
+$router->get('/cabinet/vacancies/{id}/restore', [CabinetController::class, 'vacancyView'], []);
+$router->post('/cabinet/vacancies/{id}/restore', [CabinetController::class, 'vacancyRestore'], []);
 $router->get('/cabinet/applications', [CabinetController::class, 'applications'], []);
 $router->get('/cabinet/resume', [ResumeController::class, 'form'], []);
 $router->post('/cabinet/resume', [ResumeController::class, 'save'], []);

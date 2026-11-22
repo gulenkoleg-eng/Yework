@@ -13,11 +13,11 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\Stats;
 use App\Core\ValidationException;
+use App\Core\Vacancies;
 
 /** Особистий кабінет: профіль, пароль, профіль роботодавця, вакансії, відгуки. */
 final class CabinetController
 {
-    private const VACANCY_DAYS = 30;
 
     private function me(): array { return App::auth()->user(); }
 
@@ -136,10 +136,14 @@ final class CabinetController
     public function vacancies(Request $req): Response
     {
         $me = $this->me();
-        $rows = App::db()->all("SELECT v.*, s.name AS settlement, (SELECT COUNT(*) FROM {p}applications a WHERE a.vacancy_id = v.id) AS apps
+        $all = App::db()->all("SELECT v.*, s.name AS settlement, (SELECT COUNT(*) FROM {p}applications a WHERE a.vacancy_id = v.id) AS apps
             FROM {p}vacancies v JOIN {p}employers e ON e.id = v.employer_id JOIN {p}settlements s ON s.id = v.settlement_id
             WHERE e.owner_id = ? AND v.deleted_at IS NULL ORDER BY v.updated_at DESC", [$me['id']]);
-        return $this->page('vacancies', 'vacancies', ['title' => 'Мої вакансії', 'rows' => $rows, 'employer' => $this->employer((int) $me['id'])]);
+        $archive = ($req->query['tab'] ?? '') === 'archive';
+        $archived = array_values(array_filter($all, static fn ($r) => $r['status'] === 'archived'));
+        $active = array_values(array_filter($all, static fn ($r) => $r['status'] !== 'archived'));
+        return $this->page('vacancies', 'vacancies', ['title' => 'Мої вакансії', 'rows' => $archive ? $archived : $active, 'archive' => $archive,
+            'nActive' => count($active), 'nArchived' => count($archived), 'employer' => $this->employer((int) $me['id'])]);
     }
 
     private function ownVacancy(int $id): array
@@ -190,12 +194,17 @@ final class CabinetController
         if (mb_strlen($d['description']) < 30) $err['description'] = 'Опишіть роботу детальніше (від 30 символів)';
         $phone = $req->str('contact_phone', 20);
         if ($phone !== '') { $d['contact_phone'] = Crypto::normalizePhone($phone); if (!$d['contact_phone']) $err['contact_phone'] = 'Формат: 067 123 45 67'; }
+        try {
+            [$d['show_from'], $d['show_to']] = Vacancies::period($req, $cur['show_from'] ?? null);
+        } catch (ValidationException $e) {
+            $err += $e->errors;
+        }
         if ($err) throw new ValidationException($err);
 
         $submit = ($req->post['action'] ?? '') === 'submit';
         if ($cur) {
-            // Будь-яка зміна опублікованої або відхиленої вакансії знову проходить модерацію.
-            $status = in_array($cur['status'], ['published', 'rejected'], true) ? 'draft' : $cur['status'];
+            // Будь-яка зміна опублікованої, запланованої, відхиленої чи архівної вакансії знову проходить модерацію.
+            $status = in_array($cur['status'], ['published', 'scheduled', 'rejected', 'archived'], true) ? 'draft' : $cur['status'];
             $db->update('vacancies', [...$d, 'status' => $status, 'updated_at' => Db::now()], 'id = ?', [$cur['id']]);
             $db->run('UPDATE {p}vacancies SET version = version + 1 WHERE id = ?', [$cur['id']]);
             $id = (int) $cur['id'];
@@ -211,10 +220,9 @@ final class CabinetController
                 Audit::log('jobs.vacancy_submitted', 'vacancy', $id);
                 flash('ok', 'Вакансію надіслано на перевірку. Зазвичай це займає до кількох годин.');
             } else {
-                $db->update('vacancies', ['status' => 'published', 'submitted_at' => Db::now(), 'published_at' => Db::now(), 'expires_at' => Db::now(self::VACANCY_DAYS * 86400), 'reject_reason' => null], 'id = ?', [$id]);
+                $st = Vacancies::goLive($id, ['submitted_at' => Db::now()]);
                 Audit::log('jobs.vacancy_published', 'vacancy', $id);
-                Stats::forget();
-                flash('ok', 'Вакансію опубліковано.');
+                flash('ok', $st === 'scheduled' ? 'Вакансію збережено. Вона з’явиться на сайті з ' . date('d.m', strtotime($d['show_from'])) . '.' : 'Вакансію опубліковано.');
             }
         } else {
             flash('ok', 'Чернетку збережено.');
@@ -237,11 +245,29 @@ final class CabinetController
     public function vacancyArchive(Request $req): Response
     {
         $v = $this->ownVacancy((int) $req->params['id']);
-        App::db()->update('vacancies', ['status' => 'archived', 'updated_at' => Db::now()], 'id = ?', [$v['id']]);
-        Audit::log('jobs.vacancy_archived', 'vacancy', $v['id']);
-        Stats::forget();
-        flash('ok', 'Вакансію знято з публікації.');
-        return Response::redirect(url('/cabinet/vacancies'));
+        if (!in_array($v['status'], ['published', 'scheduled'], true)) throw new HttpException(409, 'Цю вакансію вже знято з показу.');
+        $reason = $req->str('reason', 10) === 'hired' ? 'hired' : 'manual';
+        Vacancies::archive((int) $v['id'], $reason);
+        Audit::log('jobs.vacancy_archived', 'vacancy', $v['id'], ['reason' => $reason]);
+        flash('ok', $reason === 'hired' ? 'Вітаємо з новим працівником! Вакансію перенесено в архів. Її можна поновити будь-коли.' : 'Вакансію перенесено в архів. Її можна поновити будь-коли.');
+        return Response::redirect(url('/cabinet/vacancies', ['tab' => 'archive']));
+    }
+
+    /** Поновлення з архіву на новий період. Текст не змінювався — тому без повторної модерації. */
+    public function vacancyRestore(Request $req): Response
+    {
+        $v = $this->ownVacancy((int) $req->params['id']);
+        if ($v['status'] !== 'archived') throw new HttpException(409, 'Поновити можна лише вакансію з архіву.');
+        $employer = $this->employer((int) $this->me()['id']);
+        if (!$employer || $employer['status'] !== 'active') throw new HttpException(403, 'Профіль роботодавця заблоковано.');
+        [$from, $to] = Vacancies::period($req);
+        App::db()->update('vacancies', ['show_from' => $from, 'show_to' => $to, 'updated_at' => Db::now()], 'id = ?', [$v['id']]);
+        $st = Vacancies::goLive((int) $v['id']);
+        Audit::log('jobs.vacancy_restored', 'vacancy', $v['id'], ['from' => $from, 'to' => $to]);
+        flash('ok', $st === 'scheduled'
+            ? 'Вакансію поновлено. Вона з’явиться на сайті ' . date('d.m', strtotime($from)) . ' і буде до ' . date('d.m', strtotime($to)) . ' включно.'
+            : 'Вакансію поновлено. Її показуватимуть до ' . date('d.m.Y', strtotime($to)) . ' включно.');
+        return Response::redirect(url('/cabinet/vacancies/' . $v['id']));
     }
 
     public function applications(Request $req): Response
