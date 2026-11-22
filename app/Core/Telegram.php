@@ -250,6 +250,11 @@ final class Telegram
             'jobs.vacancy_approved' => ['refresh', 'vacancy'], 'jobs.vacancy_rejected' => ['refresh', 'vacancy'], 'jobs.vacancy_archived' => ['refresh', 'vacancy'],
             'resume.approved' => ['refresh', 'resume'], 'resume.rejected' => ['refresh', 'resume'], 'resume.deleted' => ['refresh', 'resume'],
         ];
+        // Майстри (0.5.0): поки лише повідомлення з посиланням, кнопки схвалення — на сайті.
+        if ($action === 'services.master_submitted' && $id !== null && self::ready() && self::groupReady() && self::config()['moderation']) {
+            self::defer([self::class, 'postMaster'], [(int) $id]);
+            return;
+        }
         if (!isset($map[$action]) || $id === null || !self::ready()) return;
         [$what, $entity] = $map[$action];
         if ($what === 'post' && !(self::groupReady() && self::config()['moderation'])) return;
@@ -394,6 +399,17 @@ final class Telegram
             App::db()->run('DELETE FROM {p}telegram_messages WHERE chat_id = ? AND message_id = ?', [(int) $m['chat']['id'], (int) $m['message_id']]);
             App::db()->insert('telegram_messages', ['entity_type' => $type, 'entity_id' => $id, 'chat_id' => (int) $m['chat']['id'], 'message_id' => (int) $m['message_id']]);
         }
+    }
+
+    /** Новий профіль майстра на перевірці — коротке повідомлення в групу. */
+    public static function postMaster(int $id): void
+    {
+        $m = Services::find($id);
+        if (!$m || $m['status'] !== 'pending') return;
+        $text = "🆕 Нове на модерації\n\n🛠 <b>Майстер #$id</b>\n<b>" . self::h($m['name']) . '</b>' . "\n📍 " . self::h(trim(($m['settlement'] ?? '') . ' · ' . $m['category'], ' ·'))
+            . (trim((string) $m['about']) !== '' ? "\n\n" . self::h(self::excerpt($m['about'], 300)) : '') . "\n\n⏳ Перевірте на сайті: адмінка → «Майстри».";
+        $url = self::link('/admin/masters');
+        self::sendToGroup('moderation', $text, self::isPublicUrl($url) ? [[['text' => '🔗 Відкрити на сайті', 'url' => $url]]] : null);
     }
 
     /** Оновити всі відкриті повідомлення про оголошення: хто і що вирішив, прибрати кнопки. */

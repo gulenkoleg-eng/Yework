@@ -28,6 +28,7 @@ final class CabinetController
             'ads' => (int) ($db->value('SELECT COUNT(*) FROM {p}banners b JOIN {p}employers e ON e.id = b.employer_id WHERE e.owner_id = ? AND b.status IN (\'pending\', \'approved\') AND b.ends_on >= ?', [$uid, date('Y-m-d')]) ?? 0),
             'vacancies' => (int) $db->value('SELECT COUNT(*) FROM {p}vacancies v JOIN {p}employers e ON e.id = v.employer_id WHERE e.owner_id = ? AND v.deleted_at IS NULL', [$uid]),
             'applications' => (int) $db->value('SELECT COUNT(*) FROM {p}applications WHERE user_id = ?', [$uid]),
+            'orders' => \App\Core\Services::newOrdersFor($uid),
         ];
     }
 
@@ -45,6 +46,7 @@ final class CabinetController
             'phone' => Crypto::decrypt($me['phone_enc']), 'email' => Crypto::decrypt($me['email_enc']),
             'employer' => $this->employer((int) $me['id']),
             'resume' => \App\Core\Resumes::ofUser((int) $me['id']),
+            'master' => (static function (int $uid) { try { return \App\Core\Services::ofUser($uid); } catch (\PDOException) { return null; } })((int) $me['id']),
         ]);
     }
 

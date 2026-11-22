@@ -179,6 +179,25 @@ final class Installer
         }
     }
 
+    /** Категорії послуг майстрів (0.5.0). Адміністратор може перейменувати, додати чи приховати їх в адмінці. */
+    public const SERVICE_CATEGORIES = [
+        ['conditioners', 'Кондиціонери та вентиляція'], ['cctv', 'Відеонагляд і сигналізація'], ['repair', 'Ремонт квартир і будинків'],
+        ['construction', 'Будівельні роботи, покрівля'], ['electric', 'Електрика'], ['plumbing', 'Сантехніка та опалення'],
+        ['windows', 'Вікна, двері, ворота'], ['appliances', 'Ремонт побутової техніки'], ['auto', 'Авторемонт і СТО'],
+        ['furniture', 'Меблі на замовлення'], ['computers', 'Комп’ютери та телефони'], ['transport', 'Вантажоперевезення'],
+        ['garden', 'Сад, город, покіс'], ['cleaning', 'Прибирання та клінінг'], ['beauty', 'Краса та здоров’я'],
+        ['tutors', 'Репетитори та навчання'], ['events', 'Фото, відео, свята'], ['other', 'Інше'],
+    ];
+
+    public static function seedServiceCategories(Db $db): void
+    {
+        // Лише при першому заповненні: так адміністратор може видаляти й перейменовувати категорії, і вони не повертаються після оновлень.
+        if ($db->value('SELECT COUNT(*) FROM {p}service_categories')) return;
+        foreach (self::SERVICE_CATEGORIES as $i => [$slug, $name]) {
+            $db->run('INSERT IGNORE INTO {p}service_categories (slug, name, sort) VALUES (?,?,?)', [$slug, $name, ($i + 1) * 10]);
+        }
+    }
+
     /** 6 стандартних тем; обрана стає активною. */
     public static function seedThemes(Db $db, string $activeSlug, ?int $actorId): void
     {
@@ -219,7 +238,8 @@ final class Installer
             $steps[] = 'Права та стартові ролі';
             self::seedReference($db);
             self::seedJobCategories($db);
-            $steps[] = 'Довідник громад і категорій вакансій';
+            self::seedServiceCategories($db);
+            $steps[] = 'Довідник громад, категорій вакансій і послуг';
             $owner = $db->insert('users', [
                 'login' => $in['admin']['login'], 'display_name' => $in['admin']['displayName'],
                 'password_hash' => Crypto::hashPassword($in['admin']['password']), 'owner_flag' => 1,
@@ -294,6 +314,7 @@ final class Installer
         $w = self::migrate($db);
         self::syncPermissions($db);
         self::seedJobCategories($db);
+        self::seedServiceCategories($db);
         return $w;
     }
 }

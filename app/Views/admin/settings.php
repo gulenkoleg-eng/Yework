@@ -5,6 +5,7 @@
   <div class="grid2"><?= input_field('name', 'Назва', ['value' => $site['name']]) ?><?= input_field('slogan', 'Слоган', ['value' => $site['slogan']]) ?></div>
   <?= input_field('url', 'Адреса сайту', ['value' => $site['url']]) ?>
   <label class="check"><input type="checkbox" name="pre_jobs" value="1" <?= !empty($pre['jobs']) ? 'checked' : '' ?>> Премодерація вакансій (публікація лише після перевірки модератором)</label>
+  <label class="check"><input type="checkbox" name="pre_services" value="1" <?= ($pre['services'] ?? true) ? 'checked' : '' ?>> Премодерація майстрів (профіль майстра з’являється в «Послугах» лише після перевірки; подальші зміни видно одразу, а модератор бачить їх у вкладці «Змінені»)</label>
   <div><button class="btn pri">Зберегти</button></div>
 </form>
 <form class="card pad stack" method="post" action="<?= url('/admin/settings') ?>"><?= csrf_field() ?><input type="hidden" name="section" value="logo">

@@ -39,6 +39,15 @@
     <div class="gridp">
       <?php foreach (['vacancy_bump', 'vacancy_highlight', 'vacancy_urgent'] as $key): ?><?= input_field($key, $L[$key], ['value' => $prices[$key], 'inputmode' => 'numeric']) ?><?php endforeach ?>
     </div>
+    <h3 style="margin-top:6px">Послуги майстрів</h3>
+    <p class="small muted">Скільки об’єктів із фото майстер додає в портфоліо безкоштовно. Більше об’єктів і підняття в каталозі — майбутні платні опції: поки монетизацію вимкнено, майстри бачать їх сірими з позначкою «Скоро».</p>
+    <div class="gridp">
+      <?= input_field('svc_works', 'Безкоштовно об’єктів у портфоліо', ['value' => $svcLimits['works'], 'inputmode' => 'numeric', 'hint' => 'Від 0 до 50. Зараз ' . $svcLimits['works']]) ?>
+      <?= input_field('svc_photos', 'Фото в одному об’єкті', ['value' => $svcLimits['photos'], 'inputmode' => 'numeric', 'hint' => 'Від 1 до 20']) ?>
+    </div>
+    <div class="gridp">
+      <?php foreach (['master_more_works', 'master_top'] as $key): ?><?= input_field($key, $L[$key], ['value' => $prices[$key], 'inputmode' => 'numeric']) ?><?php endforeach ?>
+    </div>
     <h3 style="margin-top:6px">Реквізити для рахунків</h3>
     <p class="small muted">Потрібні, коли ввімкнете монетизацію: з них роботодавець отримує рахунок на оплату банера.</p>
     <div class="grid2"><?= input_field('req_name', 'Отримувач (ФОП або підприємство)', ['value' => $req['name'] ?? '', 'placeholder' => 'ФОП Іваненко І. І.']) ?><?= input_field('req_code', 'ЄДРПОУ / РНОКПП', ['value' => $req['code'] ?? '', 'inputmode' => 'numeric']) ?></div>

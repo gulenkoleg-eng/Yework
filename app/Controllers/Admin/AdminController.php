@@ -168,7 +168,7 @@ final class AdminController
             'employers' => (int) $db->value('SELECT COUNT(*) FROM {p}employers WHERE deleted_at IS NULL'),
         ];
         return $this->render('billing', 'billing', ['title' => 'Монетизація', 'on' => Ads::monetizationOn(), 'prices' => Ads::prices(), 'slots' => Ads::slots(),
-            'req' => (array) App::setting('billing.requisites', []), 'k' => $k,
+            'req' => (array) App::setting('billing.requisites', []), 'k' => $k, 'svcLimits' => \App\Core\Services::limits(),
             'canToggle' => $a->can('billing.monetization:manage_settings'), 'canEdit' => $a->can('billing.plan:update')]);
     }
 
@@ -193,6 +193,10 @@ final class AdminController
             }
             App::setSetting('billing.prices', $prices, $me);
             App::setSetting('ads.slots', max(1, min(10, (int) $req->input('slots', Ads::DEFAULT_SLOTS))), $me);
+            $lim = \App\Core\Services::limits();
+            $svc = ['works' => max(0, min(50, (int) $req->input('svc_works', $lim['works']))), 'photos' => max(1, min(20, (int) $req->input('svc_photos', $lim['photos'])))];
+            if ($svc !== $lim) Audit::log('services.limits_updated', 'settings', 'services.limits', $svc);
+            App::setSetting('services.limits', $svc, $me);
             App::setSetting('billing.requisites', ['name' => $req->str('req_name', 200), 'code' => preg_replace('/\D/', '', $req->str('req_code', 12)), 'iban' => strtoupper(preg_replace('/\s/', '', $req->str('req_iban', 40))),
                 'bank' => $req->str('req_bank', 120), 'note' => $req->str('req_note', 300)], $me);
             Audit::log('billing.prices_updated', 'settings', 'billing.prices', $prices);
@@ -364,7 +368,7 @@ final class AdminController
             App::setSetting('site.name', $name, $me);
             App::setSetting('site.slogan', $req->str('slogan', 80), $me);
             App::setSetting('site.url', rtrim($req->str('url', 200), '/'), $me);
-            App::setSetting('moderation.premoderation', ['jobs' => !empty($req->post['pre_jobs']), 'gigs' => true, 'services' => true], $me);
+            App::setSetting('moderation.premoderation', ['jobs' => !empty($req->post['pre_jobs']), 'gigs' => true, 'services' => !empty($req->post['pre_services'])], $me);
         } elseif ($section === 'logo') {
             App::setSetting('employers.logo', ['hint' => !empty($req->post['hint']), 'hintText' => $req->str('hintText', 300) ?: logo_settings()['hintText'],
                 'perk' => !empty($req->post['perk']), 'perkText' => $req->str('perkText', 200)], $me);

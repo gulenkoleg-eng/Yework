@@ -41,6 +41,16 @@ final class Audit
         'resume.created' => 'Створено резюме', 'resume.submitted' => 'Резюме подано на модерацію', 'resume.approved' => 'Резюме схвалено',
         'resume.rejected' => 'Резюме відхилено', 'resume.deleted' => 'Резюме видалено', 'resume.invited' => 'Запрошення за резюме',
         'profile.photo_uploaded' => 'Завантажено фото профілю', 'profile.photo_deleted' => 'Видалено фото профілю',
+        'services.master_created' => 'Створено профіль майстра', 'services.master_submitted' => 'Профіль майстра подано на перевірку',
+        'services.master_published' => 'Профіль майстра опубліковано', 'services.master_approved' => 'Профіль майстра схвалено',
+        'services.master_rejected' => 'Профіль майстра відхилено', 'services.master_archived' => 'Профіль майстра в архіві',
+        'services.master_restored' => 'Профіль майстра поновлено', 'services.master_paused' => 'Майстер поставив профіль на паузу',
+        'services.master_resumed' => 'Майстер зняв профіль з паузи', 'services.prices_updated' => 'Майстер змінив прайс',
+        'services.work_created' => 'Додано об’єкт у портфоліо', 'services.work_updated' => 'Змінено об’єкт у портфоліо', 'services.work_deleted' => 'Видалено об’єкт з портфоліо',
+        'services.order_created' => 'Нове замовлення майстру', 'services.order_accept' => 'Майстер прийняв замовлення', 'services.order_decline' => 'Майстер відмовився від замовлення',
+        'services.order_cancel' => 'Клієнт скасував замовлення', 'services.order_done' => 'Замовлення виконано',
+        'services.review_saved' => 'Відгук про майстра', 'services.review_hidden' => 'Відгук приховано', 'services.review_shown' => 'Відгук повернуто',
+        'services.category_added' => 'Додано категорію послуг', 'services.categories_updated' => 'Змінено категорії послуг', 'services.limits_updated' => 'Змінено ліміти портфоліо',
     ];
 
     public static function label(string $action): string
