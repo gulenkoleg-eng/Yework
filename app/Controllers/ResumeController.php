@@ -80,6 +80,7 @@ final class ResumeController
         $r = Resumes::ofUser($uid);
         if ($photoChanged && $r && $r['status'] === 'published') {
             $db->update('resumes', ['status' => 'pending', 'submitted_at' => Db::now()], 'id = ?', [$r['id']]);
+            Audit::log('resume.submitted', 'resume', $r['id'], ['photo' => true]);
             flash('ok', 'Профіль збережено. Резюме з новим фото повернеться в пошук після перевірки модератором.');
         } else {
             flash('ok', 'Профіль збережено.');

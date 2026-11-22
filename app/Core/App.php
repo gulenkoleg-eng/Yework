@@ -112,7 +112,8 @@ final class App
         }
 
         Updater::autoUpgrade();
-        if ($req->method === 'POST') Csrf::verify($req);
+        // Вебхук Telegram перевіряється власним секретом (заголовок X-Telegram-Bot-Api-Secret-Token), а не CSRF.
+        if ($req->method === 'POST' && $path !== '/telegram/webhook') Csrf::verify($req);
         Stats::trackVisit($req);
 
         $router = new Router();

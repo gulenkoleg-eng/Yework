@@ -420,6 +420,7 @@ final class Updater
                 self::maintenance(false);
                 Audit::log('system.updated', 'version', $p['to'], ['from' => $p['from'], 'to' => $p['to'], 'backup' => $p['backup'], 'migrations' => $applied, 'warnings' => $warnings], $actorId);
                 @unlink(self::cachePath());
+                Telegram::afterVersionChange();
                 return ['ok' => true, 'from' => $p['from'], 'to' => $p['to'], 'migrations' => $applied, 'warnings' => $warnings];
             } catch (Throwable $e) {
                 error_log('[YEWORK] update finish failed: ' . $e->getMessage());
@@ -450,6 +451,7 @@ final class Updater
             Installer::upgrade(App::db());
             if ($have !== false) Audit::log('system.upgraded', 'version', YW_VERSION, ['from' => trim((string) $have), 'to' => YW_VERSION, 'auto' => true], null);
             self::markVersion();
+            if ($have !== false) Telegram::afterVersionChange();
         } catch (Throwable $e) {
             error_log('[YEWORK] auto upgrade failed: ' . $e->getMessage());
         } finally {

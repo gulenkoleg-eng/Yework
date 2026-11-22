@@ -8,6 +8,8 @@ use App\Controllers\ResumeController;
 use App\Controllers\SiteController;
 use App\Controllers\Admin\AdminController;
 use App\Controllers\Admin\ResumeModerationController;
+use App\Controllers\Admin\TelegramAdminController;
+use App\Controllers\TelegramController;
 
 /** @var App\Core\Router $router */
 
@@ -104,3 +106,9 @@ $router->post('/admin/updates/backup', [AdminController::class, 'updatesBackup']
 $router->post('/admin/updates/restore', [AdminController::class, 'updatesRestore'], ['system.update:run']);
 $router->post('/admin/updates/delete', [AdminController::class, 'updatesDelete'], ['system.update:run']);
 $router->post('/admin/updates/settings', [AdminController::class, 'updatesSettings'], ['settings.system:manage_settings']);
+
+// Telegram-бот: прив'язка для персоналу, налаштування для адміністраторів, вебхук для Telegram
+$router->get('/admin/telegram', [TelegramAdminController::class, 'index'], []);
+$router->post('/admin/telegram/me', [TelegramAdminController::class, 'me'], []);
+$router->post('/admin/telegram/manage', [TelegramAdminController::class, 'manage'], ['settings.system:manage_settings']);
+$router->post('/telegram/webhook', [TelegramController::class, 'webhook']);
