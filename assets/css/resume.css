@@ -1,0 +1,53 @@
+/* YEWORK — профіль шукача й резюме (0.4.0). Окремий файл, щоб не змішувати з базовими стилями. */
+.rz-person{display:grid;grid-template-columns:150px minmax(0,1fr);gap:20px;align-items:start}
+.rz-photo{display:flex;flex-direction:column;gap:8px;align-items:stretch}
+.rz-ph{width:150px;aspect-ratio:3/4;border-radius:var(--r-card);border:var(--bw) solid var(--c-border);background:var(--c-secondary);display:grid;place-items:center;overflow:hidden;color:var(--c-muted)}
+.rz-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.rz-ph.sm{width:64px;border-radius:10px}
+.rz-ph.xs{width:44px;border-radius:8px}
+.rz-file{font-size:13px;max-width:150px}
+.rz-file::file-selector-button{font:inherit;border:var(--bw) solid var(--c-border);background:var(--c-card);color:var(--c-text);border-radius:var(--r-btn);padding:6px 10px;margin-right:6px;cursor:pointer}
+.rz-privacy{border:var(--bw) dashed var(--c-border);border-radius:var(--r-card);padding:14px 16px;display:grid;gap:12px;margin:0}
+.rz-privacy legend{font-weight:700;padding:0 6px}
+.rz-privacy .check small{display:block;color:var(--c-muted);font-size:13px;margin-top:2px}
+.rz-rows{display:grid;gap:12px}
+.rz-row{border:var(--bw) solid var(--c-border);border-radius:var(--r-card);padding:14px;display:grid;gap:10px;background:var(--c-bg)}
+.rz-row .grid2{gap:10px}
+.rz-row-h{display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:700;font-size:14px;color:var(--c-muted)}
+.rz-drive{display:flex;flex-wrap:wrap;gap:8px}
+.rz-drive label{display:inline-flex;align-items:center;gap:6px;border:var(--bw) solid var(--c-border);border-radius:999px;padding:6px 12px;cursor:pointer;font-weight:700}
+.rz-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.rz-h{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.rz-sec{display:grid;gap:10px}
+.rz-sec h2{font-size:20px}
+.rz-sec h3{font-size:17px;margin:6px 0 0}
+
+/* Сторінка резюме */
+.rz{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:22px;align-items:start}
+.rz-main{padding:28px;display:grid;gap:22px}
+.rz-top{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:start}
+.rz-top .rz-ph{width:132px}
+.rz-name{font-size:clamp(24px,3.4vw,32px)}
+.rz-title{font-size:19px;font-weight:700;color:var(--c-primary)}
+.rz-item{display:grid;gap:4px;padding:12px 0;border-top:var(--bw) solid var(--c-border)}
+.rz-item:first-of-type{border-top:0;padding-top:4px}
+.rz-item-h{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.rz-lock{display:grid;gap:10px;text-align:center;padding:22px;border:var(--bw) dashed var(--c-border);border-radius:var(--r-card)}
+
+/* Список резюме */
+.rlist{display:grid;gap:12px}
+.rcard{padding:16px 18px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;text-decoration:none;color:inherit;align-items:start;transition:border-color .15s}
+.rcard:hover{border-color:var(--c-primary)}
+.rcard h3{font-size:18px}
+.rcard .meta{display:flex;flex-wrap:wrap;gap:6px 14px;color:var(--c-muted);font-size:14px}
+.rcard .meta span{display:inline-flex;align-items:center;gap:5px}
+
+@media (max-width:900px){.rz{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:620px){
+  .rz-person{grid-template-columns:minmax(0,1fr)}
+  .rz-photo{flex-direction:row;align-items:center;flex-wrap:wrap}
+  .rz-ph{width:110px}
+  .rz-main{padding:18px}
+  .rz-top{grid-template-columns:minmax(0,1fr)}
+  .rz-top .rz-ph{width:110px;order:-1}
+}

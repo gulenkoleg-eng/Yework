@@ -44,6 +44,7 @@ final class CabinetController
             'title' => 'Кабінет',
             'phone' => Crypto::decrypt($me['phone_enc']), 'email' => Crypto::decrypt($me['email_enc']),
             'employer' => $this->employer((int) $me['id']),
+            'resume' => \App\Core\Resumes::ofUser((int) $me['id']),
         ]);
     }
 

@@ -16,6 +16,7 @@
       <div class="card list"><?php foreach ($apps as $a): ?>
         <div class="stack" style="gap:6px"><div class="row"><b><?= e($a['display_name']) ?></b><span class="small muted"><?= e(ago($a['created_at'])) ?></span></div>
           <div class="row small"><?php if ($a['phone']): ?><a href="tel:<?= e($a['phone']) ?>"><?= icon('phone', 14) ?> <?= e(phone_pretty($a['phone'])) ?></a><?php endif ?><?php if ($a['email']): ?><a href="mailto:<?= e($a['email']) ?>"><?= e($a['email']) ?></a><?php endif ?></div>
+          <?php if ($a['resume_id']): ?><div class="row small"><a class="btn sm" href="<?= url('/resumes/' . $a['resume_id']) ?>">Резюме</a><a class="btn sm ghost" href="<?= url('/resumes/' . $a['resume_id'] . '/pdf', ['dl' => 1]) ?>">Завантажити PDF</a></div><?php endif ?>
           <?php if (trim((string) $a['message']) !== ''): ?><p class="prose small"><?= e($a['message']) ?></p><?php endif ?></div>
       <?php endforeach ?></div>
     <?php endif ?>
