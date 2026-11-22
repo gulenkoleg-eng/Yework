@@ -23,7 +23,24 @@ final class Resumes
     public static function profile(int $uid): array
     {
         $p = App::db()->one('SELECT p.*, s.name AS settlement FROM {p}profiles p LEFT JOIN {p}settlements s ON s.id = p.settlement_id WHERE p.user_id = ?', [$uid]);
-        return $p ?: ['user_id' => $uid, 'full_name' => null, 'birth_year' => null, 'settlement_id' => null, 'settlement' => null, 'photo_file' => null, 'photo_updated_at' => null, 'show_photo' => 0, 'show_contacts' => 0];
+        return $p ?: ['user_id' => $uid, 'full_name' => null, 'birth_year' => null, 'settlement_id' => null, 'settlement' => null, 'photo_file' => null, 'photo_updated_at' => null, 'show_photo' => 1, 'show_contacts' => 1, 'photo_visibility' => 'employers', 'phone_visibility' => 'employers'];
+    }
+
+    /** Варіанти видимості фото й телефону. */
+    public const VISIBILITY = ['nobody' => 'Нікому', 'employers' => 'Лише роботодавцям', 'all' => 'Усім відвідувачам'];
+
+    public static function vis(array $prof, string $what): string
+    {
+        $v = (string) ($prof[$what . '_visibility'] ?? '');
+        if (isset(self::VISIBILITY[$v])) return $v;
+        // До 0.4.4 були лише галочки «показувати роботодавцям».
+        return !empty($prof[$what === 'photo' ? 'show_photo' : 'show_contacts']) ? 'employers' : 'nobody';
+    }
+
+    /** Чи відкрила людина фото або телефон усім (тоді гості бачать і повне резюме). */
+    public static function openToAll(array $prof): bool
+    {
+        return self::vis($prof, 'photo') === 'all' || self::vis($prof, 'phone') === 'all';
     }
 
     public static function saveProfile(int $uid, array $set): void
@@ -81,19 +98,25 @@ final class Resumes
 
     /**
      * Що може бачити поточний відвідувач.
-     * @return array{level:string, contacts:bool, photo:bool, reason:string}  level: none | preview | full
+     * @return array{level:string, phone:bool, email:bool, contacts:bool, photo:bool, reason:string}  level: none | preview | full
+     *   phone/email — чи можна показати цьому відвідувачу; contacts = phone || email.
      */
     public static function access(array $r, ?array $viewer): array
     {
         $prof = $r['profile'];
         $hasPhoto = (bool) $prof['photo_file'];
+        $pv = self::vis($prof, 'photo');
+        $tv = self::vis($prof, 'phone');
+        $out = static fn (string $level, bool $phone, bool $email, bool $photo, string $reason) => ['level' => $level, 'phone' => $phone, 'email' => $email, 'contacts' => $phone || $email, 'photo' => $photo, 'reason' => $reason];
         $isOwner = $viewer && (int) $viewer['id'] === (int) $r['user_id'];
-        if ($isOwner) return ['level' => 'full', 'contacts' => true, 'photo' => $hasPhoto, 'reason' => 'owner'];
-        if ($viewer && App::auth()->can('jobs.listing:moderate')) return ['level' => 'full', 'contacts' => (bool) $prof['show_contacts'], 'photo' => $hasPhoto, 'reason' => 'moderator'];
-        if ($viewer && self::appliedTo($r, (int) $viewer['id'])) return ['level' => 'full', 'contacts' => true, 'photo' => $hasPhoto && $prof['show_photo'], 'reason' => 'applicant'];
-        if (!self::isPublic($r)) return ['level' => 'none', 'contacts' => false, 'photo' => false, 'reason' => 'hidden'];
-        if ($viewer && self::employerOf((int) $viewer['id'])) return ['level' => 'full', 'contacts' => (bool) $prof['show_contacts'], 'photo' => $hasPhoto && $prof['show_photo'], 'reason' => 'employer'];
-        return ['level' => 'preview', 'contacts' => false, 'photo' => false, 'reason' => $viewer ? 'no_employer' : 'guest'];
+        if ($isOwner) return $out('full', true, true, $hasPhoto, 'owner');
+        if ($viewer && App::auth()->can('jobs.listing:moderate')) return $out('full', $tv !== 'nobody', $tv !== 'nobody', $hasPhoto, 'moderator');
+        if ($viewer && self::appliedTo($r, (int) $viewer['id'])) return $out('full', true, true, $hasPhoto && $pv !== 'nobody', 'applicant');
+        if (!self::isPublic($r)) return $out('none', false, false, false, 'hidden');
+        if ($viewer && self::employerOf((int) $viewer['id'])) return $out('full', $tv !== 'nobody', $tv !== 'nobody', $hasPhoto && $pv !== 'nobody', 'employer');
+        // Людина сама відкрила себе всім: гості бачать повне резюме, фото й телефон (email — ні, його найбільше збирають для спаму).
+        if (self::openToAll($prof)) return $out('full', $tv === 'all', false, $hasPhoto && $pv === 'all', 'public');
+        return $out('preview', false, false, false, $viewer ? 'no_employer' : 'guest');
     }
 
     public static function contacts(array $r): array
@@ -128,10 +151,11 @@ final class Resumes
     /* ---------------- PDF ---------------- */
 
     /**
-     * @param bool $withContacts показувати телефон і email
+     * @param bool $withPhone показувати телефон
+     * @param bool $withEmail показувати email
      * @param bool $withPhoto вставити фото (лише якщо людина дозволила)
      */
-    public static function pdf(array $r, bool $withContacts, bool $withPhoto): string
+    public static function pdf(array $r, bool $withPhone, bool $withEmail, bool $withPhoto): string
     {
         $pdf = new Pdf();
         $pdf->setInfo('Резюме: ' . $r['name'] . ' — ' . $r['title'], (string) App::setting('site.name', 'YEWORK'));
@@ -183,9 +207,9 @@ final class Resumes
             $r['salary_from'] ? 'від ' . money((int) $r['salary_from']) . ' грн/міс' : null,
         ]);
         $para(implode('  ·  ', $facts), 'r', 10, $muted, $L, $textW, 14);
-        if ($withContacts) {
+        if ($withPhone || $withEmail) {
             $c = self::contacts($r);
-            $line = implode('  ·  ', array_filter([$c['phone'] ? 'Тел.: ' . phone_pretty($c['phone']) : null, $c['email'] ? 'Email: ' . $c['email'] : null]));
+            $line = implode('  ·  ', array_filter([$withPhone && $c['phone'] ? 'Тел.: ' . phone_pretty($c['phone']) : null, $withEmail && $c['email'] ? 'Email: ' . $c['email'] : null]));
             if ($line !== '') { $y += 2; $para($line, 'b', 10, $ink, $L, $textW, 14); }
         } else {
             $y += 2;
