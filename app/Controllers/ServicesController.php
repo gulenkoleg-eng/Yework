@@ -258,6 +258,7 @@ final class ServicesController
             $id = $db->insert('masters', [...$d, 'user_id' => $uid, 'status' => 'draft']);
             Audit::log('services.master_created', 'master', $id);
             $cur = ['id' => $id, 'status' => 'draft', 'period_months' => $d['period_months']];
+            $isNew = true;
         } else {
             $id = (int) $cur['id'];
             $changed = false;
@@ -284,11 +285,11 @@ final class ServicesController
                 flash('ok', 'Профіль опубліковано в розділі «Послуги».');
             }
         } elseif (!$submit && $cur['status'] === 'draft') {
-            flash('ok', 'Чернетку збережено. Коли все заповните, натисніть «Опублікувати».');
+            flash('ok', !empty($isNew) ? 'Чернетку збережено. Тепер додайте прайс і фото робіт нижче, а потім натисніть «Надіслати на перевірку».' : 'Чернетку збережено. Коли все заповните, натисніть «Надіслати на перевірку».');
         } else {
             flash('ok', $cur['status'] === 'published' ? 'Зміни збережено й уже видно на сайті.' : 'Профіль збережено.');
         }
-        return Response::redirect(url('/cabinet/master'));
+        return Response::redirect(url('/cabinet/master') . (!empty($isNew) ? '#prices' : ''));
     }
 
     private function pricesSave(Request $req): Response

@@ -50,6 +50,9 @@ $nWorks = count($works);
       </form>
     <?php endif ?>
     <?= form_alert() ?>
+    <nav class="svc-cats" aria-label="Розділи профілю майстра" style="margin:0">
+      <a class="on" href="#profile">1. Профіль</a><a href="<?= $m ? '#prices' : '#next' ?>">2. Прайс</a><a href="<?= $m ? '#works' : '#next' ?>">3. Мої роботи (фото об’єктів)</a>
+    </nav>
 
     <form id="profile" class="card pad stack" method="post" action="<?= url('/cabinet/master') ?>" enctype="multipart/form-data"><?= csrf_field() ?><input type="hidden" name="section" value="profile">
       <div><h2 style="font-size:20px">Профіль майстра</h2><p class="small muted">Це бачать клієнти в каталозі «Послуги» і на вашій сторінці.</p></div>
@@ -100,6 +103,12 @@ $nWorks = count($works);
       </div>
     </form>
 
+    <?php if (!$m): ?>
+      <div id="next" class="card pad stack" style="border-style:dashed">
+        <h2 style="font-size:20px">Далі: прайс і фото робіт</h2>
+        <p class="muted" style="margin:0">Після першого збереження профілю тут з’являться ще два блоки: <b>«Прайс»</b> (послуги й обладнання з цінами) і <b>«Мої роботи»</b> — до <?= plural((int) $limits['works'], 'об’єкта', 'об’єктів', 'об’єктів') ?> з фото, у кожному до <?= (int) $limits['photos'] ?> фото. Натисніть «Зберегти чернетку» вище, якщо хочете спершу додати прайс і фото, а вже потім надіслати профіль на перевірку.</p>
+      </div>
+    <?php endif ?>
     <?php if ($m): ?>
     <form id="prices" class="card pad stack" method="post" action="<?= url('/cabinet/master') ?>"><?= csrf_field() ?><input type="hidden" name="section" value="prices">
       <div><h2 style="font-size:20px">Прайс</h2><p class="small muted">Послуги з ціною «від – до» або точною сумою, а також обладнання й матеріали, які ви продаєте разом із роботою (наприклад, сам кондиціонер). Зміни прайсу видно одразу.</p></div>
