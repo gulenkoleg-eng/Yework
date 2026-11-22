@@ -17,6 +17,12 @@ final class Audit
             'ip' => $ip,
             'data' => $data ? json_encode($data, JSON_UNESCAPED_UNICODE) : null,
         ]);
+        // Сповіщення в Telegram (якщо бота налаштовано). Помилка бота ніколи не ламає дію на сайті.
+        try {
+            Telegram::onAudit($action, $entityType, $entityId);
+        } catch (\Throwable $e) {
+            error_log('[YEWORK] telegram: ' . $e->getMessage());
+        }
     }
 
     public const LABELS = [
@@ -32,10 +38,13 @@ final class Audit
         'system.restored' => 'Відновлено з резервної копії', 'system.backup_created' => 'Створено резервну копію',
         'system.backup_deleted' => 'Видалено резервну копію', 'system.update_settings' => 'Змінено підключення до GitHub',
         'content.page_updated' => 'Змінено сторінку сайту', 'content.page_reset' => 'Сторінку повернуто до тексту за замовчуванням',
+        'resume.created' => 'Створено резюме', 'resume.submitted' => 'Резюме подано на модерацію', 'resume.approved' => 'Резюме схвалено',
+        'resume.rejected' => 'Резюме відхилено', 'resume.deleted' => 'Резюме видалено', 'resume.invited' => 'Запрошення за резюме',
+        'profile.photo_uploaded' => 'Завантажено фото профілю', 'profile.photo_deleted' => 'Видалено фото профілю',
     ];
 
     public static function label(string $action): string
     {
-        return self::LABELS[$action] ?? $action;
+        return self::LABELS[$action] ?? Telegram::LABELS[$action] ?? $action;
     }
 }

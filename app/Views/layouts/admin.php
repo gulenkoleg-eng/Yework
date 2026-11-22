@@ -20,6 +20,7 @@ $items = [
   ['themes', 'Теми оформлення', '/admin/themes', 'theming.theme:view'],
   ['outbox', 'Повідомлення', '/admin/outbox', 'settings.system:manage_settings'],
   ['settings', 'Налаштування', '/admin/settings', 'settings.system:manage_settings'],
+  ['telegram', 'Telegram', '/admin/telegram', null],
   ['updates', 'Оновлення', '/admin/updates', 'system.update:run', $a->can('system.update:run') && \App\Core\Updater::cachedNewer() ? 'нове' : 0],
 ];
 ?><!doctype html>
