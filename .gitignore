@@ -11,3 +11,4 @@
 !/storage/cache/rl/.gitkeep
 /dist/
 .DS_Store
+/storage/uploads/

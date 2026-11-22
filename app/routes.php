@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use App\Controllers\AdsController;
 use App\Controllers\AuthController;
 use App\Controllers\CabinetController;
 use App\Controllers\SiteController;
@@ -14,6 +15,8 @@ $router->get('/jobs', [SiteController::class, 'jobs']);
 $router->get('/jobs/{id}', [SiteController::class, 'vacancy']);
 $router->post('/jobs/{id}/apply', [SiteController::class, 'apply'], []);
 $router->get('/rules', [SiteController::class, 'rules']);
+$router->get('/media/{kind}/{file}', [SiteController::class, 'media']);
+$router->get('/go/{id}', [SiteController::class, 'promoClick']);
 
 // Вхід і реєстрація
 $router->get('/login', [AuthController::class, 'loginForm']);
@@ -38,11 +41,23 @@ $router->get('/cabinet/vacancies/{id}/edit', [CabinetController::class, 'vacancy
 $router->post('/cabinet/vacancies/{id}/edit', [CabinetController::class, 'vacancySave'], []);
 $router->post('/cabinet/vacancies/{id}/archive', [CabinetController::class, 'vacancyArchive'], []);
 $router->get('/cabinet/applications', [CabinetController::class, 'applications'], []);
+$router->post('/cabinet/employer/logo-delete', [CabinetController::class, 'logoDelete'], []);
+
+// Реклама й послуги роботодавця
+$router->get('/cabinet/ads', [AdsController::class, 'index'], []);
+$router->post('/cabinet/ads', [AdsController::class, 'order'], []);
+$router->get('/cabinet/ads/{id}', [AdsController::class, 'view'], []);
+$router->post('/cabinet/ads/{id}/cancel', [AdsController::class, 'cancel'], []);
+$router->get('/cabinet/ads/{id}/invoice', [AdsController::class, 'invoice'], []);
 
 // Адмін-панель (права перевіряються і тут, і в контролері)
 $router->get('/admin', [AdminController::class, 'dashboard'], []);
 $router->get('/admin/moderation', [AdminController::class, 'moderation'], ['jobs.listing:moderate']);
 $router->post('/admin/moderation/{id}', [AdminController::class, 'moderate'], ['jobs.listing:moderate']);
+$router->get('/admin/banners', [AdminController::class, 'banners'], ['ads.banner:moderate']);
+$router->post('/admin/banners/{id}', [AdminController::class, 'bannerModerate'], ['ads.banner:moderate']);
+$router->get('/admin/billing', [AdminController::class, 'billing'], ['billing.plan:view']);
+$router->post('/admin/billing', [AdminController::class, 'billingSave'], ['billing.plan:view']);
 $router->get('/admin/users', [AdminController::class, 'users'], ['identity.user:view']);
 $router->get('/admin/users/{id}', [AdminController::class, 'user'], ['identity.user:view']);
 $router->post('/admin/users/{id}/status', [AdminController::class, 'userStatus'], ['identity.user:update']);

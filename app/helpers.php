@@ -189,3 +189,58 @@ function icon(string $name, int $size = 18): string
     ][$name] ?? '<circle cx="12" cy="12" r="9"/>';
     return '<svg width="' . $size . '" height="' . $size . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' . $p . '</svg>';
 }
+
+/** Форми власності роботодавця: код у базі => підпис у формі. */
+const LEGAL_FORMS = [
+    'person' => 'Приватна особа (наймаю для себе)',
+    'ФОП' => 'ФОП — фізична особа-підприємець',
+    'ТОВ' => 'ТОВ — товариство з обмеженою відповідальністю',
+    'ПП' => 'ПП — приватне підприємство',
+    'ФГ' => 'ФГ — фермерське господарство',
+    'СФГ' => 'СФГ — селянське (фермерське) господарство',
+    'АТ' => 'АТ / ПрАТ — акціонерне товариство',
+    'КП' => 'КП — комунальне підприємство',
+    'ДП' => 'ДП — державне підприємство',
+    'Заклад' => 'Бюджетна установа (школа, лікарня, ЦНАП)',
+    'ГО' => 'ГО — громадська або благодійна організація',
+    'other' => 'Інше',
+];
+
+/** Назва роботодавця з формою власності: ТОВ «Агро-Миронівка», ФОП Іваненко І. І. */
+function employer_name(?string $form, ?string $name): string
+{
+    $name = trim((string) $name);
+    $short = in_array($form, ['ФОП', 'ТОВ', 'ПП', 'ФГ', 'СФГ', 'АТ', 'КП', 'ДП', 'ГО'], true) ? $form : null;
+    if (!$short || $name === '') return $name;
+    // Якщо форму вже написали в назві («ТОВ Агро», «фоп Петренко») — не дублюємо.
+    if (preg_match('/^(' . preg_quote($short, '/') . '|ПрАТ|ПАТ)(\s|«|"|$)/iu', $name)) return $name;
+    if ($short === 'ФОП' || preg_match('/[«"“„\']/u', $name)) return $short . ' ' . $name;
+    return $short . ' «' . $name . '»';
+}
+
+/** Логотип роботодавця (img) або порожній рядок, якщо його немає. */
+function employer_logo(?string $file, string $name, int $size = 44, string $class = 'elogo'): string
+{
+    if (!$file) return '';
+    return '<img class="' . e($class) . '" src="' . e(\App\Core\Media::url('logo', $file)) . '" alt="Логотип: ' . e($name) . '" width="' . $size . '" height="' . $size . '" loading="lazy" decoding="async">';
+}
+
+/** Перші літери назви для заглушки замість логотипу. */
+function initials(string $name): string
+{
+    $name = preg_replace('/^(ТОВ|ФОП|ПП|ФГ|СФГ|АТ|ПрАТ|КП|ДП|ГО)\s+/u', '', trim($name)) ?? $name;
+    $w = preg_split('/[\s«»"\'\-]+/u', $name, -1, PREG_SPLIT_NO_EMPTY) ?: ['?'];
+    return mb_strtoupper(mb_substr($w[0], 0, 1) . (isset($w[1]) ? mb_substr($w[1], 0, 1) : ''));
+}
+
+/** Налаштування підказки про логотип і майбутнього бонусу (адмінка → Налаштування). */
+function logo_settings(): array
+{
+    $s = (array) App::setting('employers.logo', []);
+    return [
+        'hint' => (bool) ($s['hint'] ?? true),
+        'hintText' => (string) ($s['hintText'] ?? 'Вакансії з логотипом виділяються в списку, а кандидати швидше впізнають вашу компанію і більше їй довіряють.'),
+        'perk' => (bool) ($s['perk'] ?? false),
+        'perkText' => (string) ($s['perkText'] ?? ''),
+    ];
+}

@@ -7,6 +7,8 @@ $items = [
   ['Робота', null],
   ['dashboard', 'Огляд', '/admin', null],
   ['moderation', 'Модерація', '/admin/moderation', 'jobs.listing:moderate', $pending],
+  ['banners', 'Банери', '/admin/banners', 'ads.banner:moderate', $a->can('ads.banner:moderate') ? AdminController::pendingBanners() : 0],
+  ['billing', 'Монетизація', '/admin/billing', 'billing.plan:view'],
   ['Люди та доступ', null],
   ['users', 'Користувачі', '/admin/users', 'identity.user:view'],
   ['roles', 'Ролі та права', '/admin/roles', 'access.role:view'],
