@@ -7,6 +7,7 @@
     <div class="meta">
       <span><?= icon('tool', 15) ?><?= e($x['category']) ?></span>
       <?php if ($x['settlement']): ?><span><?= icon('pin', 15) ?><?= e($x['settlement']) ?></span><?php endif ?>
+      <?php if (!empty($x['travel'])): ?><span><?= icon('arrow', 15) ?><?= e($x['travel']) ?></span><?php endif ?>
       <?php if ($x['experience_years']): ?><span>Досвід <?= plural((int) $x['experience_years'], 'рік', 'роки', 'років') ?></span><?php endif ?>
       <?php if ((int) $x['works']): ?><span><?= icon('eye', 15) ?><?= plural((int) $x['works'], 'об’єкт', 'об’єкти', 'об’єктів') ?> з фото</span><?php endif ?>
       <?php if ((int) $x['orders_done']): ?><span><?= icon('check', 15) ?><?= plural((int) $x['orders_done'], 'замовлення', 'замовлення', 'замовлень') ?> через сайт</span><?php endif ?>

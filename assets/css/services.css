@@ -91,3 +91,4 @@
 .ord{display:grid;gap:8px;padding:14px 0;border-bottom:var(--bw) solid var(--c-border)}
 .ord:last-child{border-bottom:0}
 .ord .acts{display:flex;flex-wrap:wrap;gap:8px}
+.chips label[hidden]{display:none}
