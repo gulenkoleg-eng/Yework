@@ -51,11 +51,12 @@ $nWorks = count($works);
     <?php endif ?>
     <?= form_alert() ?>
     <nav class="svc-cats" aria-label="Розділи профілю майстра" style="margin:0">
-      <a class="on" href="#profile">1. Профіль</a><a href="<?= $m ? '#prices' : '#next' ?>">2. Прайс</a><a href="<?= $m ? '#works' : '#next' ?>">3. Мої роботи (фото об’єктів)</a>
+      <a class="on" href="#profile">1. Профіль</a><a href="<?= $m ? '#prices' : '#next' ?>">2. Прайс</a><a href="<?= $m ? '#works' : '#next' ?>">3. Галерея робіт (фото об’єктів)</a>
     </nav>
 
     <form id="profile" class="card pad stack" method="post" action="<?= url('/cabinet/master') ?>" enctype="multipart/form-data"><?= csrf_field() ?><input type="hidden" name="section" value="profile">
       <div><h2 style="font-size:20px">Профіль майстра</h2><p class="small muted">Це бачать клієнти в каталозі «Послуги» і на вашій сторінці.</p></div>
+      <?php if (!$m): ?><div class="gal-tip"><?= icon('image', 20) ?><div><b>Галерея робіт і прайс — на наступному кроці.</b> Заповніть профіль і натисніть «Зберегти чернетку»: нижче відкриються «Прайс» і «Галерея робіт», куди можна додати виконані об’єкти з фото (до <?= plural((int) $limits['works'], 'об’єкта', 'об’єктів', 'об’єктів') ?>, у кожному до <?= (int) $limits['photos'] ?> фото).</div></div><?php endif ?>
       <div class="rz-person">
         <div class="rz-photo">
           <div class="m-ava lg"><?php if ($m && $m['photo']): ?><img src="<?= e(S::photoUrl($m['photo'])) ?>" alt="Ваше фото"><?php else: ?><?= icon('tool', 40) ?><?php endif ?></div>
@@ -97,6 +98,7 @@ $nWorks = count($works);
           <button class="btn pri" name="action" value="submit"><?= $premod ? 'Надіслати на перевірку' : 'Опублікувати' ?></button>
           <button class="btn" name="action" value="draft">Зберегти чернетку</button>
           <?php if ($premod): ?><span class="small muted">Перший раз профіль перевіряє модератор, далі зміни видно одразу.</span><?php endif ?>
+          <?php if (!$m): ?><span class="small muted" style="flex-basis:100%">Прайс і галерею робіт (фото об’єктів) додасте одразу після збереження.</span><?php endif ?>
         <?php else: ?>
           <button class="btn pri" name="action" value="save">Зберегти</button>
         <?php endif ?>
@@ -105,8 +107,8 @@ $nWorks = count($works);
 
     <?php if (!$m): ?>
       <div id="next" class="card pad stack" style="border-style:dashed">
-        <h2 style="font-size:20px">Далі: прайс і фото робіт</h2>
-        <p class="muted" style="margin:0">Після першого збереження профілю тут з’являться ще два блоки: <b>«Прайс»</b> (послуги й обладнання з цінами) і <b>«Мої роботи»</b> — до <?= plural((int) $limits['works'], 'об’єкта', 'об’єктів', 'об’єктів') ?> з фото, у кожному до <?= (int) $limits['photos'] ?> фото. Натисніть «Зберегти чернетку» вище, якщо хочете спершу додати прайс і фото, а вже потім надіслати профіль на перевірку.</p>
+        <h2 style="font-size:20px">Далі: прайс і галерея робіт</h2>
+        <p class="muted" style="margin:0">Після першого збереження профілю тут з’являться ще два блоки: <b>«Прайс»</b> (послуги й обладнання з цінами) і <b>«Галерея робіт»</b> — виконані об’єкти, до <?= plural((int) $limits['works'], 'об’єкта', 'об’єктів', 'об’єктів') ?> з фото, у кожному до <?= (int) $limits['photos'] ?> фото. Натисніть «Зберегти чернетку» вище, якщо хочете спершу додати прайс і фото, а вже потім надіслати профіль на перевірку.</p>
       </div>
     <?php endif ?>
     <?php if ($m): ?>
@@ -119,7 +121,7 @@ $nWorks = count($works);
     </form>
 
     <section id="works" class="card pad stack">
-      <div class="row"><div style="flex:1;min-width:220px"><h2 style="font-size:20px">Мої роботи <span class="muted"><?= $nWorks ?> з <?= (int) $limits['works'] ?></span></h2><p class="small muted">Виконані об’єкти з фото: до <?= plural((int) $limits['works'], 'об’єкта', 'об’єктів', 'об’єктів') ?>, у кожному до <?= (int) $limits['photos'] ?> фото. Фото роботи переконують краще за будь-який опис.</p></div>
+      <div class="row"><div style="flex:1;min-width:220px"><h2 style="font-size:20px">Галерея робіт <span class="muted"><?= $nWorks ?> з <?= (int) $limits['works'] ?></span></h2><p class="small muted">Виконані об’єкти з фото: до <?= plural((int) $limits['works'], 'об’єкта', 'об’єктів', 'об’єктів') ?>, у кожному до <?= (int) $limits['photos'] ?> фото. Фото роботи переконують краще за будь-який опис.</p></div>
         <?php if ($nWorks < $limits['works']): ?><a class="btn pri" href="<?= url('/cabinet/master/works/new') ?>"><?= icon('plus') ?>Додати об’єкт</a><?php endif ?></div>
       <?php if ($works): ?><div class="wk-list"><?php foreach ($works as $w): $ph = $w['photos'][0]['file'] ?? null; ?>
         <div class="wk">
