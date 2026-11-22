@@ -44,6 +44,7 @@ final class Telegram
         'telegram.webhook_off' => 'Telegram-бота відключено від сайту',
         'telegram.linked' => 'Прив’язано Telegram',
         'telegram.unlinked' => 'Відв’язано Telegram',
+        'telegram.cleared' => 'Очищено повідомлення бота в групі',
     ];
 
     /** Відкладені дії: виконуються після відповіді браузеру, щоб сайт не чекав на Telegram. */
@@ -172,7 +173,45 @@ final class Telegram
             unset($p['message_thread_id']);
             $r = self::api('sendMessage', $p);
         }
+        // Запам'ятати повідомлення в групі, щоб кнопка «Очистити всі» могла його видалити.
+        if (is_array($r) && isset($r['message_id'], $r['chat']['id']) && (int) $r['chat']['id'] < 0) {
+            try {
+                App::db()->insert('telegram_messages', ['entity_type' => 'msg', 'entity_id' => 0, 'chat_id' => (int) $r['chat']['id'], 'message_id' => (int) $r['message_id'], 'closed_at' => Db::now()]);
+            } catch (Throwable $e) {
+                error_log('[YEWORK] telegram track: ' . $e->getMessage());
+            }
+        }
         return is_array($r) ? $r : null;
+    }
+
+    /**
+     * Видалити з груп усі повідомлення бота, які сайт запам'ятав. Telegram дозволяє боту видаляти
+     * лише повідомлення, яким менше 48 годин; старіші залишаться в групі.
+     * @return array{0:int,1:int} [скільки надіслано на видалення, скільки не вдалося]
+     */
+    public static function clearGroupMessages(): array
+    {
+        $db = App::db();
+        $rows = $db->all('SELECT id, chat_id, message_id FROM {p}telegram_messages WHERE chat_id < 0 ORDER BY id');
+        $byChat = [];
+        foreach ($rows as $r) $byChat[(string) $r['chat_id']][] = (int) $r['message_id'];
+        $done = 0;
+        $failed = 0;
+        foreach ($byChat as $chat => $ids) {
+            foreach (array_chunk(array_values(array_unique($ids)), 100) as $chunk) {
+                try {
+                    self::api('deleteMessages', ['chat_id' => (int) $chat, 'message_ids' => $chunk]);
+                    $done += count($chunk);
+                } catch (RuntimeException) {
+                    // Наприклад, частина повідомлень застара — пробуємо по одному.
+                    foreach ($chunk as $mid) {
+                        try { self::api('deleteMessage', ['chat_id' => (int) $chat, 'message_id' => $mid]); $done++; } catch (RuntimeException) { $failed++; }
+                    }
+                }
+            }
+        }
+        if ($rows) $db->run('DELETE FROM {p}telegram_messages WHERE chat_id < 0');
+        return [$done, $failed];
     }
 
     /** Надіслати в робочу групу: $kind = 'moderation' або 'updates' — у відповідну тему, якщо її обрано. */
@@ -352,6 +391,7 @@ final class Telegram
         if (!$pending) return;
         $m = $chatId === null ? self::sendToGroup('moderation', '🆕 Нове на модерації' . "\n\n" . $text, $kb) : self::send($chatId, $text, $kb);
         if ($m && isset($m['message_id'])) {
+            App::db()->run('DELETE FROM {p}telegram_messages WHERE chat_id = ? AND message_id = ?', [(int) $m['chat']['id'], (int) $m['message_id']]);
             App::db()->insert('telegram_messages', ['entity_type' => $type, 'entity_id' => $id, 'chat_id' => (int) $m['chat']['id'], 'message_id' => (int) $m['message_id']]);
         }
     }
@@ -383,7 +423,8 @@ final class Telegram
         $s = preg_replace('/`([^`]+)`/u', '<code>$1</code>', $s) ?? $s;
         $s = preg_replace('/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/u', '<a href="$2">$1</a>', $s) ?? $s;
         $s = preg_replace('/^\s*[-*]\s+/mu', '• ', $s) ?? $s;
-        $s = preg_replace('/^#+\s*(.+)$/mu', '<b>$1</b>', $s) ?? $s;
+        $icons = ['Що нового' => '🆕 ', 'Де подивитися' => '👀 ', 'Важливо знати' => '⚠️ '];
+        $s = preg_replace_callback('/^#+\s*(.+)$/mu', static fn ($m) => '<b>' . ($icons[trim($m[1])] ?? '') . $m[1] . '</b>', $s) ?? $s;
         return trim($s);
     }
 

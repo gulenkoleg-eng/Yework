@@ -94,10 +94,12 @@ $domainChanged = $hookOk && $cfg['siteUrl'] !== '' && rtrim($cfg['siteUrl'], '/'
 <?php if ($cfg['chatId'] !== ''): ?>
 <div class="card pad stack">
   <h3>Перевірка</h3>
+  <p class="small muted">«Очистити всі» видаляє з групи повідомлення бота: тести, новини про версії, модерацію. Telegram дозволяє боту видаляти лише повідомлення, яким менше 48 годин. Старіші, а також повідомлення, надіслані до версії 0.4.8 (крім модерації), доведеться видалити вручну.</p>
   <div class="row">
     <form method="post" action="<?= url('/admin/telegram/manage') ?>"><?= csrf_field() ?><input type="hidden" name="do" value="test"><button class="btn">Надіслати тест у групу</button></form>
     <?php if ($cfg['topicModeration'] || $cfg['topicUpdates']): ?><form method="post" action="<?= url('/admin/telegram/manage') ?>"><?= csrf_field() ?><input type="hidden" name="do" value="topic_reset"><button class="btn ghost sm">Писати в загальний чат</button></form><?php endif ?>
     <form method="post" action="<?= url('/admin/telegram/manage') ?>"><?= csrf_field() ?><input type="hidden" name="do" value="version"><button class="btn">Надіслати опис версії <?= e(YW_VERSION) ?></button></form>
+    <form method="post" action="<?= url('/admin/telegram/manage') ?>" onsubmit="return confirm('Видалити з групи всі повідомлення бота? Це стосується і повідомлень модерації з кнопками. Відновити їх не можна.')"><?= csrf_field() ?><input type="hidden" name="do" value="clear"><button class="btn ghost">Очистити всі</button></form>
   </div>
 </div>
 <?php endif ?>

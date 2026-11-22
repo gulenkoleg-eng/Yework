@@ -135,6 +135,13 @@ final class TelegramAdminController
                     flash('ok', 'Опис версії ' . YW_VERSION . ' надіслано в групу.');
                     return $back;
 
+                case 'clear':
+                    [$done, $failed] = Telegram::clearGroupMessages();
+                    Audit::log('telegram.cleared', 'settings', 'telegram', ['deleted' => $done, 'failed' => $failed]);
+                    if (!$done && !$failed) flash('ok', 'Немає повідомлень бота, які сайт може видалити.');
+                    else flash('ok', 'Видалено повідомлень бота: ' . $done . '.' . ($failed ? ' Не вдалося видалити: ' . $failed . ' (Telegram не дає боту видаляти повідомлення, старші за 48 годин, їх можна прибрати вручну).' : ''));
+                    return $back;
+
                 case 'topic_reset':
                     $cfg['topicModeration'] = $cfg['topicUpdates'] = null;
                     Telegram::saveConfig($cfg, $uid);
