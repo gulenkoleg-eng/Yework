@@ -21,7 +21,6 @@ final class Telegram
 {
     public const SETTING = 'telegram.config';
     public const MODERATE = 'jobs.listing:moderate';
-    private const VACANCY_DAYS = 30;
     private const LINK_TTL = 900;
 
     public const VACANCY_REASONS = [
@@ -290,6 +289,7 @@ final class Telegram
         if ($pending) $lines[] = '⏳ <b>Чекає на модерацію</b>';
         elseif (!empty($x['deleted_at'])) $lines[] = 'ℹ️ Видалено автором.';
         elseif ($x['status'] === 'published' && $x['moderated_by']) $lines[] = '✅ <b>Схвалено</b>: ' . $who . $when;
+        elseif ($x['status'] === 'scheduled' && $x['moderated_by']) $lines[] = '✅ <b>Схвалено</b>: ' . $who . $when . "\nЗ’явиться на сайті з " . self::h(date('d.m.Y', strtotime((string) $x['show_from'])));
         elseif ($x['status'] === 'rejected') $lines[] = '❌ <b>Відхилено</b>: ' . $who . $when . "\nПричина: " . self::h($x['reject_reason']);
         else $lines[] = 'ℹ️ Більше не на модерації (автор змінив або зняв).';
 
@@ -439,12 +439,19 @@ final class Telegram
         if ($x['status'] !== 'pending') return [false, 'Вже оброблено.'];
         $uid = (int) $actor['id'];
         if ($decision === 'approve') {
-            $set = $isV
-                ? ['status' => 'published', 'moderated_by' => $uid, 'moderated_at' => Db::now(), 'published_at' => Db::now(), 'expires_at' => Db::now(self::VACANCY_DAYS * 86400), 'reject_reason' => null]
-                : ['status' => 'published', 'moderated_by' => $uid, 'moderated_at' => Db::now(), 'published_at' => $x['published_at'] ?? Db::now(), 'reject_reason' => null];
+            if ($isV) {
+                // Як на сайті: вакансія виходить за своїм періодом показу (одразу або з дати «з»).
+                $st = $db->tx(function (Db $db) use ($id, $uid) {
+                    if ($db->value('SELECT status FROM {p}vacancies WHERE id = ? FOR UPDATE', [$id]) !== 'pending') return null;
+                    return Vacancies::goLive($id, ['moderated_by' => $uid, 'moderated_at' => Db::now()]);
+                });
+                if ($st === null) return [false, 'Вже оброблено.'];
+                Audit::log('jobs.vacancy_approved', 'vacancy', $id, ['via' => 'telegram'], $uid);
+                return [true, $st === 'scheduled' ? 'Схвалено ✅ З’явиться на сайті з ' . date('d.m', strtotime((string) $db->value('SELECT show_from FROM {p}vacancies WHERE id = ?', [$id]))) : 'Схвалено ✅'];
+            }
+            $set = ['status' => 'published', 'moderated_by' => $uid, 'moderated_at' => Db::now(), 'published_at' => $x['published_at'] ?? Db::now(), 'reject_reason' => null];
             if (!$db->update($table, $set, "id = ? AND status = 'pending'", [$id])) return [false, 'Вже оброблено.'];
-            Audit::log($isV ? 'jobs.vacancy_approved' : 'resume.approved', $type, $id, ['via' => 'telegram'], $uid);
-            if ($isV) Stats::forget();
+            Audit::log('resume.approved', $type, $id, ['via' => 'telegram'], $uid);
             return [true, 'Схвалено ✅'];
         }
         $reason = trim((string) $reason);

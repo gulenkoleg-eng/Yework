@@ -1,4 +1,4 @@
-<?php $VS = ["draft" => ["Чернетка", "muted"], "pending" => ["На модерації", "warn"], "published" => ["Опубліковано", "ok"], "rejected" => ["Відхилено", "bad"], "archived" => ["Знято", "muted"]]; ?>
+<?php use App\Core\Vacancies as VC; $VS = VC::STATUS; ?>
 <div class="cab">
   <?= App\Core\View::partial('partials/cab_nav', compact('tab', 'counts', 'me')) ?>
   <div class="stack">
@@ -8,9 +8,27 @@
     <div class="row">
       <a class="btn" href="<?= url('/jobs/' . $v['id']) ?>"><?= icon('eye') ?>Переглянути</a>
       <a class="btn" href="<?= url('/cabinet/vacancies/' . $v['id'] . '/edit') ?>">Редагувати</a>
-      <?php if ($v['status'] === 'published'): ?><form method="post" action="<?= url('/cabinet/vacancies/' . $v['id'] . '/archive') ?>"><?= csrf_field() ?><button class="btn bad">Зняти з публікації</button></form><?php endif ?>
     </div>
-    <div class="card pad"><dl class="kv"><dt>Населений пункт</dt><dd><?= e($v['settlement']) ?></dd><dt>Зарплата</dt><dd><?= e(salary_text($v['salary_from'] !== null ? (int) $v['salary_from'] : null, $v['salary_to'] !== null ? (int) $v['salary_to'] : null, $v['salary_period'])) ?></dd><dt>Переглядів</dt><dd><?= (int) $v['views'] ?></dd><?php if ($v['expires_at']): ?><dt>Активна до</dt><dd><?= e(local_date($v['expires_at'], 'd.m.Y')) ?></dd><?php endif ?></dl></div>
+    <?php if ($v['status'] === 'scheduled'): ?><div class="alert info">Вакансія чекає на свою дату: на сайті вона з’явиться <?= e(date('d.m.Y', strtotime($v['show_from']))) ?>.</div><?php endif ?>
+    <?php if (in_array($v['status'], ['published', 'scheduled'], true)): ?>
+      <form class="card pad stack" method="post" action="<?= url('/cabinet/vacancies/' . $v['id'] . '/archive') ?>"><?= csrf_field() ?>
+        <div><b>Перенести в архів</b><div class="small muted">Вакансія зникне з сайту, але залишиться у вас в архіві разом із відгуками. Поновити можна будь-коли.</div></div>
+        <div class="row"><button class="btn pri" name="reason" value="hired">Знайшов працівника</button><button class="btn" name="reason" value="manual">В архів</button></div>
+      </form>
+    <?php endif ?>
+    <?php if ($v['status'] === 'archived'): ?>
+      <div class="alert warn">Вакансія в архіві<?= $v['archive_reason'] ? ': ' . e(mb_strtolower(VC::REASONS[$v['archive_reason']] ?? '')) : '' ?>. На сайті її не видно.</div>
+      <form class="card pad stack" method="post" action="<?= url('/cabinet/vacancies/' . $v['id'] . '/restore') ?>"><?= csrf_field() ?>
+        <div><b>Поновити вакансію</b><div class="small muted">Виберіть новий період показу (до <?= VC::MAX_DAYS ?> днів). Якщо текст не змінювати, вакансія з’явиться одразу, без повторної перевірки.</div></div>
+        <?= form_alert() ?>
+        <div class="grid2">
+          <?= input_field('show_from', 'Показувати з', ['type' => 'date', 'value' => VC::today()]) ?>
+          <?= input_field('show_to', 'по (включно)', ['type' => 'date', 'value' => VC::plusDays(VC::today(), VC::DEFAULT_DAYS - 1)]) ?>
+        </div>
+        <div class="row"><button class="btn pri">Поновити</button></div>
+      </form>
+    <?php endif ?>
+    <div class="card pad"><dl class="kv"><dt>Населений пункт</dt><dd><?= e($v['settlement']) ?></dd><dt>Зарплата</dt><dd><?= e(salary_text($v['salary_from'] !== null ? (int) $v['salary_from'] : null, $v['salary_to'] !== null ? (int) $v['salary_to'] : null, $v['salary_period'])) ?></dd><dt>Переглядів</dt><dd><?= (int) $v['views'] ?></dd><?php if ($v['show_from'] && $v['show_to']): ?><dt>Термін показу</dt><dd>з <?= e(date('d.m.Y', strtotime($v['show_from']))) ?> по <?= e(date('d.m.Y', strtotime($v['show_to']))) ?></dd><?php endif ?></dl></div>
     <h2 style="font-size:20px">Відгуки (<?= count($apps) ?>)</h2>
     <?php if (!$apps): ?><div class="card empty"><p class="muted">Відгуків поки немає. Вони з’являться тут разом із контактами кандидатів.</p></div><?php else: ?>
       <div class="card list"><?php foreach ($apps as $a): ?>
