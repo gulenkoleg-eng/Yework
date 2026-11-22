@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const YW_VERSION = '0.4.1';
+const YW_VERSION = '0.4.3';
 
 mb_internal_encoding('UTF-8');
 date_default_timezone_set('Europe/Kyiv');
@@ -18,9 +18,10 @@ error_reporting(E_ALL);
 function yw_file(string $rel): string
 {
     $file = YW_ROOT . '/' . $rel;
-    if (is_file($file)) return $file;
     $lower = YW_ROOT . '/' . strtolower($rel);
-    return is_file($lower) ? $lower : $file;
+    if ($lower === $file || !is_file($lower)) return $file;
+    // Є обидва варіанти (напр. після оновлення з адмінки, а потім заливки по FTP) — беремо новіший.
+    return is_file($file) && filemtime($file) >= filemtime($lower) ? $file : $lower;
 }
 
 // Автозавантаження класів App\... з папки app/.

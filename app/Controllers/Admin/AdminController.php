@@ -11,6 +11,7 @@ use App\Core\Db;
 use App\Core\HttpException;
 use App\Core\Installer;
 use App\Core\Messaging;
+use App\Core\Pages;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Stats;
@@ -390,6 +391,42 @@ final class AdminController
         Audit::log('settings.updated', 'settings', $section);
         flash('ok', 'Налаштування збережено.');
         return Response::redirect(url('/admin/settings'));
+    }
+
+    public function pages(Request $req): Response
+    {
+        $list = array_map([Pages::class, 'get'], array_keys(Pages::LIST));
+        return $this->render('pages', 'pages', ['title' => 'Сторінки', 'list' => $list]);
+    }
+
+    public function pageForm(Request $req): Response
+    {
+        $slug = (string) ($req->params['slug'] ?? '');
+        if (!Pages::exists($slug)) throw new HttpException(404, 'Такої сторінки немає.');
+        return $this->render('page_form', 'pages', ['title' => 'Сторінка «' . Pages::get($slug)['title'] . '»', 'page' => Pages::get($slug)]);
+    }
+
+    public function pageSave(Request $req): Response
+    {
+        $slug = (string) ($req->params['slug'] ?? '');
+        if (!Pages::exists($slug)) throw new HttpException(404, 'Такої сторінки немає.');
+        if (($req->post['action'] ?? '') === 'reset') {
+            Pages::reset($slug, App::auth()->id());
+            Audit::log('content.page_reset', 'page', $slug);
+            flash('ok', 'Повернуто текст за замовчуванням.');
+            return Response::redirect(url('/admin/pages/' . $slug));
+        }
+        $title = $req->str('title', 80);
+        $body = $req->str('body', 30000);
+        $err = [];
+        if (mb_strlen($title) < 2) $err['title'] = 'Вкажіть назву сторінки';
+        if (mb_strlen($body) < 2) $err['body'] = 'Сторінка не може бути порожньою';
+        if ($err) throw new ValidationException($err);
+        $visible = !empty($req->post['visible']);
+        Pages::save($slug, $title, $body, $visible, App::auth()->id());
+        Audit::log('content.page_updated', 'page', $slug, ['visible' => $visible, 'length' => mb_strlen($body)]);
+        flash('ok', $visible ? 'Збережено. Зміни вже на сайті.' : 'Збережено. Сторінку приховано від відвідувачів.');
+        return Response::redirect(url('/admin/pages/' . $slug));
     }
 
     public function outbox(Request $req): Response

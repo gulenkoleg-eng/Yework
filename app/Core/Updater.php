@@ -197,7 +197,8 @@ final class Updater
                 $v = self::normVersion((string) ($r['tag_name'] ?? ''));
                 if ($v === null) continue;
                 $res['versions'][] = ['version' => $v, 'title' => (string) ($r['name'] ?: $r['tag_name']), 'date' => $r['published_at'] ?? null,
-                    'notes' => (string) ($r['body'] ?? ''), 'zip' => '/repos/' . $repo . '/zipball/' . rawurlencode((string) $r['tag_name'])];
+                    'notes' => (string) ($r['body'] ?? ''), 'zip' => '/repos/' . $repo . '/zipball/' . rawurlencode((string) $r['tag_name']),
+                    'url' => self::safeGithubUrl((string) ($r['html_url'] ?? '')), 'prs' => self::refsIn((string) ($r['name'] ?? ''))['prs'], 'commits' => []];
             }
             if (!$res['versions']) {
                 // Релізів немає — беремо гілку.
@@ -210,10 +211,11 @@ final class Updater
                 if ($latest === null) throw new RuntimeException('Не вдалося визначити версію в гілці «' . $cfg['branch'] . '».');
                 $changelog = (string) self::apiRaw('/repos/' . $repo . '/contents/CHANGELOG.md?ref=' . $sha);
                 $sections = self::parseChangelog($changelog);
-                if (!isset($sections[$latest])) $sections = [$latest => ['title' => $latest, 'date' => null, 'notes' => '']] + $sections;
+                if (!isset($sections[$latest])) $sections = [$latest => ['title' => $latest, 'date' => null, 'notes' => '', 'prs' => [], 'commits' => []]] + $sections;
                 foreach ($sections as $v => $s) {
                     $res['versions'][] = ['version' => $v, 'title' => $s['title'], 'date' => $s['date'] ?? ($v === $latest ? ($commit['commit']['committer']['date'] ?? null) : null),
-                        'notes' => $s['notes'], 'zip' => $v === $latest ? '/repos/' . $repo . '/zipball/' . $sha : ''];
+                        'notes' => $s['notes'], 'zip' => $v === $latest ? '/repos/' . $repo . '/zipball/' . $sha : '',
+                        'url' => null, 'prs' => $s['prs'], 'commits' => $s['commits']];
                 }
             }
             usort($res['versions'], static fn ($a, $b) => version_compare($b['version'], $a['version']));
@@ -248,12 +250,45 @@ final class Updater
                 $cur = $m[1];
                 $rest = trim($m[2] ?? '');
                 $date = preg_match('/\d{4}-\d{2}-\d{2}/', $rest, $d) ? $d[0] : null;
-                $out[$cur] = ['title' => $cur, 'date' => $date, 'notes' => ''];
+                $out[$cur] = ['title' => $cur, 'date' => $date, 'notes' => ''] + self::refsIn($rest);
                 continue;
             }
             if ($cur !== null) $out[$cur]['notes'] .= $line . "\n";
         }
         foreach ($out as &$s) $s['notes'] = trim($s['notes']);
+        return $out;
+    }
+
+    /** Посилання з заголовка версії: «PR #3», «коміт bf59d09». @return array{prs:list<int>, commits:list<string>} */
+    public static function refsIn(string $s): array
+    {
+        preg_match_all('/#(\d{1,6})\b/', $s, $p);
+        preg_match_all('/\b(?:коміт|commit)\s+([0-9a-f]{7,40})\b/iu', $s, $c);
+        return ['prs' => array_values(array_unique(array_map('intval', $p[1]))), 'commits' => array_values(array_unique($c[1]))];
+    }
+
+    /** Адреса репозиторію на GitHub (для посилань в адмінці). */
+    public static function repoUrl(): string
+    {
+        return 'https://github.com/' . self::config()['repo'];
+    }
+
+    private static function safeGithubUrl(string $u): ?string
+    {
+        return preg_match('#^https://github\.com/[\w./%-]+$#', $u) ? $u : null;
+    }
+
+    /** Посилання на GitHub для версії: реліз, PR (опис і змінені файли), коміти. @return list<array{0:string,1:string}> */
+    public static function versionLinks(array $v): array
+    {
+        $base = self::repoUrl();
+        $out = [];
+        if (!empty($v['url'])) $out[] = ['Реліз на GitHub', (string) $v['url']];
+        foreach ($v['prs'] ?? [] as $n) {
+            $out[] = ['Опис змін · PR #' . (int) $n, $base . '/pull/' . (int) $n];
+            $out[] = ['Змінені файли', $base . '/pull/' . (int) $n . '/files'];
+        }
+        foreach ($v['commits'] ?? [] as $c) $out[] = ['Коміт ' . substr((string) $c, 0, 7), $base . '/commit/' . $c];
         return $out;
     }
 

@@ -360,3 +360,16 @@ fieldset.field legend{font-weight:600;font-size:14.5px;margin-bottom:6px;padding
 .job{min-width:0}
 .job-b h3{min-width:0;overflow-wrap:anywhere}
 @media (max-width:560px){.job-b>.row{flex-wrap:wrap!important}.job-b>.row>.small{white-space:normal!important}}
+
+/* Статичні сторінки (Про нас, Правила, Контакти) */
+.page-text h2{font-size:21px;margin-top:8px}
+.page-text h3{font-size:17px}
+.page-text ul{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+.page-text p,.page-text li{line-height:1.6}
+.page-text a{text-decoration:underline}
+.pg-help{background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--r-btn);padding:12px 14px;font-size:13.5px}
+.pg-help code{font-family:ui-monospace,monospace;font-size:13px}
+.pg-edit textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;line-height:1.55;min-height:420px}
+.upd-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:14px}
+.upd-links a{font-weight:600;text-decoration:none}
+.upd-links a:hover{text-decoration:underline}

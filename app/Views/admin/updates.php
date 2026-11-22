@@ -8,7 +8,16 @@ foreach ($newer as $v) if ($v['zip'] !== '') { $target = $v; break; }
 // Історія версій: з GitHub, а якщо немає зв’язку — з локального CHANGELOG.md.
 $all = [];
 foreach ($info['versions'] ?? [] as $v) $all[$v['version']] = $v;
-foreach ($local as $ver => $s) if (!isset($all[$ver])) $all[$ver] = ['version' => $ver, 'title' => $ver, 'date' => $s['date'], 'notes' => $s['notes'], 'zip' => ''];
+foreach ($local as $ver => $s) {
+  if (!isset($all[$ver])) $all[$ver] = ['version' => $ver, 'title' => $ver, 'date' => $s['date'], 'notes' => $s['notes'], 'zip' => '', 'prs' => $s['prs'] ?? [], 'commits' => $s['commits'] ?? []];
+  elseif (empty($all[$ver]['prs']) && empty($all[$ver]['commits'])) { $all[$ver]['prs'] = $s['prs'] ?? []; $all[$ver]['commits'] = $s['commits'] ?? []; }
+}
+$repoUrl = Updater::repoUrl();
+$gh = static function (array $v): string {
+  $l = Updater::versionLinks($v);
+  if (!$l) return '';
+  return '<div class="upd-links">' . implode('', array_map(static fn ($x) => '<a href="' . e($x[1]) . '" target="_blank" rel="noopener">' . e($x[0]) . ' ↗</a>', $l)) . '</div>';
+};
 uksort($all, static fn ($a, $b) => version_compare($b, $a));
 $kinds = ['update' => 'Перед оновленням', 'restore' => 'Перед відновленням', 'manual' => 'Вручну'];
 $fmtDate = static fn (?string $d) => $d ? (strlen($d) === 10 ? date('d.m.Y', strtotime($d)) : date('d.m.Y H:i', strtotime($d))) : '';
@@ -35,7 +44,7 @@ $fmtDate = static fn (?string $d) => $d ? (strlen($d) === 10 ? date('d.m.Y', str
     <?php if (count($newer) > 1): ?><p class="small muted">Між вашою версією та новою є <?= count($newer) ?> оновлення. Встановлюється одразу остання, зміни всіх версій нижче.</p><?php endif ?>
     <?php foreach ($newer as $i => $v): ?>
       <details class="upd-notes" <?= $i === 0 ? 'open' : '' ?>><summary>Що змінилося у <?= e($v['version']) ?></summary>
-        <div class="upd-md small"><?= $v['notes'] !== '' ? Updater::markdown($v['notes']) : '<p class="muted">Опису змін немає.</p>' ?></div></details>
+        <div class="upd-md small"><?= $v['notes'] !== '' ? Updater::markdown($v['notes']) : '<p class="muted">Опису змін немає.</p>' ?></div><?= $gh($all[$v['version']] ?? $v) ?></details>
     <?php endforeach ?>
     <div class="alert info small">Перед оновленням сайт автоматично зробить резервну копію файлів і бази. Якщо після оновлення щось не так, внизу сторінки можна повернути все, як було, одним натисканням.</div>
     <form method="post" action="<?= url('/admin/updates/install') ?>" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Оновлюємо… не закривайте сторінку'"><?= csrf_field() ?>
@@ -48,13 +57,17 @@ $fmtDate = static fn (?string $d) => $d ? (strlen($d) === 10 ? date('d.m.Y', str
     <p class="muted small">Остання перевірка: <?= e(date('d.m.Y H:i', (int) $info['checkedAt'])) ?>. Сайт перевіряє GitHub не частіше ніж раз на годину, або коли ви натискаєте «Перевірити оновлення».</p></div>
 <?php endif ?>
 
-<div class="card pad stack"><h3>Історія версій</h3>
+<div class="card pad stack"><div class="row" style="justify-content:space-between;gap:10px"><h3>Історія версій</h3>
+  <div class="upd-links"><a href="<?= e($repoUrl) ?>" target="_blank" rel="noopener">Репозиторій ↗</a><a href="<?= e($repoUrl . '/blob/' . rawurlencode($cfg['branch']) . '/CHANGELOG.md') ?>" target="_blank" rel="noopener">Усі зміни (CHANGELOG) ↗</a><a href="<?= e($repoUrl . '/pulls?q=is%3Apr+is%3Amerged') ?>" target="_blank" rel="noopener">Злиті PR ↗</a><a href="<?= e($repoUrl . '/commits/' . rawurlencode($cfg['branch'])) ?>" target="_blank" rel="noopener">Коміти ↗</a></div></div>
+  <p class="small muted">Натисніть на версію, щоб побачити, що в ній змінилося. Посилання «PR» відкривають цю версію на GitHub: опис, обговорення і всі змінені файли.</p>
   <?php if (!$all): ?><p class="muted">Поки немає даних.</p><?php endif ?>
   <?php foreach ($all as $v): $cmp = version_compare($v['version'], $version); ?>
     <details class="upd-notes"><summary><b><?= e($v['version']) ?></b>
       <?php if ($cmp === 0): ?><span class="tag ok">встановлено</span><?php elseif ($cmp > 0): ?><span class="tag warn">нова</span><?php endif ?>
-      <?php if ($v['date']): ?><span class="muted small"><?= e($fmtDate($v['date'])) ?></span><?php endif ?></summary>
+      <?php if ($v['date']): ?><span class="muted small"><?= e($fmtDate($v['date'])) ?></span><?php endif ?>
+      <?php foreach ($v['prs'] ?? [] as $n): ?><span class="tag">PR #<?= (int) $n ?></span><?php endforeach ?></summary>
       <div class="upd-md small"><?= $v['notes'] !== '' ? Updater::markdown($v['notes']) : '<p class="muted">Опису змін немає.</p>' ?></div>
+      <?= $gh($v) ?>
     </details>
   <?php endforeach ?>
 </div>

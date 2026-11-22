@@ -14,6 +14,8 @@ $items = [
   ['users', 'Користувачі', '/admin/users', 'identity.user:view'],
   ['roles', 'Ролі та права', '/admin/roles', 'access.role:view'],
   ['audit', 'Журнал дій', '/admin/audit', 'audit.log:view'],
+  ['Сайт', null],
+  ['pages', 'Сторінки', '/admin/pages', 'content.page:update'],
   ['Система', null],
   ['themes', 'Теми оформлення', '/admin/themes', 'theming.theme:view'],
   ['outbox', 'Повідомлення', '/admin/outbox', 'settings.system:manage_settings'],

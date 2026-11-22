@@ -9,6 +9,7 @@ use App\Core\Crypto;
 use App\Core\HttpException;
 use App\Core\Messaging;
 use App\Core\Media;
+use App\Core\Pages;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Resumes;
@@ -166,8 +167,16 @@ final class SiteController
         return Response::redirect(url('/jobs', ['employer' => $b['employer_id']]), 302);
     }
 
-    public function rules(Request $req): Response
+    public function about(Request $req): Response { return $this->page('about'); }
+    public function rules(Request $req): Response { return $this->page('rules'); }
+    public function contacts(Request $req): Response { return $this->page('contacts'); }
+
+    /** Статична сторінка, текст якої редагується в адмінці (розділ «Сторінки»). */
+    private function page(string $slug): Response
     {
-        return new Response(view('site/rules', ['title' => 'Правила']));
+        $p = Pages::get($slug);
+        if (!$p['visible'] && !App::auth()->can('content.page:update')) throw new HttpException(404, 'Такої сторінки немає. Можливо, її видалили або адреса введена з помилкою.');
+        $plain = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags(Pages::toHtml($p['body'])), ENT_QUOTES, 'UTF-8')));
+        return new Response(view('site/page', ['title' => $p['title'], 'page' => $p, 'description' => mb_substr($plain, 0, 160)]));
     }
 }
