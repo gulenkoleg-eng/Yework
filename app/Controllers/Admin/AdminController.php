@@ -22,7 +22,6 @@ use App\Permissions;
 
 final class AdminController
 {
-    private const VACANCY_DAYS = 30;
 
     private function render(string $view, string $nav, array $data = []): Response
     {
@@ -84,9 +83,9 @@ final class AdminController
         if ((int) $v['author_id'] === (int) $me['id']) throw new HttpException(403, 'Не можна модерувати власну вакансію.');
         if ($decision === 'approve') {
             if ($v['status'] !== 'pending') throw new HttpException(409, 'Вакансію вже оброблено.');
-            $db->update('vacancies', ['status' => 'published', 'moderated_by' => $me['id'], 'moderated_at' => Db::now(), 'published_at' => Db::now(), 'expires_at' => Db::now(self::VACANCY_DAYS * 86400), 'reject_reason' => null], 'id = ?', [$id]);
+            $st = \App\Core\Vacancies::goLive($id, ['moderated_by' => $me['id'], 'moderated_at' => Db::now()]);
             Audit::log('jobs.vacancy_approved', 'vacancy', $id);
-            flash('ok', 'Вакансію опубліковано.');
+            flash('ok', $st === 'scheduled' ? 'Вакансію схвалено. Вона з’явиться на сайті з ' . date('d.m', strtotime((string) $db->value('SELECT show_from FROM {p}vacancies WHERE id = ?', [$id]))) . '.' : 'Вакансію опубліковано.');
         } elseif ($decision === 'reject') {
             $reason = $req->str('reason', 500);
             if (mb_strlen($reason) < 5) { flash('bad', 'Вкажіть причину відхилення — її побачить роботодавець.'); return Response::redirect(url('/admin/moderation')); }

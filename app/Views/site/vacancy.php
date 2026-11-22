@@ -1,4 +1,4 @@
-<?php $me = App\Core\App::auth()->user(); $st = ['draft' => ['Чернетка', 'muted'], 'pending' => ['На модерації', 'warn'], 'rejected' => ['Відхилено', 'bad'], 'archived' => ['Знято з публікації', 'muted']]; ?>
+<?php $me = App\Core\App::auth()->user(); $st = App\Core\Vacancies::STATUS; ?>
 <nav class="crumbs"><a href="<?= url('/') ?>">Головна</a>›<a href="<?= url('/jobs') ?>">Вакансії</a>›<a href="<?= url('/jobs', ['category' => $v['category_slug']]) ?>"><?= e($v['category']) ?></a></nav>
 <?php if ($v['status'] !== 'published'): ?><div class="alert warn" style="margin-bottom:14px">Статус: <b><?= e($st[$v['status']][0] ?? $v['status']) ?></b>. Цю сторінку бачите лише ви<?= $isOwner ? '' : ' (модератор)' ?>.<?= $v['reject_reason'] ? ' Причина: ' . e($v['reject_reason']) : '' ?></div><?php endif ?>
 <div class="vac">

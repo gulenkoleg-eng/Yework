@@ -112,6 +112,7 @@ final class App
         }
 
         Updater::autoUpgrade();
+        Vacancies::sweep();
         if ($req->method === 'POST') Csrf::verify($req);
         Stats::trackVisit($req);
 
