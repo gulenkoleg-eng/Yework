@@ -78,6 +78,13 @@ $domainChanged = $hookOk && $cfg['siteUrl'] !== '' && rtrim($cfg['siteUrl'], '/'
   <?php else: ?>
     <?= input_field('chat_id', 'ID групи', ['value' => $cfg['chatId'], 'placeholder' => '-1001234567890', 'inputmode' => 'numeric', 'hint' => 'Бот ще не бачив жодної групи. Додайте його в групу або впишіть ID вручну']) ?>
   <?php endif ?>
+  <?php if ($cfg['chatId'] !== ''): ?>
+  <div class="stack" style="gap:6px">
+    <p><b>Куди пише бот у групі</b></p>
+    <p class="small">Модерація: <b><?= e(App\Core\Telegram::topicLabel($cfg['topicModeration'] ? (int) $cfg['topicModeration'] : null)) ?></b> · Нові версії: <b><?= e(App\Core\Telegram::topicLabel($cfg['topicUpdates'] ? (int) $cfg['topicUpdates'] : null)) ?></b></p>
+    <p class="small muted">Якщо в групі ввімкнено теми: відкрийте тему «Модерація» і напишіть у ній <code>/moderation</code>, потім у темі «Оновлення» напишіть <code>/updates</code>. Бот запам’ятає, куди що надсилати. Це може зробити адміністратор сайту, який прив’язав свій Telegram.</p>
+  </div>
+  <?php endif ?>
   <label class="check"><input type="checkbox" name="moderation" value="1" <?= $cfg['moderation'] ? 'checked' : '' ?>> Нові вакансії й резюме на модерації — у групу з кнопками «Схвалити» і «Відхилити»</label>
   <label class="check"><input type="checkbox" name="updates" value="1" <?= $cfg['updates'] ? 'checked' : '' ?>> Повідомляти про нову версію сайту і що в ній змінилось</label>
   <p class="small muted">Імена, фото й телефони шукачів у Telegram не надсилаються, лише посада, громада й досвід. Усе інше модератор бачить на сайті.</p>
@@ -89,6 +96,7 @@ $domainChanged = $hookOk && $cfg['siteUrl'] !== '' && rtrim($cfg['siteUrl'], '/'
   <h3>Перевірка</h3>
   <div class="row">
     <form method="post" action="<?= url('/admin/telegram/manage') ?>"><?= csrf_field() ?><input type="hidden" name="do" value="test"><button class="btn">Надіслати тест у групу</button></form>
+    <?php if ($cfg['topicModeration'] || $cfg['topicUpdates']): ?><form method="post" action="<?= url('/admin/telegram/manage') ?>"><?= csrf_field() ?><input type="hidden" name="do" value="topic_reset"><button class="btn ghost sm">Писати в загальний чат</button></form><?php endif ?>
     <form method="post" action="<?= url('/admin/telegram/manage') ?>"><?= csrf_field() ?><input type="hidden" name="do" value="version"><button class="btn">Надіслати опис версії <?= e(YW_VERSION) ?></button></form>
   </div>
 </div>

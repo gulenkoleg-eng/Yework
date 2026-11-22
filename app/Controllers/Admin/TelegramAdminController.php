@@ -99,7 +99,7 @@ final class TelegramAdminController
                 case 'settings':
                     $chat = trim($req->str('chat_id', 30));
                     if ($chat !== '' && !Telegram::validChatId($chat)) { flash('bad', 'ID групи — це число, зазвичай з мінусом на початку, наприклад -1001234567890.'); return $back; }
-                    if ($chat !== $cfg['chatId']) $cfg['chatTitle'] = (string) ($cfg['seenChats'][$chat] ?? '');
+                    if ($chat !== $cfg['chatId']) { $cfg['chatTitle'] = (string) ($cfg['seenChats'][$chat] ?? ''); $cfg['topicModeration'] = $cfg['topicUpdates'] = null; }
                     $cfg['chatId'] = $chat;
                     $cfg['moderation'] = (bool) $req->input('moderation');
                     $cfg['updates'] = (bool) $req->input('updates');
@@ -123,7 +123,9 @@ final class TelegramAdminController
 
                 case 'test':
                     if (!Telegram::groupReady()) { flash('bad', 'Вкажіть ID групи і збережіть налаштування.'); return $back; }
-                    Telegram::send($cfg['chatId'], '👋 Перевірка зв’язку з сайту <b>' . e((string) App::setting('site.name', 'YEWORK')) . '</b>. Бот працює. Надіслав: ' . e($me['display_name']) . '.');
+                    $hello = '👋 Перевірка зв’язку з сайту <b>' . e((string) App::setting('site.name', 'YEWORK')) . '</b>. Бот працює. Надіслав: ' . e($me['display_name']) . '.';
+                    Telegram::sendToGroup('moderation', $hello . "\nСюди надходитиме модерація.");
+                    if ((int) $cfg['topicUpdates'] !== (int) $cfg['topicModeration']) Telegram::sendToGroup('updates', $hello . "\nСюди надходитимуть новини про версії.");
                     flash('ok', 'Тестове повідомлення надіслано в групу.');
                     return $back;
 
@@ -131,6 +133,13 @@ final class TelegramAdminController
                     if (!Telegram::groupReady()) { flash('bad', 'Вкажіть ID групи і збережіть налаштування.'); return $back; }
                     Telegram::announceVersion(true);
                     flash('ok', 'Опис версії ' . YW_VERSION . ' надіслано в групу.');
+                    return $back;
+
+                case 'topic_reset':
+                    $cfg['topicModeration'] = $cfg['topicUpdates'] = null;
+                    Telegram::saveConfig($cfg, $uid);
+                    Audit::log('telegram.settings', 'settings', 'telegram', ['topics' => 'general']);
+                    flash('ok', 'Бот писатиме в загальний чат групи.');
                     return $back;
 
                 case 'unlink':
