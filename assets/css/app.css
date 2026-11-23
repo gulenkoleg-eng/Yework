@@ -516,7 +516,17 @@ fieldset.field legend{font-weight:600;font-size:14.5px;margin-bottom:6px;padding
 .job-b h3{min-width:0;overflow-wrap:anywhere}
 @media (max-width:560px){.job-b>.row{flex-wrap:wrap!important}.job-b>.row>.small{white-space:normal!important}}
 
-/* Статичні сторінки (Про нас, Правила, Контакти) */
+/* Статичні сторінки (Про нас, Правила, Контакти). З 0.5.28 на всю ширину сайту: текст + бічна картка */
+.pg{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;align-items:start}
+@media (max-width:900px){.pg{grid-template-columns:minmax(0,1fr)}.pg-side{position:static}}
+.pg-main{padding:clamp(20px,3.2vw,36px);display:flex;flex-direction:column;gap:14px;align-self:stretch}
+.pg-main h1{font-size:clamp(26px,3.4vw,34px);margin-bottom:4px}
+.pg-main .pg-edit-link{margin-top:auto;padding-top:12px;border-top:1px dashed var(--c-border)}
+.pg-side-h{font-size:17px;color:var(--c-heading)}
+.pg-links{display:flex;flex-direction:column;border-top:1px solid var(--c-border);padding-top:12px;margin-top:2px}
+.pg-links a{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0;font-weight:600;text-decoration:none;color:var(--c-text);border-bottom:1px solid var(--c-border)}
+.pg-links a:last-child{border-bottom:0}
+.pg-links a:hover{color:var(--c-primary)}
 .page-text h2{font-size:21px;margin-top:8px}
 .page-text h3{font-size:17px}
 .page-text ul{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
