@@ -155,25 +155,30 @@ select.input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xml
   .menu-btn{display:inline-flex;width:40px;padding:0}
   .hdr-act .hide-m{display:none}
 }
-main.site{flex:1;padding:28px 0 56px}
+main.site{flex:1;padding:20px 0 48px}
 .ftr{border-top:var(--bw) solid var(--c-border);background:var(--c-card);padding:28px 0;font-size:14px;color:var(--c-muted)}
 .ftr .wrap{display:flex;gap:20px;flex-wrap:wrap;justify-content:space-between}
 .ftr a{color:var(--c-muted)}
 
-.hero{padding:0 0 4px;display:grid;gap:16px}
+/* 0.5.18: головна щільніша — менші відступи й розміри, щоб на ПК при масштабі 100% усе було ближче до верху */
+.hero{padding:0;display:grid;gap:10px}
+.hero h1{font-size:clamp(26px,3vw,36px);line-height:1.15}
 .hero h1 b{color:var(--c-primary)}
-.hero p.lead{font-size:17px;color:var(--c-muted);margin-top:-4px;text-wrap:pretty}
-.hero .search{margin-top:4px}
-@media (max-width:720px){.hero{gap:14px}.hero p.lead{font-size:16px}}
-.search{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto;gap:10px;padding:10px;background:var(--c-card);border:var(--bw) solid var(--c-border);border-radius:calc(var(--r-card) + 4px);box-shadow:var(--shadow)}
+.hero p.lead{font-size:16px;color:var(--c-muted);margin-top:-2px;text-wrap:pretty}
+.hero .search{margin-top:6px}
+.hero .search .input{min-height:42px;padding-block:8px}
+.hero .search .btn{min-height:42px}
+@media (max-width:720px){.hero{gap:10px}.hero p.lead{font-size:15px}}
+.search{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) auto;gap:8px;padding:8px;background:var(--c-card);border:var(--bw) solid var(--c-border);border-radius:calc(var(--r-card) + 4px);box-shadow:var(--shadow)}
 .search .input{border-color:transparent;background:var(--c-bg)}
 @media (max-width:720px){.search{grid-template-columns:minmax(0,1fr)}}
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.stat{padding:16px 18px;display:flex;flex-direction:column;gap:2px}
-.stat b{font-size:28px;font-family:var(--font-head);color:var(--c-heading);line-height:1.1}
+.hero+.stats{margin-top:16px}
+.stat{padding:12px 16px;display:flex;flex-direction:column;gap:2px}
+.stat b{font-size:24px;font-family:var(--font-head);color:var(--c-heading);line-height:1.1}
 .stat span{font-size:13.5px;color:var(--c-muted)}
 a.stat.go{position:relative;text-decoration:none;color:inherit;padding-right:40px;transition:border-color .15s,transform .15s}
-a.stat.go i{position:absolute;right:14px;top:18px;color:var(--c-primary);opacity:.7}
+a.stat.go i{position:absolute;right:14px;top:14px;color:var(--c-primary);opacity:.7}
 a.stat.go:hover{border-color:var(--c-primary)}a.stat.go:hover i{opacity:1}
 a.stat.go:active{transform:scale(.98)}
 .back-link{display:inline-block;margin-bottom:10px}
@@ -186,12 +191,13 @@ a.stat.go:active{transform:scale(.98)}
 .emp .t em{font-style:normal;font-size:14px;font-weight:700;color:var(--c-primary)}
 @media (max-width:820px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .dirs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.dir{padding:20px;display:flex;flex-direction:column;gap:8px;text-decoration:none;color:inherit}
-.dir .ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--c-secondary);color:var(--c-primary)}
+.dir{padding:16px 18px;display:flex;flex-direction:column;gap:6px;text-decoration:none;color:inherit}
+.dir .ic{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:var(--c-secondary);color:var(--c-primary)}
 .dir p{color:var(--c-muted);font-size:14.5px}
 .dir.soon{opacity:.75}
 @media (max-width:820px){.dirs{grid-template-columns:minmax(0,1fr)}}
-.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:34px 0 14px}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:26px 0 10px}
+.sec-h h2{font-size:clamp(20px,2vw,24px)}
 .cats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .cat{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;text-decoration:none;color:inherit;font-weight:600;font-size:14.5px}
 .cat em{font-style:normal;color:var(--c-muted);font-weight:500;font-size:13px}
