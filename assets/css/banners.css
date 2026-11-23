@@ -2,7 +2,7 @@
    Кольори беруться з активної теми (--c-*) там, де це доречно, тож банер пасує до будь-якої теми й темного режиму. */
 .bnr{--bn-bg:var(--c-card);--bn-ink:var(--c-text);--bn-head:var(--c-heading);--bn-muted:var(--c-muted);--bn-acc:var(--c-brand);--bn-acc-ink:var(--c-brand-ink);
   --bn-chip:color-mix(in srgb,var(--bn-acc) 18%,transparent);--bn-chip-ink:var(--bn-ink);--bn-line:color-mix(in srgb,var(--bn-acc) 55%,var(--c-border));
-  position:relative;isolation:isolate;display:flex;flex-direction:column;gap:10px;min-width:0;overflow:hidden;padding:20px 20px 18px;border-radius:calc(var(--r-card) + 4px);
+  position:relative;isolation:isolate;display:flex;flex-direction:column;gap:8px;min-width:0;overflow:hidden;padding:16px 20px 16px;border-radius:calc(var(--r-card) + 4px);
   background:var(--bn-bg);color:var(--bn-ink);border:var(--bw) solid var(--bn-line);box-shadow:var(--shadow);text-decoration:none;
   transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s}
 a.bnr:hover{transform:translateY(-3px);box-shadow:0 14px 34px -12px color-mix(in srgb,var(--bn-acc) 55%,rgba(0,0,0,.35)),var(--shadow)}
@@ -18,7 +18,7 @@ a.bnr:hover{transform:translateY(-3px);box-shadow:0 14px 34px -12px color-mix(in
 .bnr-badge{flex:none;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.02em;
   background:var(--bn-acc);color:var(--bn-acc-ink);white-space:nowrap}
 .bnr-badge i{width:7px;height:7px;border-radius:50%;background:currentColor;animation:bnr-pulse 1.6s ease-out infinite}
-.bnr h3{margin:4px 0 0;font-size:clamp(20px,2.1vw,24px);line-height:1.15;letter-spacing:-.02em;color:var(--bn-head);font-weight:800;overflow-wrap:anywhere;text-wrap:balance}
+.bnr h3{margin:2px 0 0;font-size:clamp(19px,1.8vw,22px);line-height:1.15;letter-spacing:-.02em;color:var(--bn-head);font-weight:800;overflow-wrap:anywhere;text-wrap:balance}
 .bnr p{font-size:14.5px;line-height:1.5;color:var(--bn-muted);overflow-wrap:anywhere}
 .bnr-perks{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 0;padding:0;list-style:none}
 .bnr-perks li{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;background:var(--bn-chip);color:var(--bn-chip-ink);overflow-wrap:anywhere}

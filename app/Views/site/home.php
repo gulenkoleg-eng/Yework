@@ -9,7 +9,7 @@
   </form>
 </section>
 
-<section class="stats" style="margin-top:22px" aria-label="Статистика сайту">
+<section class="stats" aria-label="Статистика сайту">
   <a class="card stat go" href="<?= url('/jobs', ['today' => 1]) ?>"><b><?= (int) $stats['vacanciesToday'] ?></b><span>нових вакансій сьогодні</span><i><?= icon('arrow', 16) ?></i></a>
   <a class="card stat go" href="<?= url('/employers') ?>"><b><?= (int) $stats['employersHiring'] ?></b><span>роботодавців шукають працівників</span><i><?= icon('arrow', 16) ?></i></a>
   <div class="card stat"><b><?= (int) $stats['visitorsToday'] ?></b><span>відвідувачів сьогодні</span></div>
