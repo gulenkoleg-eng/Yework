@@ -1,19 +1,22 @@
 <?php /* Клієнти (0.5.16): роботодавці, шукачі роботи, майстри, приклади. Персонал — окремо в «Команді». */
-$isDemo = static fn ($id) => in_array((int) $id, $demo, true); ?>
+$isDemo = static fn ($id) => in_array((int) $id, $demo, true);
+$here = url('/admin/clients', ['type' => $type, 'ver' => $ver, 'q' => $q, 'page' => $page > 1 ? $page : null]); ?>
 <div class="adm-h"><h1>Клієнти</h1><span class="muted"><?= (int) $counts[''] ?></span></div>
 <p class="muted small" style="margin-top:-8px">Люди й компанії, які користуються сайтом. Адміністратори та модератори — в розділі <a href="<?= url('/admin/team') ?>">«Команда»</a>.</p>
 <form class="toolbar" method="get" action="<?= url('/admin/clients') ?>">
-  <input type="hidden" name="type" value="<?= e($type) ?>">
+  <input type="hidden" name="type" value="<?= e($type) ?>"><?php if ($ver !== ''): ?><input type="hidden" name="ver" value="<?= e($ver) ?>"><?php endif ?>
   <input class="input" name="q" value="<?= e($q) ?>" placeholder="Ім’я, компанія, логін, телефон або email">
   <button class="btn sm pri">Знайти</button>
 </form>
 <div class="seg cl-tabs" style="margin-bottom:14px;flex-wrap:wrap"><?php foreach ($types as $k => [$l]): ?><a class="<?= $type === $k ? 'on' : '' ?>" href="<?= url('/admin/clients', ['type' => $k, 'q' => $q]) ?>"><?= e($l) ?> <span class="muted"><?= (int) $counts[$k] ?></span></a><?php endforeach ?></div>
+<?php if ($type === 'employers'): ?><div class="seg" style="margin:-4px 0 14px;flex-wrap:wrap"><?php foreach (['' => ['Усі роботодавці', $counts['employers']], 'yes' => ['Перевірені', $verCounts['yes']], 'no' => ['Неперевірені', $verCounts['no']]] as $k => [$l, $n]): ?><a class="<?= $ver === $k ? 'on' : '' ?>" href="<?= url('/admin/clients', ['type' => 'employers', 'ver' => $k, 'q' => $q]) ?>"><?= $k === 'yes' ? icon('shield', 14) . ' ' : '' ?><?= e($l) ?> <span class="muted"><?= (int) $n ?></span></a><?php endforeach ?></div><?php endif ?>
 <div class="card tbl-wrap"><table class="tbl">
   <thead><tr><th>Клієнт</th><th>Хто це</th><th>Контакти</th><th>Статус</th><th>Реєстрація</th><th>Останній вхід</th><?php if ($canEdit): ?><th></th><?php endif ?></tr></thead>
-  <tbody><?php foreach ($rows as $u): $pic = $u['emp_logo'] ? employer_logo($u['emp_logo'], (string) $u['emp_name'], 40, 'elogo') : ($u['m_photo'] ? '<img class="elogo" src="' . e(App\Core\Media::url('master', $u['m_photo'])) . '" alt="" width="40" height="40" loading="lazy">' : '<span class="elogo ph">' . e(initials((string) ($u['emp_name'] ?: $u['m_name'] ?: $u['display_name']))) . '</span>'); ?><tr>
+  <tbody><?php foreach ($rows as $u): $pic = $u['emp_logo'] ? employer_logo($u['emp_logo'], (string) $u['emp_name'], 40, 'elogo') : ($u['m_photo'] ? '<img class="elogo" src="' . e(App\Core\Media::url('master', $u['m_photo'])) . '" alt="" width="40" height="40" loading="lazy">' : '<span class="elogo ph">' . e(initials((string) ($u['emp_name'] ?: $u['m_name'] ?: $u['display_name']))) . '</span>'); ?><tr id="u<?= (int) $u['id'] ?>">
     <td><div class="row" style="flex-wrap:nowrap;gap:10px"><?= $pic ?><div><a href="<?= url('/admin/users/' . $u['id']) ?>"><?= e($u['display_name']) ?></a><div class="small muted mono"><?= e($u['login']) ?></div></div></div></td>
     <td class="small">
-      <?php if ($u['emp_id']): ?><div><span class="tag">Роботодавець</span> <?= e(employer_name($u['emp_form'], $u['emp_name'])) ?><?= $u['emp_verified'] ? ' ✓' : '' ?><?= (int) $u['vacancies'] ? ' · ' . (int) $u['vacancies'] . ' вак.' : '' ?></div><?php endif ?>
+      <?php if ($u['emp_id']): ?><div><span class="tag">Роботодавець</span> <?= e(employer_name($u['emp_form'], $u['emp_name'])) ?><?= (int) $u['vacancies'] ? ' · ' . (int) $u['vacancies'] . ' вак.' : '' ?>
+        <div style="margin-top:4px"><?= $canEdit ? verify_toggle((int) $u['emp_id'], (bool) $u['emp_verified'], $here . '#u' . $u['id']) : ($u['emp_verified'] ? '<span class="tag ok">' . icon('shield', 12) . ' Перевірений</span>' : '') ?></div></div><?php endif ?>
       <?php if ($u['m_name'] !== null): ?><div><span class="tag">Майстер</span> <?= e($u['m_name']) ?></div><?php endif ?>
       <?php if ((int) $u['resumes']): ?><div><span class="tag">Шукач роботи</span> резюме</div><?php endif ?>
       <?php if ($isDemo($u['id'])): ?><div><span class="tag warn">Приклад</span></div><?php endif ?>
@@ -26,4 +29,4 @@ $isDemo = static fn ($id) => in_array((int) $id, $demo, true); ?>
   </tr><?php endforeach ?>
   <?php if (!$rows): ?><tr><td colspan="7" class="muted">Нікого не знайдено.</td></tr><?php endif ?></tbody>
 </table></div>
-<?php if ($total > App\Controllers\Admin\PeopleController::PER_PAGE): ?><nav class="pager"><?php for ($i = 1; $i <= ceil($total / App\Controllers\Admin\PeopleController::PER_PAGE); $i++): ?><?= $i === $page ? "<span class=\"on\">$i</span>" : '<a href="' . url('/admin/clients', ['q' => $q, 'type' => $type, 'page' => $i]) . "\">$i</a>" ?><?php endfor ?></nav><?php endif ?>
+<?php if ($total > App\Controllers\Admin\PeopleController::PER_PAGE): ?><nav class="pager"><?php for ($i = 1; $i <= ceil($total / App\Controllers\Admin\PeopleController::PER_PAGE); $i++): ?><?= $i === $page ? "<span class=\"on\">$i</span>" : '<a href="' . url('/admin/clients', ['q' => $q, 'type' => $type, 'ver' => $ver, 'page' => $i]) . "\">$i</a>" ?><?php endfor ?></nav><?php endif ?>

@@ -333,7 +333,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:14.5px}
 .mq-search svg{position:absolute;left:11px;color:var(--c-muted);pointer-events:none}
 .mq-search .input{width:100%;padding-left:34px}
 .mq{padding:0;overflow:hidden}
-.mq{--mq-act:108px}
+.mq{--mq-act:148px}
 .mq-head,.mq-row>summary{display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1.3fr) minmax(172px,1.1fr) minmax(0,1fr) 104px var(--mq-act);gap:14px;align-items:center;padding:10px 16px}
 .mq-row>summary>span{min-width:0}
 .mq-cell>*{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -362,7 +362,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:14.5px}
 .mq-do{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .mq-reject{display:flex;gap:8px;flex:1 1 360px}
 .mq-reject .input{min-height:36px;padding-block:6px;font-size:14px}
-@media (min-width:1500px){.mq{--mq-act:292px}}
+@media (min-width:1500px){.mq{--mq-act:332px}}
 @media (max-width:1499px){.mq-lbl{display:none}}
 @media (max-width:900px){
   .mq-head{display:none}
@@ -554,3 +554,21 @@ a.kpi.link:hover .kpi-go,a.kpi.link:focus-visible .kpi-go{opacity:1;transform:tr
 .vbar{position:relative;height:22px;background:#EEF0F3;border-radius:6px;overflow:hidden}
 .vbar i{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--c-primary) 30%,transparent);border-radius:6px;min-width:2px}
 .vbar b{position:relative;padding-left:8px;font-size:13px;line-height:22px}
+/* 0.5.23: перемикач «Перевірений роботодавець» в один клік */
+.vt-form{display:inline;margin:0}
+.vt{display:inline-flex;align-items:center;gap:5px;font:inherit;font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:999px;cursor:pointer;white-space:nowrap;vertical-align:middle;
+  border:1px dashed color-mix(in srgb,var(--c-muted) 55%,transparent);background:transparent;color:var(--c-muted);transition:background .15s,color .15s,border-color .15s}
+.vt:hover{border-color:var(--c-success);color:var(--c-success);background:color-mix(in srgb,var(--c-success) 8%,var(--c-card))}
+.vt.on{border:1px solid transparent;background:color-mix(in srgb,var(--c-success) 14%,var(--c-card));color:var(--c-success)}
+.vt.on:hover{border-color:var(--c-danger);color:var(--c-danger);background:color-mix(in srgb,var(--c-danger) 10%,var(--c-card))}
+.vt.on:hover span{font-size:0}
+.vt.on:hover span::after{content:"Зняти позначку";font-size:12.5px}
+.vt.mini{padding:0;width:32px;height:32px;justify-content:center;border-radius:10px}
+.vt-static{display:inline-flex;vertical-align:middle}
+.verify-box{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:1px dashed color-mix(in srgb,var(--c-muted) 45%,transparent);margin:0}
+.verify-box>div{flex:1;min-width:0}
+.verify-box .vb-ic{width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:12px;background:color-mix(in srgb,var(--c-muted) 12%,var(--c-card));color:var(--c-muted)}
+.verify-box.on{border:1px solid color-mix(in srgb,var(--c-success) 35%,transparent);background:color-mix(in srgb,var(--c-success) 7%,var(--c-card))}
+.verify-box.on .vb-ic{background:color-mix(in srgb,var(--c-success) 16%,var(--c-card));color:var(--c-success)}
+.verify-box .btn{flex:none}
+@media (max-width:560px){.verify-box{flex-wrap:wrap}.verify-box .btn{width:100%}}

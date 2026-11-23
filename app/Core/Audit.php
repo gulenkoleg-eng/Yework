@@ -31,7 +31,7 @@ final class Audit
         'user.blocked' => 'Користувача заблоковано', 'user.unblocked' => 'Користувача розблоковано',
         'team.reward_added' => 'Додано винагороду члену команди', 'team.reward_deleted' => 'Видалено запис винагороди',
         'access.role_granted' => 'Видано роль', 'access.role_revoked' => 'Знято роль',
-        'jobs.employer_created' => 'Створено профіль роботодавця', 'jobs.employer_verified' => 'Роботодавця перевірено',
+        'jobs.employer_created' => 'Створено профіль роботодавця', 'jobs.employer_verified' => 'Роботодавця перевірено', 'jobs.employer_unverified' => 'Знято позначку «Перевірений роботодавець»',
         'jobs.vacancy_submitted' => 'Вакансію подано на модерацію', 'jobs.vacancy_published' => 'Вакансію опубліковано',
         'jobs.vacancy_approved' => 'Вакансію схвалено', 'jobs.vacancy_rejected' => 'Вакансію відхилено', 'jobs.vacancy_archived' => 'Вакансію перенесено в архів', 'jobs.vacancy_restored' => 'Вакансію поновлено з архіву',
         'jobs.vacancy_admin_edited' => 'Адміністрація виправила вакансію', 'identity.client_admin_edited' => 'Адміністрація виправила картку клієнта',
