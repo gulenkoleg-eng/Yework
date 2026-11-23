@@ -80,3 +80,8 @@ html.sale-lock,html.sale-lock body{overflow:hidden}
   .sale-sparks{display:none}
   .sale-bar i{animation:sale-time var(--t,2s) linear both!important}
 }
+/* «YE» у шапці під час акції (0.5.27): світиться і відкриває заставку */
+.hdr .logo i.sale-ye{position:relative;cursor:pointer;animation:sale-ye 1.4s ease-in-out infinite}
+.hdr .logo i.sale-ye::after{content:'%';position:absolute;inset:auto;top:-6px;right:-8px;opacity:1;background-image:none;display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:#e8202a;color:#fff;font-size:10px;font-weight:900;font-style:normal;box-shadow:0 0 0 2px var(--c-card,#fff)}
+@keyframes sale-ye{0%,100%{box-shadow:0 0 0 0 rgba(232,32,42,.0)}50%{box-shadow:0 0 0 5px rgba(232,32,42,.25),0 0 14px rgba(232,32,42,.45)}}
+@media (prefers-reduced-motion:reduce){.hdr .logo i.sale-ye{animation:none}}

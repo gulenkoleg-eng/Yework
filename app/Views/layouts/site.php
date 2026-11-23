@@ -32,7 +32,7 @@ $on = fn ($p) => str_starts_with(parse_url($path, PHP_URL_PATH) ?: '/', App::bas
 <header class="hdr">
   <?php if ($ny && $ny['garland']): ?><div class="ny-garland" aria-hidden="true"><?php for ($i = 0; $i < 64; $i++): ?><i style="--i:<?= $i ?>"></i><?php endfor ?></div><?php endif ?>
   <div class="wrap">
-    <a class="logo" href="<?= url('/') ?>"><i>YE</i><span><?= e($site) ?><small><?= e($slogan) ?></small></span></a>
+    <a class="logo" href="<?= url('/') ?>"><i<?= $sale ? ' class="sale-ye" data-sale-open title="Святкова знижка: натисніть, щоб упіймати"' : '' ?>>YE</i><span><?= e($site) ?><small><?= e($slogan) ?></small></span></a>
     <nav class="nav" id="nav">
       <a href="<?= url('/jobs') ?>"<?= $on('/jobs') ?>>Вакансії</a>
       <a href="<?= url('/jobs', ['employment' => 'one_time']) ?>">Підробіток</a>

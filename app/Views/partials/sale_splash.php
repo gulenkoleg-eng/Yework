@@ -8,7 +8,7 @@ $deco = ['blackfriday' => '', 'newyear' => '❄', 'march8' => '✿', 'custom' =>
 ?>
 <div class="sale sale-<?= e($c['event']) ?>" id="sale" hidden role="dialog" aria-modal="true" aria-labelledby="saleTitle"
   data-sec="<?= (int) $c['seconds'] ?>" data-cookie="<?= e($sale['cookie']) ?>" data-path="<?= e(App\Core\App::basePath() . '/') ?>"
-  data-url="<?= url('/sale/catch') ?>" data-csrf="<?= e(App\Core\Csrf::token()) ?>" data-preview="<?= $sale['preview'] ? 1 : 0 ?>">
+  data-url="<?= url('/sale/catch') ?>" data-csrf="<?= e(App\Core\Csrf::token()) ?>" data-preview="<?= $sale['preview'] ? 1 : 0 ?>" data-auto="<?= $sale['auto'] ? 1 : 0 ?>" data-show="<?= url('/sale/show') ?>">
   <div class="sale-glow" aria-hidden="true"></div>
   <div class="sale-sparks" aria-hidden="true"><?php for ($i = 0; $i < 28; $i++): ?><i style="--i:<?= $i ?>;--a:<?= ($i * 137) % 360 ?>deg;--d:<?= 38 + ($i * 29) % 34 ?>vmin;--s:<?= 0.6 + (($i * 7) % 10) / 10 ?>"><?= $deco ?></i><?php endfor ?></div>
   <button class="sale-x" type="button" aria-label="Закрити">×</button>
@@ -36,20 +36,25 @@ $deco = ['blackfriday' => '', 'newyear' => '❄', 'march8' => '✿', 'custom' =>
   </div>
 </div>
 <script>
-(function(){var el=document.getElementById('sale');if(!el)return;var R=document.documentElement,sec=+el.dataset.sec||2,st='wait',t;
-if(el.dataset.preview!=='1'){try{document.cookie='yw_sale='+el.dataset.cookie+';path='+el.dataset.path+';max-age=172800;samesite=lax'}catch(e){}}
-el.hidden=false;R.classList.add('sale-lock');requestAnimationFrame(function(){el.classList.add('in')});
+(function(){var el=document.getElementById('sale');if(!el)return;var R=document.documentElement,sec=+el.dataset.sec||2,st='gone',t,prev=el.dataset.preview==='1';
+function post(u){return fetch(u,{method:'POST',credentials:'same-origin',headers:{'X-CSRF':el.dataset.csrf,'Accept':'application/json'}}).then(function(r){return r.json()})}
+function open(){if(st!=='gone')return;st='wait';clearTimeout(t);
+el.classList.remove('in','out','caught','done','is-late','is-ok');el.querySelector('.sale-cta').hidden=false;el.querySelectorAll('.sale-res').forEach(function(x){x.hidden=true});
+el.hidden=false;R.classList.add('sale-lock');void el.offsetWidth;requestAnimationFrame(function(){el.classList.add('in')});
 var go=el.querySelector('[data-sale-catch]');try{go.focus({preventScroll:true})}catch(e){}
-function close(){if(st==='gone')return;st='gone';clearTimeout(t);el.classList.add('out');setTimeout(function(){el.remove();R.classList.remove('sale-lock')},450)}
+t=setTimeout(function(){if(st==='wait')close()},sec*1000)}
+function close(){if(st==='gone')return;st='gone';clearTimeout(t);el.classList.add('out');setTimeout(function(){if(st==='gone'){el.hidden=true;R.classList.remove('sale-lock')}},450)}
 function show(s,msg){el.querySelector('.sale-cta').hidden=true;el.querySelectorAll('.sale-res').forEach(function(x){x.hidden=x.dataset.state!==s});
 if(msg){var m=el.querySelector('[data-state=late] [data-msg]');if(m)m.textContent=msg}el.classList.add('done',s==='late'?'is-late':'is-ok');
 if(s==='late')t=setTimeout(close,2200);else{var b=el.querySelector('[data-state='+s+'] .sale-btn');if(b)b.focus({preventScroll:true})}}
 function grab(){if(st!=='wait')return;st='caught';clearTimeout(t);el.classList.add('caught');
-if(el.dataset.preview==='1'){setTimeout(function(){show('ok-user')},250);return}
-fetch(el.dataset.url,{method:'POST',credentials:'same-origin',headers:{'X-CSRF':el.dataset.csrf,'Accept':'application/json'}})
-.then(function(r){return r.json()}).then(function(d){show(d.ok?(d.guest?'ok-guest':'ok-user'):'late',d.ok?'':d.message)})
+if(prev){setTimeout(function(){show('ok-user')},250);return}
+post(el.dataset.url).then(function(d){show(d.ok?(d.guest?'ok-guest':'ok-user'):'late',d.ok?'':d.message)})
 .catch(function(){show('late','Не вдалося зв’язатися з сайтом. Оновіть сторінку.')})}
 el.addEventListener('click',function(e){if(e.target.closest('.sale-x,[data-sale-close]')){close();return}if(st==='wait')grab()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')close()});
-t=setTimeout(function(){if(st==='wait')close()},sec*1000);})();
+// «YE» в шапці знову відкриває заставку (0.5.27): сервер запам'ятовує новий час показу.
+document.querySelectorAll('[data-sale-open]').forEach(function(b){b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();
+if(prev){open();return}post(el.dataset.show).then(function(d){if(d.ok)open()}).catch(function(){})})});
+if(el.dataset.auto==='1'){if(!prev){try{document.cookie='yw_sale='+el.dataset.cookie+';path='+el.dataset.path+';max-age=172800;samesite=lax'}catch(e){}}open()}})();
 </script>

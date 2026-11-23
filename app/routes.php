@@ -32,6 +32,7 @@ $router->get('/site.webmanifest', [SiteController::class, 'manifest']);
 $router->get('/go/{id}', [SiteController::class, 'promoClick']);
 $router->get('/promo/seen', [SiteController::class, 'promoSeen']);
 $router->post('/sale/catch', [SiteController::class, 'saleCatch']);
+$router->post('/sale/show', [SiteController::class, 'saleShow']);
 
 // Резюме: пошук для роботодавців, сторінка резюме, PDF, запрошення, фото профілю
 $router->get('/resumes', [ResumeController::class, 'index']);

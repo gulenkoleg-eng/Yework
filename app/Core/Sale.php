@@ -95,25 +95,43 @@ final class Sale
     }
 
     /**
-     * Дані для заставки на цій сторінці або null. Запам'ятовує в сесії час показу, щоб перевірити, що натиснули вчасно.
+     * Дані для заставки на цій сторінці або null (акція не йде, пошуковий робот).
+     * 'auto' — показати одразу при вході: не частіше разу на день і лише тим, хто ще не впіймав знижку.
+     * Інакше заставка лежить на сторінці схованою й відкривається натисканням на «YE» в шапці (0.5.27).
      * $preview — адміністратор дивиться, як виглядає заставка (показується завжди, знижку не дає).
      */
     public static function splash(Request $req, ?array $me): ?array
     {
         $c = self::config();
         $preview = isset($req->query['sale_preview']) && ($me['is_staff'] ?? false);
+        $auto = true;
         if (!$preview) {
             if ($req->method !== 'GET' || !self::running($c) || self::isBot($req)) return null;
-            if (($req->cookies['yw_sale'] ?? '') === self::seenCookie($c)) return null;
-            if ($me && self::claimOf((int) $me['id'], $c['id'])) return null;
-            if (!$me && App::session()->get('sale_pending') === $c['id']) return null;
+            if (($req->cookies['yw_sale'] ?? '') === self::seenCookie($c)) $auto = false;
+            elseif ($me && self::claimOf((int) $me['id'], $c['id'])) $auto = false;
+            elseif (!$me && App::session()->get('sale_pending') === $c['id']) $auto = false;
         } elseif ($c['id'] === '') {
             $c['id'] = 'preview';
         }
         if ($c['from'] === '') { $c['from'] = date('Y-m-d'); $c['to'] = date('Y-m-d', strtotime('+6 days')); }
-        if (!$preview) App::session()->set('sale_shown', ['id' => $c['id'], 'at' => microtime(true), 'seconds' => $c['seconds']]);
-        return ['c' => $c, 'title' => self::title($c), 'subtitle' => self::subtitle($c), 'preview' => $preview, 'guest' => !$me,
+        if (!$preview && $auto) self::markShown($c);
+        return ['c' => $c, 'title' => self::title($c), 'subtitle' => self::subtitle($c), 'preview' => $preview, 'guest' => !$me, 'auto' => $auto,
             'monetization' => Ads::monetizationOn(), 'cookie' => self::seenCookie($c)];
+    }
+
+    /** Запам'ятовує в сесії час показу, щоб потім перевірити, що натиснули вчасно. */
+    private static function markShown(array $c): void
+    {
+        App::session()->set('sale_shown', ['id' => $c['id'], 'at' => microtime(true), 'seconds' => $c['seconds']]);
+    }
+
+    /** Повторний показ натисканням на «YE» в шапці (0.5.27). */
+    public static function show(Request $req): bool
+    {
+        $c = self::config();
+        if (!self::running($c) || self::isBot($req)) return false;
+        self::markShown($c);
+        return true;
     }
 
     /**
@@ -140,9 +158,9 @@ final class Sale
     /** Записує знижку користувачу (повторне натискання нічого не змінює). */
     public static function claim(int $userId, array $c): void
     {
-        App::db()->run('INSERT IGNORE INTO {p}sale_claims (campaign, user_id, event, name, percent, ends_on) VALUES (?, ?, ?, ?, ?, ?)',
+        $st = App::db()->run('INSERT IGNORE INTO {p}sale_claims (campaign, user_id, event, name, percent, ends_on) VALUES (?, ?, ?, ?, ?, ?)',
             [$c['id'], $userId, $c['event'], mb_substr(self::name($c), 0, 80), $c['percent'], $c['to']]);
-        Audit::log('billing.sale_caught', 'user', $userId, ['campaign' => $c['id'], 'percent' => $c['percent']], $userId);
+        if ($st->rowCount() > 0) Audit::log('billing.sale_caught', 'user', $userId, ['campaign' => $c['id'], 'percent' => $c['percent']], $userId);
     }
 
     /** Після входу чи реєстрації: гість, що впіймав знижку в цій вкладці, отримує її в свій кабінет. */
