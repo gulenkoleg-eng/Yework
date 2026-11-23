@@ -460,3 +460,12 @@ fieldset.field legend{font-weight:600;font-size:14.5px;margin-bottom:6px;padding
 /* 0.5.3: галочки прав ролі */
 .perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px 18px}
 .perm-grid .perm-key span{font-weight:700}
+/* Клікабельні картки «Огляду» (0.5.20) */
+a.kpi.link{position:relative;transition:border-color .15s,box-shadow .15s,transform .15s}
+a.kpi.link:hover,a.kpi.link:focus-visible{border-color:var(--c-primary);box-shadow:0 4px 14px rgba(0,0,0,.08);transform:translateY(-1px);outline:none}
+a.kpi.link:focus-visible{box-shadow:0 0 0 3px color-mix(in srgb,var(--c-primary) 25%,transparent)}
+.kpi-go{position:absolute;top:14px;right:16px;font-style:normal;color:var(--c-muted);opacity:.45;transition:opacity .15s,transform .15s}
+a.kpi.link:hover .kpi-go,a.kpi.link:focus-visible .kpi-go{opacity:1;transform:translateX(2px)}
+.vbar{position:relative;height:22px;background:#EEF0F3;border-radius:6px;overflow:hidden}
+.vbar i{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--c-primary) 30%,transparent);border-radius:6px;min-width:2px}
+.vbar b{position:relative;padding-left:8px;font-size:13px;line-height:22px}

@@ -1,12 +1,22 @@
 <div class="adm-h"><h1>Огляд</h1><span class="muted"><?= e(date('d.m.Y')) ?></span></div>
 <?php if ($mfa && $me['is_staff']): ?><div class="alert warn">Двофакторна автентифікація для адміністраторів буде додана в наступному оновленні. Поки що використовуйте складний пароль і не входьте з чужих пристроїв.</div><?php endif ?>
+<?php
+  // Картки ведуть на відповідну сторінку (0.5.20). Якщо в ролі немає права на ту сторінку — картка лишається простим блоком.
+  $a = App\Core\App::auth();
+  $cards = [
+    [$k['pending'], 'вакансій чекають модерації', '/admin/moderation', 'jobs.listing:moderate', $k['pending'] > 0],
+    [$k['published'], 'опубліковано вакансій', ['/admin/moderation', ['status' => 'published']], 'jobs.listing:moderate'],
+    [$k['users'], 'користувачів (+' . $k['usersToday'] . ' сьогодні)', '/admin/clients', 'identity.user:view'],
+    [$k['employers'], 'роботодавців', ['/admin/clients', ['type' => 'employers']], 'identity.user:view'],
+    [$k['applications'], 'відгуків', '/admin/applications', 'identity.user:view'],
+    [(int) $pub['visitorsToday'] . ' / ' . (int) $pub['visitorsMonth'], 'відвідувачів сьогодні / за місяць', '/admin/visitors', 'stats.dashboard:view'],
+  ];
+?>
 <div class="kpis">
-  <a class="card kpi<?= $k['pending'] ? ' attn' : '' ?>" href="<?= url('/admin/moderation') ?>"><b><?= $k['pending'] ?></b><span>вакансій чекають модерації</span></a>
-  <div class="card kpi"><b><?= $k['published'] ?></b><span>опубліковано вакансій</span></div>
-  <div class="card kpi"><b><?= $k['users'] ?></b><span>користувачів (+<?= $k['usersToday'] ?> сьогодні)</span></div>
-  <div class="card kpi"><b><?= $k['employers'] ?></b><span>роботодавців</span></div>
-  <div class="card kpi"><b><?= $k['applications'] ?></b><span>відгуків</span></div>
-  <div class="card kpi"><b><?= (int) $pub['visitorsToday'] ?> / <?= (int) $pub['visitorsMonth'] ?></b><span>відвідувачів сьогодні / за місяць</span></div>
+<?php foreach ($cards as $c): [$num, $label, $href, $perm] = $c; $cls = 'card kpi' . (!empty($c[4]) ? ' attn' : ''); ?>
+  <?php if ($a->can($perm)): $href = is_array($href) ? url($href[0], $href[1]) : url($href); ?><a class="<?= $cls ?> link" href="<?= e($href) ?>"><b><?= e((string) $num) ?></b><span><?= e($label) ?></span><i class="kpi-go" aria-hidden="true">→</i></a>
+  <?php else: ?><div class="<?= $cls ?>"><b><?= e((string) $num) ?></b><span><?= e($label) ?></span></div><?php endif ?>
+<?php endforeach ?>
 </div>
 <?php if ($k['failedMessages']): ?><div class="alert bad">За добу не вдалося надіслати <?= $k['failedMessages'] ?> повідомлень. <a href="<?= url('/admin/outbox') ?>">Переглянути</a></div><?php endif ?>
 <?php if ($recent): ?>

@@ -104,6 +104,8 @@ $router->get('/cabinet/ads/{id}/invoice', [AdsController::class, 'invoice'], [])
 // Адмін-панель (права перевіряються і тут, і в контролері)
 $router->get('/admin', [AdminController::class, 'dashboard'], []);
 $router->get('/admin/moderation', [AdminController::class, 'moderation'], ['jobs.listing:moderate']);
+$router->get('/admin/applications', [AdminController::class, 'applications'], ['identity.user:view']);
+$router->get('/admin/visitors', [AdminController::class, 'visitors'], ['stats.dashboard:view']);
 $router->post('/admin/moderation/{id}', [AdminController::class, 'moderate'], ['jobs.listing:moderate']);
 // Адміністрація виправляє чужу вакансію (0.5.3), власник отримує сповіщення
 $router->get('/admin/vacancies/{id}/edit', [ListingEditController::class, 'vacancyForm'], ['jobs.listing:update']);
