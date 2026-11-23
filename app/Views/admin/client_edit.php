@@ -55,7 +55,24 @@ $isDemo = in_array((int) $u['id'], \App\Core\Demo::content()['users'], true); ?>
       </div>
     </div>
     <?= input_field('master_name', 'Ім’я або назва майстра', ['value' => $m['name'], 'maxlength' => 100]) ?>
-    <p class="small muted">Опис, ціни й роботи майстра виправляються в розділі <a href="<?= url('/admin/masters') ?>">«Майстри»</a>.</p>
+  </div>
+
+  <?php /* 0.5.25.1: анкета майстра (опис, прайс, фото, виїзд) прямо в картці клієнта + кнопка повної правки. */
+    $mf = \App\Core\Services::find((int) $m['id']) ?? $m; $mPrices = \App\Core\Services::prices((int) $m['id']); $mWorks = \App\Core\Services::works((int) $m['id']);
+    $mTravel = \App\Core\Services::travelText($mf, \App\Core\Services::travelAreas((int) $m['id']));
+    $mEdit = \App\Core\App::auth()->can(\App\Controllers\Admin\MasterEditController::PERM); $mSt = \App\Core\Services::STATUS[$m['status']] ?? ['—', 'muted']; ?>
+  <link rel="stylesheet" href="<?= asset('css/services.css') ?>">
+  <div class="card pad stack ce-master">
+    <div class="row" style="align-items:flex-start">
+      <div style="flex:1;min-width:220px"><h3>Анкета майстра <span class="tag <?= $mSt[1] ?>" style="vertical-align:middle"><?= $mSt[0] ?></span></h3>
+        <p class="small muted" style="margin:4px 0 0"><?= e($mf['category'] ?? '') ?><?= !empty($mf['category2']) ? ' + ' . e($mf['category2']) : '' ?><?= !empty($mf['settlement']) ? ' · ' . e($mf['settlement']) : '' ?><?= $mTravel ? ' · ' . e(mb_strtolower($mTravel)) : '' ?><?= $m['areas'] ? ' · ' . e($m['areas']) : '' ?></p></div>
+      <?php if ($mEdit): ?><a class="btn pri" href="<?= url('/admin/masters/' . $m['id'] . '/edit', ['back' => 'client']) ?>"><?= icon('tool', 16) ?>Редагувати опис, прайс і фото</a><?php endif ?>
+    </div>
+    <?php if (trim((string) $m['about']) !== ''): ?><div class="prose small ce-about"><?= e($m['about']) ?></div><?php else: ?><p class="small muted" style="margin:0">Опису ще немає.</p><?php endif ?>
+    <?php if ($mPrices): ?><details><summary class="small" style="cursor:pointer;color:var(--c-primary);font-weight:600">Прайс (<?= count($mPrices) ?>)</summary><table class="ptable small"><?php foreach ($mPrices as $pr): ?><tr><td><?= e($pr['title']) ?><?php if ($pr['note']): ?><span class="note"><?= e($pr['note']) ?></span><?php endif ?></td><td><?= e(\App\Core\Services::priceText($pr)) ?></td></tr><?php endforeach ?></table></details>
+    <?php else: ?><p class="small muted" style="margin:0">Прайсу ще немає.</p><?php endif ?>
+    <?php if ($mWorks): ?><div class="ms-photos"><?php foreach ($mWorks as $wk) foreach ($wk['photos'] as $ph): ?><img src="<?= e(\App\Core\Media::url('workthumb', $ph['file'])) ?>" alt="" title="<?= e($wk['title']) ?>" loading="lazy"><?php endforeach ?></div><?php endif ?>
+    <p class="small muted" style="margin:0"><?= $mEdit ? 'Кнопка «Редагувати» відкриває повну анкету: назва й напрям, місце роботи й виїзд, опис, телефон, оплата, прайс і галерея робіт. Власник отримає сповіщення про зміни.' : 'Виправляти анкету майстра може адміністратор із правом «Редагування оголошень (послуги)».' ?> <a href="<?= url('/admin/masters', ['status' => 'all', 'q' => (string) $m['id']]) ?>">Знайти в розділі «Майстри»</a> · <a href="<?= url('/services/' . $m['id']) ?>" target="_blank" rel="noopener">сторінка майстра</a></p>
   </div>
   <?php endif ?>
 
