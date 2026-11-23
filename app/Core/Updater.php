@@ -23,7 +23,9 @@ final class Updater
 {
     public const DEFAULT_REPO = 'gulenkoleg-eng/yework';
     public const DEFAULT_BRANCH = 'main';
-    private const KEEP_BACKUPS = 6;
+    /** Скільки копій зберігати автоматично, якщо в налаштуваннях нічого не вказано. */
+    public const KEEP_BACKUPS = 6;
+    public const KEEP_CHOICES = [2, 3, 4, 5, 6, 8, 10, 15, 20];
     private const MAX_ZIP = 60 * 1024 * 1024;
     private const CACHE_TTL = 3600;
     /** Файли й папки сайту, які входять у резервну копію файлів. */
@@ -581,7 +583,8 @@ final class Updater
     // ---------- Резервні копії ----------
 
     /** @return string id копії */
-    public static function createBackup(string $kind, string $note, ?int $actorId): string
+    /** @param list<string> $protect копії, які автоматичне очищення не чіпає (наприклад, та, яку зараз відновлюємо) */
+    public static function createBackup(string $kind, string $note, ?int $actorId, array $protect = []): string
     {
         if (!class_exists(ZipArchive::class)) throw new RuntimeException('На хостингу вимкнено розширення PHP «zip».');
         self::prepareRuntime();
@@ -599,7 +602,7 @@ final class Updater
         $meta = ['id' => $id, 'kind' => $kind, 'note' => $note, 'version' => YW_VERSION, 'createdAt' => gmdate('c'), 'by' => $actorId,
             'files' => $files, 'tables' => $tables, 'size' => (int) filesize($dir . '/files.zip') + (int) filesize($dir . '/db.sql')];
         file_put_contents($dir . '/meta.json', json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
-        self::pruneBackups($id);
+        self::pruneBackups([$id, ...$protect]);
         return $id;
     }
 
@@ -629,16 +632,73 @@ final class Updater
         return null;
     }
 
-    public static function deleteBackup(string $id): void
+    /** Скільки останніх копій зберігати (налаштовується в адмінці). */
+    public static function keepCount(): int
     {
-        if (!self::backup($id)) throw new RuntimeException('Резервну копію не знайдено.');
-        self::rrmdir(self::backupsDir() . '/' . $id);
+        $n = (int) App::setting('updates.backups_keep', self::KEEP_BACKUPS);
+        return in_array($n, self::KEEP_CHOICES, true) ? $n : self::KEEP_BACKUPS;
     }
 
-    private static function pruneBackups(string $keepId): void
+    /** Зберігає нову кількість і одразу прибирає зайві копії. @return array{count:int,freed:int} */
+    public static function setKeepCount(int $n, ?int $actorId): array
     {
+        if (!in_array($n, self::KEEP_CHOICES, true)) throw new RuntimeException('Виберіть кількість копій зі списку.');
+        App::setSetting('updates.backups_keep', $n, $actorId);
+        return self::deleteOldBackups($n);
+    }
+
+    /** Копія, на яку посилається недовстановлене оновлення: її видаляти не можна. */
+    private static function pendingBackupId(): ?string
+    {
+        $p = self::pending();
+        return $p && !empty($p['backup']) ? (string) $p['backup'] : null;
+    }
+
+    /** Чи можна видалити копію і чому ні. */
+    public static function deleteBlocker(string $id): ?string
+    {
+        return $id === self::pendingBackupId() ? 'Ця копія потрібна, щоб завершити або скасувати незавершене оновлення.' : null;
+    }
+
+    /** @param bool $allowLatest найновішу копію видаляємо лише з окремим підтвердженням */
+    public static function deleteBackup(string $id, bool $allowLatest = false): array
+    {
+        $b = self::backup($id);
+        if (!$b) throw new RuntimeException('Резервну копію не знайдено.');
+        if ($why = self::deleteBlocker($id)) throw new RuntimeException($why);
         $list = self::backups();
-        foreach (array_slice($list, self::KEEP_BACKUPS) as $b) if ($b['id'] !== $keepId) self::rrmdir(self::backupsDir() . '/' . $b['id']);
+        if (!$allowLatest && $list && $list[0]['id'] === $id) throw new RuntimeException('Це найновіша копія. Щоб її видалити, поставте галочку підтвердження.');
+        self::rrmdir(self::backupsDir() . '/' . $id);
+        return $b;
+    }
+
+    /** Видаляє все, крім $keep найновіших копій. @return array{count:int,freed:int} */
+    public static function deleteOldBackups(int $keep): array
+    {
+        $keep = max(1, $keep);
+        $pending = self::pendingBackupId();
+        $count = 0; $freed = 0;
+        foreach (array_slice(self::backups(), $keep) as $b) {
+            if ($b['id'] === $pending) continue;
+            self::rrmdir(self::backupsDir() . '/' . $b['id']);
+            $count++; $freed += (int) ($b['size'] ?? 0);
+        }
+        return ['count' => $count, 'freed' => $freed];
+    }
+
+    /** Шлях до частини копії для завантаження: files (архів файлів) або db (дамп бази). */
+    public static function backupPart(string $id, string $part): ?string
+    {
+        if (!self::backup($id)) return null;
+        $f = self::backupsDir() . '/' . $id . '/' . ($part === 'db' ? 'db.sql' : 'files.zip');
+        return is_file($f) ? $f : null;
+    }
+
+    /** @param list<string> $protect */
+    private static function pruneBackups(array $protect): void
+    {
+        $protect[] = self::pendingBackupId();
+        foreach (array_slice(self::backups(), self::keepCount()) as $b) if (!in_array($b['id'], $protect, true)) self::rrmdir(self::backupsDir() . '/' . $b['id']);
     }
 
     /** Файли сайту в zip (без config/ і storage/). @return int кількість файлів */
@@ -732,7 +792,7 @@ final class Updater
         if (is_file(self::pendingPath())) @unlink(self::pendingPath());
         return self::locked(function () use ($id, $withDb, $actorId, $b) {
             self::prepareRuntime();
-            $safety = self::createBackup('restore', 'Перед відновленням копії ' . $id, $actorId);
+            $safety = self::createBackup('restore', 'Перед відновленням копії ' . $id, $actorId, [$id]);
             self::doRestore($id, $withDb, $actorId, true, $safety);
             return ['version' => $b['version'], 'safety' => $safety];
         });

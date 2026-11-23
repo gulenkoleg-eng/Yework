@@ -1,0 +1,137 @@
+/* YEWORK 0.5.12 — шаблони банерів роботодавців. Роботодавець пише лише текст, вигляд задає шаблон.
+   Кольори беруться з активної теми (--c-*) там, де це доречно, тож банер пасує до будь-якої теми й темного режиму. */
+.bnr{--bn-bg:var(--c-card);--bn-ink:var(--c-text);--bn-head:var(--c-heading);--bn-muted:var(--c-muted);--bn-acc:var(--c-brand);--bn-acc-ink:var(--c-brand-ink);
+  --bn-chip:color-mix(in srgb,var(--bn-acc) 18%,transparent);--bn-chip-ink:var(--bn-ink);--bn-line:color-mix(in srgb,var(--bn-acc) 55%,var(--c-border));
+  position:relative;isolation:isolate;display:flex;flex-direction:column;gap:10px;min-width:0;overflow:hidden;padding:20px 20px 18px;border-radius:calc(var(--r-card) + 4px);
+  background:var(--bn-bg);color:var(--bn-ink);border:var(--bw) solid var(--bn-line);box-shadow:var(--shadow);text-decoration:none;
+  transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s}
+a.bnr:hover{transform:translateY(-3px);box-shadow:0 14px 34px -12px color-mix(in srgb,var(--bn-acc) 55%,rgba(0,0,0,.35)),var(--shadow)}
+.bnr>*{position:relative;z-index:1}
+.bnr [hidden]{display:none!important}
+.bnr-deco{position:absolute!important;inset:0;z-index:0!important;pointer-events:none;overflow:hidden}
+.bnr-top{display:flex;align-items:center;gap:10px;min-width:0}
+.bnr-top .elogo{width:42px;height:42px;flex:none;border-radius:10px;box-shadow:0 0 0 2px color-mix(in srgb,var(--bn-bg) 80%,transparent)}
+.bnr-top .elogo.ph{display:grid;place-items:center;background:var(--bn-acc);color:var(--bn-acc-ink);font-weight:800;font-size:14px}
+.bnr-emp{display:flex;flex-direction:column;min-width:0;line-height:1.25;flex:1}
+.bnr-emp b{font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bn-head)}
+.bnr-emp small{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--bn-muted);opacity:.85}
+.bnr-badge{flex:none;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.02em;
+  background:var(--bn-acc);color:var(--bn-acc-ink);white-space:nowrap}
+.bnr-badge i{width:7px;height:7px;border-radius:50%;background:currentColor;animation:bnr-pulse 1.6s ease-out infinite}
+.bnr h3{margin:4px 0 0;font-size:clamp(20px,2.1vw,24px);line-height:1.15;letter-spacing:-.02em;color:var(--bn-head);font-weight:800;overflow-wrap:anywhere;text-wrap:balance}
+.bnr p{font-size:14.5px;line-height:1.5;color:var(--bn-muted);overflow-wrap:anywhere}
+.bnr-perks{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 0;padding:0;list-style:none}
+.bnr-perks li{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;background:var(--bn-chip);color:var(--bn-chip-ink);overflow-wrap:anywhere}
+.bnr-perks li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--bn-acc);flex:none}
+.bnr-foot{margin-top:auto;padding-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bnr-cta{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:0 18px;border-radius:999px;font-weight:800;font-size:14.5px;
+  background:var(--bn-acc);color:var(--bn-acc-ink);box-shadow:0 6px 16px -6px color-mix(in srgb,var(--bn-acc) 70%,transparent);position:relative;overflow:hidden}
+.bnr-cta svg{transition:transform .2s}
+a.bnr:hover .bnr-cta svg{transform:translateX(4px)}
+.bnr-cta::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);transform:translateX(-120%);animation:bnr-shine 4.5s ease-in-out infinite}
+.bnr-vac{font-size:13px;font-weight:600;color:var(--bn-muted)}
+.bnr-photo{display:none}
+
+/* --- 1. Класика: картка в кольорах теми, жовта смуга бренду і м'яке коло --- */
+.bnr.t-classic{border-left-width:6px;border-left-color:var(--bn-acc)}
+.bnr.t-classic .bnr-deco::before{content:"";position:absolute;right:-70px;top:-70px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--bn-acc) 30%,transparent),transparent 70%);animation:bnr-float 9s ease-in-out infinite}
+
+/* --- 2. Сонячний: увесь банер у фірмовому жовтому, діагональні смуги --- */
+.bnr.t-sun{--bn-bg:#F5C518;--bn-ink:#11141A;--bn-head:#11141A;--bn-muted:#3A3320;--bn-acc:#11141A;--bn-acc-ink:#F5C518;--bn-chip:rgba(17,20,26,.1);--bn-chip-ink:#11141A;--bn-line:#E0B000}
+.bnr.t-sun .bnr-deco::before{content:"";position:absolute;inset:-40px;background:repeating-linear-gradient(-45deg,rgba(255,255,255,.18) 0 14px,transparent 14px 38px);animation:bnr-stripes 18s linear infinite}
+.bnr.t-sun .bnr-deco::after{content:"";position:absolute;right:-50px;bottom:-60px;width:200px;height:200px;border-radius:50%;background:#FFE27A;opacity:.7}
+.bnr.t-sun .bnr-top .elogo.ph{background:#11141A;color:#F5C518}
+
+/* --- 3. Нічний: темна панель із сяйвом, жовта кнопка --- */
+.bnr.t-night{--bn-bg:#11141A;--bn-ink:#E7E9EE;--bn-head:#FFFFFF;--bn-muted:#AEB5C2;--bn-acc:#F5C518;--bn-acc-ink:#11141A;--bn-chip:rgba(255,255,255,.08);--bn-chip-ink:#E7E9EE;--bn-line:#262B36}
+.bnr.t-night .bnr-deco::before{content:"";position:absolute;width:320px;height:320px;right:-90px;top:-130px;border-radius:50%;background:radial-gradient(circle,rgba(245,197,24,.45),transparent 65%);filter:blur(8px);animation:bnr-float 10s ease-in-out infinite}
+.bnr.t-night .bnr-deco::after{content:"";position:absolute;width:280px;height:280px;left:-120px;bottom:-150px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--c-primary) 60%,transparent),transparent 65%);filter:blur(10px);animation:bnr-float 12s ease-in-out -4s infinite reverse}
+.bnr.t-night h3{background:linear-gradient(90deg,#fff 40%,#FFE27A);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* --- 4. Хвиля: градієнт основного кольору теми, плавні кольорові плями --- */
+.bnr.t-wave{--bn-bg:var(--c-primary);--bn-ink:#fff;--bn-head:#fff;--bn-muted:rgba(255,255,255,.86);--bn-acc:#fff;--bn-acc-ink:var(--c-primary);--bn-chip:rgba(255,255,255,.18);--bn-chip-ink:#fff;--bn-line:transparent;
+  background:linear-gradient(135deg,var(--c-primary),color-mix(in srgb,var(--c-primary) 55%,#7C3AED) 60%,color-mix(in srgb,var(--c-primary) 40%,#06B6D4))}
+.bnr.t-wave .bnr-deco::before,.bnr.t-wave .bnr-deco::after{content:"";position:absolute;border-radius:42% 58% 63% 37%/41% 44% 56% 59%;background:rgba(255,255,255,.12);animation:bnr-morph 14s ease-in-out infinite}
+.bnr.t-wave .bnr-deco::before{width:260px;height:260px;right:-80px;top:-100px}
+.bnr.t-wave .bnr-deco::after{width:200px;height:200px;right:60px;bottom:-130px;background:rgba(255,255,255,.08);animation-duration:18s;animation-direction:reverse}
+.bnr.t-wave .bnr-perks li::before{background:#F5C518}
+.bnr.t-wave .bnr-badge{background:#F5C518;color:#11141A}
+
+/* --- 5. Терміново: світла картка з червоно-помаранчевою стрічкою і пульсом --- */
+.bnr.t-urgent{--bn-acc:#E5372B;--bn-acc-ink:#fff;--bn-chip:color-mix(in srgb,#E5372B 12%,transparent);--bn-line:color-mix(in srgb,#E5372B 45%,var(--c-border));padding-top:26px}
+.bnr.t-urgent .bnr-deco::before{content:"";position:absolute;left:0;right:0;top:0;height:7px;background:linear-gradient(90deg,#E5372B,#FF8A00,#F5C518,#FF8A00,#E5372B);background-size:200% 100%;animation:bnr-slide 4s linear infinite}
+.bnr.t-urgent .bnr-deco::after{content:"!";position:absolute;right:-6px;bottom:-40px;font:900 190px/1 var(--font-head);color:color-mix(in srgb,#E5372B 9%,transparent)}
+
+/* --- 6. Фото: ваша картинка на весь банер, текст на темному затемненні --- */
+.bnr.t-photo{--bn-bg:#11141A;--bn-ink:#fff;--bn-head:#fff;--bn-muted:rgba(255,255,255,.88);--bn-acc:#F5C518;--bn-acc-ink:#11141A;--bn-chip:rgba(255,255,255,.16);--bn-chip-ink:#fff;--bn-line:transparent;min-height:260px;justify-content:flex-end}
+.bnr.t-photo .bnr-photo{display:block;position:absolute!important;inset:0;z-index:0!important;width:100%;height:100%;object-fit:cover;transition:transform 6s ease-out}
+a.bnr.t-photo:hover .bnr-photo{transform:scale(1.06)}
+.bnr.t-photo .bnr-deco{z-index:0!important;background:linear-gradient(180deg,rgba(10,12,16,.35) 0%,rgba(10,12,16,.72) 40%,rgba(10,12,16,.94) 100%)}
+.bnr.t-photo .bnr-top{margin-bottom:auto}
+
+/* Звичайна картинка в нефото-шаблонах — смужка вгорі */
+.bnr-img{display:block;margin:-20px -20px 4px;width:calc(100% + 40px);max-width:none;aspect-ratio:3/1;object-fit:cover}
+.bnr.t-classic .bnr-img{margin-left:-20px;width:calc(100% + 40px)}
+.bnr.t-urgent .bnr-img{margin-top:-19px}
+
+/* Широкий банер над списком вакансій: на комп'ютері текст ліворуч, кнопка праворуч */
+.bnr.wide{margin-bottom:16px}
+@media (min-width:760px){
+  .bnr.wide{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:28px;row-gap:8px;align-items:center;padding:22px 26px}
+  .bnr.wide>*:not(.bnr-foot):not(.bnr-deco):not(.bnr-photo):not(.bnr-img){grid-column:1}
+  .bnr.wide .bnr-foot{grid-column:2;grid-row:1/span 4;flex-direction:column;align-items:flex-end;margin:0;padding:0}
+  .bnr.wide .bnr-img{display:none}
+  .bnr.wide .bnr-emp{flex:0 1 auto}
+  .bnr.wide.t-photo{min-height:220px}
+}
+
+/* Сітка банерів */
+.bnrs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}
+.bnrs.one{grid-template-columns:minmax(0,600px)}
+
+/* Новорічна тема: маленька сніжинка в куті банера */
+.ny .bnr:not(.t-photo)::after{content:"❄";position:absolute;right:12px;bottom:8px;font-size:18px;opacity:.35;color:var(--bn-head);z-index:1;pointer-events:none}
+
+@keyframes bnr-pulse{0%{box-shadow:0 0 0 0 currentColor}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes bnr-shine{0%,70%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+@keyframes bnr-float{0%,100%{transform:translate(0,0)}50%{transform:translate(-18px,14px)}}
+@keyframes bnr-stripes{to{transform:translateX(76px)}}
+@keyframes bnr-morph{0%,100%{border-radius:42% 58% 63% 37%/41% 44% 56% 59%;transform:rotate(0)}50%{border-radius:63% 37% 38% 62%/55% 61% 39% 45%;transform:rotate(25deg) translate(-10px,8px)}}
+@keyframes bnr-slide{to{background-position:200% 0}}
+@media (prefers-reduced-motion:reduce){.bnr,.bnr *,.bnr *::before,.bnr *::after{animation:none!important;transition:none!important}}
+
+/* ---------- Конструктор банера в кабінеті ---------- */
+.bnr-maker{display:grid;gap:20px}
+@media (min-width:1000px){.bnr-maker{grid-template-columns:minmax(0,1fr) minmax(0,440px);align-items:start}.bnr-live{position:sticky;top:16px}}
+.bnr-live{display:flex;flex-direction:column;gap:10px}
+.bnr-live-h{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px}
+.bnr-live-h .dot{width:8px;height:8px;border-radius:50%;background:var(--c-success);animation:bnr-pulse 1.6s ease-out infinite;color:var(--c-success)}
+.bnr-tpls{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px}
+.bnr-tpl{position:relative;cursor:pointer}
+.bnr-tpl input{position:absolute;opacity:0;pointer-events:none}
+.bnr-tpl span{display:flex;flex-direction:column;gap:6px;padding:8px;border:2px solid var(--c-border);border-radius:12px;background:var(--c-card);font-size:13px;font-weight:700;transition:border-color .15s,transform .15s}
+.bnr-tpl:hover span{transform:translateY(-1px)}
+.bnr-tpl input:checked+span{border-color:var(--c-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--c-primary) 20%,transparent)}
+.bnr-tpl input:focus-visible+span{outline:2px solid var(--c-primary);outline-offset:2px}
+.bnr-tpl em{display:block;height:46px;border-radius:8px;font-style:normal}
+.bnr-tpl small{font-weight:500;color:var(--c-muted);font-size:11.5px;line-height:1.3}
+.sw-classic{background:linear-gradient(90deg,#F5C518 0 7px,var(--c-card) 7px);box-shadow:inset 0 0 0 1px var(--c-border)}
+.sw-sun{background:repeating-linear-gradient(-45deg,rgba(255,255,255,.25) 0 6px,transparent 6px 16px),#F5C518}
+.sw-night{background:radial-gradient(circle at 80% 10%,rgba(245,197,24,.6),transparent 55%),#11141A}
+.sw-wave{background:linear-gradient(135deg,var(--c-primary),#7C3AED 60%,#06B6D4)}
+.sw-urgent{background:linear-gradient(90deg,#E5372B,#FF8A00,#F5C518) top/100% 7px no-repeat,var(--c-card);box-shadow:inset 0 0 0 1px var(--c-border)}
+.sw-photo{background:linear-gradient(180deg,transparent,rgba(0,0,0,.7)),linear-gradient(135deg,#7a8a6a,#3b4a5a)}
+.bnr-perk-in{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.bnr-perk-in{grid-template-columns:1fr}}
+.chip-opts{display:flex;flex-wrap:wrap;gap:6px}
+.chip-opt{cursor:pointer}.chip-opt input{position:absolute;opacity:0;pointer-events:none}
+.chip-opt span{display:inline-flex;padding:6px 12px;border-radius:999px;border:1.5px solid var(--c-border);font-size:13.5px;font-weight:600;background:var(--c-card)}
+.chip-opt input:checked+span{border-color:var(--c-primary);background:color-mix(in srgb,var(--c-primary) 12%,var(--c-card))}
+.chip-opt input:focus-visible+span{outline:2px solid var(--c-primary);outline-offset:2px}
+
+/* Адмінка: картки шаблонів */
+.tpl-adm{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:14px}
+.tpl-adm .card{padding:14px;display:flex;flex-direction:column;gap:10px}
+.tpl-adm .card.off .bnr{filter:grayscale(1);opacity:.55}
+.bnr-top .elogo.ph{border:0}
+.bnr-perk-in .input{padding-inline:10px}

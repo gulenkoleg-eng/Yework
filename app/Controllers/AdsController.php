@@ -36,7 +36,7 @@ final class AdsController
             FROM {p}banners b LEFT JOIN {p}banner_stats s ON s.banner_id = b.id WHERE b.employer_id = ? GROUP BY b.id ORDER BY b.id DESC', [$employer['id']]) : [];
         $published = $employer ? (int) App::db()->value("SELECT COUNT(*) FROM {p}vacancies WHERE employer_id = ? AND status = 'published' AND deleted_at IS NULL", [$employer['id']]) : 0;
         return $this->cab()->page('ads', 'ads', ['title' => 'Реклама і послуги', 'employer' => $employer, 'rows' => $rows, 'published' => $published,
-            'paid' => Ads::monetizationOn(), 'prices' => Ads::prices(), 'today' => Ads::today()]);
+            'paid' => Ads::monetizationOn(), 'prices' => Ads::prices(), 'today' => Ads::today(), 'templates' => Ads::availableTemplates(), 'tplDefault' => Ads::templateSettings()['default']]);
     }
 
     public function order(Request $req): Response
@@ -47,20 +47,9 @@ final class AdsController
         if (!$employer) return Response::redirect(url('/cabinet/employer'));
         if ($employer['status'] !== 'active') throw new HttpException(403, 'Профіль роботодавця заблоковано.');
 
-        $d = [
-            'title' => $req->str('title', 80), 'body' => $req->str('body', 300),
-            'placement' => array_key_exists($req->str('placement', 8), Ads::PLACEMENTS) ? $req->str('placement', 8) : '',
-            'starts_on' => $req->str('starts_on', 10), 'days' => (int) $req->input('days', 0),
-        ];
-        $err = [];
+        $d = Ads::bannerInput($req, array_keys(Ads::availableTemplates()));
         $today = Ads::today();
-        if (mb_strlen($d['title']) < 3) $err['title'] = 'Напишіть заголовок, наприклад «Шукаємо водія категорії C»';
-        if (mb_strlen($d['body']) < 10) $err['body'] = 'Коротко опишіть, кого шукаєте';
-        if ($d['placement'] === '') $err['placement'] = 'Оберіть місце показу';
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $d['starts_on']) || !strtotime($d['starts_on'])) $err['starts_on'] = 'Оберіть дату початку';
-        elseif ($d['starts_on'] < $today) $err['starts_on'] = 'Дата початку не може бути в минулому';
-        elseif ($d['starts_on'] > date('Y-m-d', strtotime('+60 days'))) $err['starts_on'] = 'Замовити можна не раніше ніж за 60 днів';
-        if ($d['days'] < 1 || $d['days'] > Ads::MAX_DAYS) $err['days'] = 'Від 1 до ' . Ads::MAX_DAYS . ' днів';
+        $err = Ads::bannerErrors($d);
         if ($err) throw new ValidationException($err);
 
         $d['ends_on'] = date('Y-m-d', strtotime($d['starts_on'] . ' +' . ($d['days'] - 1) . ' days'));
@@ -70,6 +59,7 @@ final class AdsController
             throw new ValidationException(['starts_on' => ' '], 'На ' . date('d.m', strtotime($full)) . ' усі рекламні місця вже зайняті. Оберіть інші дати або інше місце показу.');
         }
         $image = Media::store('banner', 'image', 'e' . $employer['id']);
+        if ($d['template'] === 'photo' && !$image) throw new ValidationException(['image' => 'Для шаблону «Фото» додайте картинку або оберіть інший шаблон']);
         $price = Ads::monetizationOn() ? Ads::bannerPrice($d['placement'], $d['days']) : 0;
         $id = $db->insert('banners', [...$d, 'employer_id' => $employer['id'], 'created_by' => $me['id'], 'image' => $image, 'price' => $price, 'status' => 'pending']);
         Audit::log('ads.banner_ordered', 'banner', $id, ['days' => $d['days'], 'placement' => $d['placement'], 'price' => $price]);

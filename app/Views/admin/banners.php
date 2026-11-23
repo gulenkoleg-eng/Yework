@@ -1,18 +1,20 @@
 <?php use App\Core\Ads; $tabs = ['pending' => 'Чекають', 'approved' => 'Схвалені', 'rejected' => 'Відхилені', 'cancelled' => 'Скасовані']; ?>
 <div class="adm-h"><h1>Банери роботодавців</h1><span class="spacer"></span>
-  <div class="seg"><?php foreach ($tabs as $k => $l): ?><a class="<?= $status === $k ? 'on' : '' ?>" href="<?= url('/admin/banners', ['status' => $k === 'pending' ? null : $k]) ?>"><?= $l ?></a><?php endforeach ?></div>
+  <div class="seg"><?php foreach ($tabs as $k => $l): ?><a class="<?= $status === $k ? 'on' : '' ?>" href="<?= url('/admin/banners', ['status' => $k === 'pending' ? null : $k]) ?>"><?= $l ?></a><?php endforeach ?><a href="<?= url('/admin/banners/templates') ?>">Шаблони</a></div>
+  <a class="btn pri sm" href="<?= url('/admin/banners/new') ?>">+ Створити банер</a>
 </div>
 <p class="muted small">Схвалений банер показується в обрані роботодавцем дні, а його вакансії в цей час стоять першими в пошуку. Перевірте, що текст стосується роботи і не містить контактів для передоплати.</p>
 <?php if (!$rows): ?><div class="card empty"><h3><?= $status === 'pending' ? 'Черга порожня' : 'Нічого немає' ?></h3></div><?php endif ?>
-<?php foreach ($rows as $b): [$sl, $sc] = Ads::statusLabel($b); $own = (int) $b['owner_id'] === (int) $me['id'] || (int) $b['created_by'] === (int) $me['id']; ?>
+<?php foreach ($rows as $b): [$sl, $sc] = Ads::statusLabel($b); $adminMade = (int) $b['moderated_by'] === (int) $b['created_by'] && $b['status'] === 'approved';
+  $own = !($adminMade && (int) $b['created_by'] === (int) $me['id']) && ((int) $b['owner_id'] === (int) $me['id'] || (int) $b['created_by'] === (int) $me['id']); ?>
   <article class="card mod">
     <div class="mod-h">
       <div><div class="row"><h3 style="font-size:19px"><?= e($b['title']) ?></h3><span class="tag <?= $sc ?>"><?= e($sl) ?></span></div>
         <div class="small muted"><?= e(employer_name($b['legal_form'], $b['employer'])) ?><?= $b['is_verified'] ? ' · ✓ перевірений' : '' ?> · <?= plural((int) $b['vacancies'], 'опублікована вакансія', 'опубліковані вакансії', 'опублікованих вакансій') ?> · <a href="<?= url('/jobs', ['employer' => $b['employer_id']]) ?>" target="_blank">вакансії</a></div></div>
-      <div class="small muted" style="text-align:right">Замовив: <a href="<?= url('/admin/users/' . $b['created_by']) ?>"><?= e($b['author']) ?></a><br><?= e(ago($b['created_at'])) ?></div>
+      <div class="small muted" style="text-align:right"><?= $adminMade ? 'Створив адміністратор' : 'Замовив' ?>: <a href="<?= url('/admin/users/' . $b['created_by']) ?>"><?= e($b['author']) ?></a><br><?= e(ago($b['created_at'])) ?></div>
     </div>
     <div class="row small"><b><?= e(Ads::PLACEMENTS[$b['placement']] ?? '') ?></b> · <?= e(date('d.m.Y', strtotime($b['starts_on']))) ?>–<?= e(date('d.m.Y', strtotime($b['ends_on']))) ?> (<?= plural((int) $b['days'], 'день', 'дні', 'днів') ?>) · <?= (int) $b['price'] ? money((int) $b['price']) . ' грн' . ($b['paid_at'] ? ' · оплачено' : ' · <b style="color:var(--c-warning)">не оплачено</b>') : 'безкоштовно' ?><?php if ($b['status'] !== 'pending'): ?> · покази <?= (int) $b['impressions'] ?>, переходи <?= (int) $b['clicks'] ?><?php endif ?></div>
-    <div class="promos one"><?= App\Core\View::partial('partials/promo', ['b' => $b]) ?></div>
+    <div class="bnrs one"><?= App\Core\View::partial('partials/promo', ['b' => $b]) ?></div>
     <?php if ($b['status'] === 'rejected'): ?><div class="alert bad">Причина: <?= e($b['reject_reason']) ?></div><?php endif ?>
     <div class="row">
       <?php if ($own && in_array($b['status'], ['pending', 'approved'], true)): ?><div class="alert info">Це ваш банер — його має перевірити інший модератор.</div>

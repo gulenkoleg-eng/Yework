@@ -30,7 +30,7 @@ $items = [
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
 <title><?= e(($title ?? 'Адмін-панель') . " — $site") ?></title>
 <?= \App\Core\Favicon::tags() ?>
-<link rel="stylesheet" href="<?= asset('css/app.css') ?>"></head>
+<link rel="stylesheet" href="<?= asset('css/app.css') ?>"><link rel="stylesheet" href="<?= asset('css/banners.css') ?>"></head>
 <body>
 <div class="adm-top"><button class="btn ghost sm" style="color:#fff" onclick="document.getElementById('side').classList.toggle('open')" aria-label="Меню"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><span class="logo"><i>YE</i><span><?= e($site) ?></span></span></div>
 <div class="adm">

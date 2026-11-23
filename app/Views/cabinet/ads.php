@@ -1,5 +1,12 @@
 <?php use App\Core\Ads;
 $free = !$paid;
+$old = App\Core\App::$old;
+$oldPerks = array_values((array) ($old['perks'] ?? []));
+$tplNow = isset($templates[$old['template'] ?? '']) ? $old['template'] : $tplDefault;
+// Зразок для попереднього перегляду: поки поля порожні, показуємо приклад тексту (сірим у полях він теж є).
+$preview = $employer ? ['title' => ($old['title'] ?? '') ?: 'Шукаємо водія категорії C', 'body' => ($old['body'] ?? '') ?: 'Офіційне працевлаштування, доїзд з Миронівки. Досвід не обов’язковий, навчимо.',
+  'template' => $tplNow, 'badge' => $old['badge'] ?? '', 'cta' => $old['cta'] ?? '', 'perks' => json_encode(array_filter($oldPerks) ?: ['від 18 000 грн', 'Офіційно', 'Доїзд'], JSON_UNESCAPED_UNICODE),
+  'employer' => $employer['name'], 'legal_form' => $employer['legal_form'], 'logo' => $employer['logo'], 'vacancies' => $published, 'image' => null] : [];
 $days = [3 => '3 дні', 7 => '7 днів', 14 => '14 днів', 30 => '30 днів'];
 $services = [
   ['vacancy_bump', 'Підняти вакансію', 'Вакансія знову стане першою у списку, ніби щойно опублікована.'],
@@ -34,11 +41,10 @@ $services = [
 
     <form class="card pad stack" method="post" action="<?= url('/cabinet/ads') ?>" enctype="multipart/form-data" id="adForm"><?= csrf_field() ?>
       <div><h2 style="font-size:22px">Банер на сайті</h2>
-        <p class="muted">Ваш банер з логотипом і описом «кого шукаємо» бачать усі, хто заходить на сайт. Натискання веде на ваші вакансії, а поки банер діє, <b>ваші вакансії стоять першими в пошуку</b>. У кабінеті видно, скільки людей побачили банер і скільки перейшли.</p></div>
+        <p class="muted">Оберіть шаблон і напишіть текст: оформлення, кольори й анімацію ми зробимо самі, у стилі сайту. Натискання на банер веде на ваші вакансії, а поки банер діє, <b>ваші вакансії стоять першими в пошуку</b>. У кабінеті видно, скільки людей побачили банер і скільки перейшли.</p></div>
       <?php if (!$published): ?><div class="alert warn">У вас поки немає опублікованих вакансій. Банер веде саме на них, тож спершу <a href="<?= url('/cabinet/vacancies/new') ?>">розмістіть вакансію</a>.</div><?php endif ?>
-      <?php if (!$employer['logo']): ?><div class="alert info">Порада: <a href="<?= url('/cabinet/employer') ?>">додайте логотип</a> — банер з логотипом помічають значно частіше.</div><?php endif ?>
-      <?= input_field('title', 'Заголовок', ['maxlength' => 80, 'required' => true, 'placeholder' => 'Шукаємо водія категорії C і двох різноробочих']) ?>
-      <?= input_field('body', 'Кого шукаєте і що пропонуєте', ['type' => 'textarea', 'rows' => 3, 'maxlength' => 300, 'required' => true, 'placeholder' => 'Офіційне працевлаштування, зарплата від 18 000 грн, доїзд з Миронівки. Досвід не обов’язковий — навчимо.']) ?>
+      <?php if (!$employer['logo']): ?><div class="alert info">Порада: <a href="<?= url('/cabinet/employer') ?>">додайте логотип</a>, і він з’явиться на банері. Банер з логотипом помічають значно частіше.</div><?php endif ?>
+      <?= App\Core\View::partial('partials/banner_maker', ['templates' => $templates, 'tplNow' => $tplNow, 'old' => $old, 'oldPerks' => $oldPerks, 'preview' => $preview, 'ctaDefault' => Ads::ctaOf(['vacancies' => $published])]) ?>
       <fieldset class="field<?= err_class('placement') ?>"><legend>Де показувати</legend>
         <div class="place-opts">
           <?php foreach (Ads::PLACEMENTS as $k => $l): $pd = $prices['banner_' . $k . '_day']; ?>
@@ -50,7 +56,6 @@ $services = [
         <?= input_field('starts_on', 'Початок показу', ['type' => 'date', 'value' => $today, 'required' => true]) ?>
         <?= input_field('days', 'Скільки днів', ['type' => 'select', 'value' => 7, 'options' => $days, 'hint' => 'Від 7 днів знижка ' . (int) $prices['discount_week'] . '%, від 30 — ' . (int) $prices['discount_month'] . '%']) ?>
       </div>
-      <div class="field<?= err_class('image') ?>"><label for="f_image">Картинка (необов’язково)</label><input id="f_image" type="file" name="image" accept="image/png,image/jpeg,image/webp"><span class="hint">Фото вашого підприємства чи команди. Широка, приблизно 1200×400, до 3 МБ. Без картинки банер теж виглядає добре.</span><?= field_error('image') ?></div>
       <div class="price-line" id="adPrice" data-week="<?= (int) $prices['discount_week'] ?>" data-month="<?= (int) $prices['discount_month'] ?>" data-free="<?= $free ? 1 : 0 ?>"></div>
       <div class="row"><button class="btn pri"><?= $free ? 'Замовити банер безкоштовно' : 'Замовити банер' ?></button><span class="small muted">Банер з’явиться після перевірки модератором.</span></div>
     </form>

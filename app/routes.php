@@ -112,6 +112,10 @@ $router->post('/admin/reviews/{id}', [ServicesAdminController::class, 'review'],
 $router->get('/admin/service-categories', [ServicesAdminController::class, 'categories'], ['services.listing:update']);
 $router->post('/admin/service-categories', [ServicesAdminController::class, 'categoriesSave'], ['services.listing:update']);
 $router->get('/admin/banners', [AdminController::class, 'banners'], ['ads.banner:moderate']);
+$router->get('/admin/banners/new', [AdminController::class, 'bannerNew'], ['ads.banner:moderate']);
+$router->post('/admin/banners/new', [AdminController::class, 'bannerCreate'], ['ads.banner:moderate']);
+$router->get('/admin/banners/templates', [AdminController::class, 'bannerTemplates'], ['ads.banner:moderate']);
+$router->post('/admin/banners/templates', [AdminController::class, 'bannerTemplatesSave'], ['ads.banner:moderate']);
 $router->post('/admin/banners/{id}', [AdminController::class, 'bannerModerate'], ['ads.banner:moderate']);
 $router->get('/admin/billing', [AdminController::class, 'billing'], ['billing.plan:view']);
 $router->post('/admin/billing', [AdminController::class, 'billingSave'], ['billing.plan:view']);
@@ -141,6 +145,9 @@ $router->get('/admin/updates/finish', [AdminController::class, 'updatesFinish'],
 $router->post('/admin/updates/backup', [AdminController::class, 'updatesBackup'], ['system.update:run']);
 $router->post('/admin/updates/restore', [AdminController::class, 'updatesRestore'], ['system.update:run']);
 $router->post('/admin/updates/delete', [AdminController::class, 'updatesDelete'], ['system.update:run']);
+$router->post('/admin/updates/clean', [AdminController::class, 'updatesClean'], ['system.update:run']);
+$router->post('/admin/updates/keep', [AdminController::class, 'updatesKeep'], ['system.update:run']);
+$router->get('/admin/updates/download', [AdminController::class, 'updatesDownload'], ['settings.system:manage_settings']);
 $router->post('/admin/updates/settings', [AdminController::class, 'updatesSettings'], ['settings.system:manage_settings']);
 
 // Telegram-бот: прив'язка для персоналу, налаштування для адміністраторів, вебхук для Telegram

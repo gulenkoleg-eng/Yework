@@ -136,7 +136,9 @@ final class AdminController
             flash('ok', 'Оплату позначено.');
             return Response::redirect($back);
         }
-        if ((int) $b['owner_id'] === (int) $me['id'] || (int) $b['created_by'] === (int) $me['id']) throw new HttpException(403, 'Не можна модерувати власний банер.');
+        // Банер, який адміністратор створив сам (одразу схвалений), він може й зняти з показу.
+        $adminMade = $b['status'] === 'approved' && $decision === 'reject' && (int) $b['moderated_by'] === (int) $b['created_by'] && (int) $b['created_by'] === (int) $me['id'];
+        if (!$adminMade && ((int) $b['owner_id'] === (int) $me['id'] || (int) $b['created_by'] === (int) $me['id'])) throw new HttpException(403, 'Не можна модерувати власний банер.');
         if ($decision === 'approve') {
             if ($b['status'] !== 'pending') throw new HttpException(409, 'Банер уже оброблено.');
             $db->update('banners', ['status' => 'approved', 'moderated_by' => $me['id'], 'moderated_at' => Db::now(), 'reject_reason' => null, 'updated_at' => Db::now()], 'id = ?', [$b['id']]);
@@ -151,6 +153,65 @@ final class AdminController
             flash('ok', $b['status'] === 'approved' ? 'Банер знято з показу.' : 'Банер відхилено.');
         }
         return Response::redirect($back);
+    }
+
+    /** Активні роботодавці з кількістю опублікованих вакансій — для банера від адміністрації. */
+    private function bannerEmployers(): array
+    {
+        return App::db()->all("SELECT e.id, e.name, e.legal_form, e.logo,
+            (SELECT COUNT(*) FROM {p}vacancies v WHERE v.employer_id = e.id AND v.status = 'published' AND v.deleted_at IS NULL) AS vacancies
+            FROM {p}employers e WHERE e.status = 'active' AND e.deleted_at IS NULL ORDER BY vacancies DESC, e.name LIMIT 500");
+    }
+
+    /** Адміністратор сам створює банер для роботодавця: він одразу схвалений і безкоштовний (0.5.12). */
+    public function bannerNew(Request $req): Response
+    {
+        return $this->render('banner_new', 'banners', ['title' => 'Новий банер', 'employers' => $this->bannerEmployers(), 'today' => Ads::today(),
+            'pick' => (int) ($req->query['employer'] ?? 0)]);
+    }
+
+    public function bannerCreate(Request $req): Response
+    {
+        $db = App::db();
+        $me = App::auth()->user();
+        $emp = $db->one("SELECT e.*, (SELECT COUNT(*) FROM {p}vacancies v WHERE v.employer_id = e.id AND v.status = 'published' AND v.deleted_at IS NULL) AS vacancies
+            FROM {p}employers e WHERE e.id = ? AND e.status = 'active' AND e.deleted_at IS NULL", [(int) $req->input('employer_id', 0)]);
+        $d = Ads::bannerInput($req, array_keys(Ads::TEMPLATES));
+        $err = Ads::bannerErrors($d, true);
+        if (!$emp) $err['employer_id'] = 'Оберіть роботодавця, на чиї вакансії вестиме банер';
+        if ($err) throw new ValidationException($err);
+        $d['ends_on'] = date('Y-m-d', strtotime($d['starts_on'] . ' +' . ($d['days'] - 1) . ' days'));
+        $image = \App\Core\Media::store('banner', 'image', 'e' . $emp['id']);
+        if ($d['template'] === 'photo' && !$image) throw new ValidationException(['image' => 'Для шаблону «Фото» додайте картинку або оберіть інший шаблон']);
+        $id = $db->insert('banners', [...$d, 'employer_id' => $emp['id'], 'created_by' => $me['id'], 'image' => $image, 'price' => 0, 'status' => 'approved',
+            'moderated_by' => $me['id'], 'moderated_at' => Db::now()]);
+        Audit::log('ads.banner_created_by_admin', 'banner', $id, ['employer' => (int) $emp['id'], 'days' => $d['days'], 'placement' => $d['placement'], 'template' => $d['template']]);
+        flash('ok', 'Банер створено й схвалено. Він показуватиметься з ' . date('d.m', strtotime($d['starts_on'])) . ' по ' . date('d.m', strtotime($d['ends_on'])) . '.');
+        return Response::redirect(url('/admin/banners', ['status' => 'approved']));
+    }
+
+    /** Шаблони банерів: які доступні роботодавцям і який обрано за замовчуванням (0.5.12). */
+    public function bannerTemplates(Request $req): Response
+    {
+        $db = App::db();
+        $used = [];
+        try {
+            foreach ($db->all("SELECT template, COUNT(*) AS n FROM {p}banners WHERE status IN ('pending','approved') AND ends_on >= ? GROUP BY template", [Ads::today()]) as $r) $used[$r['template']] = (int) $r['n'];
+        } catch (\PDOException) {}
+        return $this->render('banner_templates', 'banners', ['title' => 'Шаблони банерів', 'set' => Ads::templateSettings(), 'used' => $used]);
+    }
+
+    public function bannerTemplatesSave(Request $req): Response
+    {
+        $on = array_values(array_intersect(array_keys(Ads::TEMPLATES), (array) ($req->post['on'] ?? [])));
+        if (!$on) { flash('bad', 'Залиште ввімкненим хоча б один шаблон.'); return Response::redirect(url('/admin/banners/templates')); }
+        $def = $req->str('default', 12);
+        if (!in_array($def, $on, true)) $def = $on[0];
+        $val = ['off' => array_values(array_diff(array_keys(Ads::TEMPLATES), $on)), 'default' => $def];
+        App::setSetting('ads.templates', $val, App::auth()->id());
+        Audit::log('ads.templates_updated', 'settings', 'ads.templates', $val);
+        flash('ok', 'Шаблони збережено. Роботодавці бачать лише ввімкнені шаблони.');
+        return Response::redirect(url('/admin/banners/templates'));
     }
 
     /* ---------------- монетизація ---------------- */
@@ -611,13 +672,52 @@ final class AdminController
     {
         $id = $req->str('id', 80);
         try {
-            Updater::deleteBackup($id);
-            Audit::log('system.backup_deleted', 'backup', $id);
-            flash('ok', 'Копію видалено.');
+            $b = Updater::deleteBackup($id, ($req->post['confirm_latest'] ?? '') === '1');
+            Audit::log('system.backup_deleted', 'backup', $id, ['version' => $b['version'] ?? null, 'size' => $b['size'] ?? null]);
+            flash('ok', 'Копію версії ' . ($b['version'] ?? '?') . ' видалено, звільнено ' . Updater::humanSize((int) ($b['size'] ?? 0)) . '.');
         } catch (\Throwable $e) {
             flash('bad', $e->getMessage());
         }
-        return Response::redirect(url('/admin/updates'));
+        return Response::redirect(url('/admin/updates') . '#backups');
+    }
+
+    public function updatesClean(Request $req): Response
+    {
+        $keep = max(1, (int) ($req->post['keep'] ?? 1));
+        $r = Updater::deleteOldBackups($keep);
+        if ($r['count']) {
+            Audit::log('system.backups_cleaned', 'backup', null, ['keep' => $keep, 'deleted' => $r['count'], 'freed' => $r['freed']]);
+            flash('ok', 'Видалено ' . plural($r['count'], 'стару копію', 'старі копії', 'старих копій') . ', звільнено ' . Updater::humanSize($r['freed']) . '. Залишилось ' . plural(count(Updater::backups()), 'копія', 'копії', 'копій') . '.');
+        } else {
+            flash('ok', 'Видаляти нічого: копій і так не більше ' . $keep . '.');
+        }
+        return Response::redirect(url('/admin/updates') . '#backups');
+    }
+
+    public function updatesKeep(Request $req): Response
+    {
+        try {
+            $n = (int) ($req->post['keep'] ?? 0);
+            $r = Updater::setKeepCount($n, App::auth()->id());
+            Audit::log('system.backups_keep', 'settings', 'updates.backups_keep', ['keep' => $n, 'deleted' => $r['count']]);
+            flash('ok', 'Тепер зберігаються останні ' . plural($n, 'копія', 'копії', 'копій') . '.' . ($r['count'] ? ' Зайві видалено: ' . $r['count'] . ', звільнено ' . Updater::humanSize($r['freed']) . '.' : ''));
+        } catch (\Throwable $e) {
+            flash('bad', $e->getMessage());
+        }
+        return Response::redirect(url('/admin/updates') . '#backups');
+    }
+
+    public function updatesDownload(Request $req): Response
+    {
+        $id = (string) ($req->query['id'] ?? '');
+        $part = ($req->query['part'] ?? '') === 'db' ? 'db' : 'files';
+        $path = Updater::backupPart($id, $part);
+        if (!$path) {
+            flash('bad', 'Резервну копію не знайдено.');
+            return Response::redirect(url('/admin/updates') . '#backups');
+        }
+        Audit::log('system.backup_downloaded', 'backup', $id, ['part' => $part]);
+        return Response::download($path, 'yework-backup-' . $id . ($part === 'db' ? '-baza.sql' : '-faily.zip'), $part === 'db' ? 'application/sql' : 'application/zip');
     }
 
     public function updatesSettings(Request $req): Response
