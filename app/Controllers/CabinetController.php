@@ -52,6 +52,14 @@ final class CabinetController
         ]);
     }
 
+    /** Винагорода (0.5.21): член команди бачить лише свої записи, лише для перегляду. */
+    public function reward(Request $req): Response
+    {
+        $me = $this->me();
+        if (!$me['is_staff'] || $me['is_owner']) return Response::redirect(url('/cabinet'));
+        return $this->page('reward', 'reward', ['title' => 'Винагорода', 'months' => \App\Core\Rewards::months((int) $me['id'])]);
+    }
+
     public function profile(Request $req): Response
     {
         $name = $req->str('displayName', 80);

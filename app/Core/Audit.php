@@ -29,6 +29,7 @@ final class Audit
         'install.completed' => 'Сайт встановлено', 'auth.login' => 'Вхід', 'auth.login_failed' => 'Невдала спроба входу', 'auth.logout' => 'Вихід',
         'auth.registered' => 'Реєстрація', 'auth.password_reset' => 'Відновлення пароля', 'auth.password_changed' => 'Зміна пароля',
         'user.blocked' => 'Користувача заблоковано', 'user.unblocked' => 'Користувача розблоковано',
+        'team.reward_added' => 'Додано винагороду члену команди', 'team.reward_deleted' => 'Видалено запис винагороди',
         'access.role_granted' => 'Видано роль', 'access.role_revoked' => 'Знято роль',
         'jobs.employer_created' => 'Створено профіль роботодавця', 'jobs.employer_verified' => 'Роботодавця перевірено',
         'jobs.vacancy_submitted' => 'Вакансію подано на модерацію', 'jobs.vacancy_published' => 'Вакансію опубліковано',

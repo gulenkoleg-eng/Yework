@@ -460,3 +460,35 @@ fieldset.field legend{font-weight:600;font-size:14.5px;margin-bottom:6px;padding
 /* 0.5.3: галочки прав ролі */
 .perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px 18px}
 .perm-grid .perm-key span{font-weight:700}
+/* Винагорода членам команди (0.5.21) */
+.rw-months{display:flex;flex-direction:column;gap:8px}
+.rw-m{overflow:hidden}
+.rw-m>summary{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;list-style:none}
+.rw-m>summary::-webkit-details-marker{display:none}
+.rw-m>summary::before{content:"▸";color:var(--c-muted);transition:transform .15s;flex:none}
+.rw-m[open]>summary::before{transform:rotate(90deg)}
+.rw-m[open]>summary{border-bottom:1px solid var(--c-border)}
+.rw-m>summary:hover{background:color-mix(in srgb,var(--c-primary) 4%,transparent)}
+.rw-ml{font-weight:700}
+.rw-mt{margin-left:auto;font-size:17px;white-space:nowrap}
+.rw-tbl td{vertical-align:middle}
+.rw-d{white-space:nowrap;width:1%}
+.rw-a{text-align:right;white-space:nowrap;width:1%}
+.rw-x{width:1%;text-align:right}
+.rw-sum{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.rw-sum b{font-size:22px}
+.rw-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.rw-form label{display:flex;flex-direction:column;gap:4px}
+.rw-form label:not(.rw-cm){width:170px}
+.rw-form .rw-cm{flex:1 1 220px}
+@media (max-width:640px){
+  .rw-form label:not(.rw-cm){width:calc(50% - 5px)}
+  .rw-form .btn{width:100%}
+  .rw-m>summary{padding:12px;flex-wrap:wrap;gap:4px 10px}
+  .rw-tbl tr{display:grid;grid-template-columns:auto 1fr auto;align-items:center;column-gap:10px;padding:10px 12px;border-bottom:1px solid var(--c-border)}
+  .rw-tbl tr:last-child{border-bottom:0}
+  .rw-tbl td{display:block;padding:0;border:0;width:auto}
+  .rw-tbl .rw-a{grid-column:3;grid-row:1}
+  .rw-tbl .rw-c{grid-column:1/-1;grid-row:2;margin-top:2px}
+  .rw-tbl .rw-x{grid-column:1/-1;grid-row:3;text-align:left;margin-top:4px}
+}

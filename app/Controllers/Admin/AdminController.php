@@ -337,9 +337,10 @@ final class AdminController
         $isStaff = (int) $u['owner_flag'] === 1 || (bool) $roles;
         $me = App::auth()->user();
         $canEdit = App::auth()->can('identity.user:update') && $u['deleted_at'] === null && (!$isStaff || $me['is_owner'] || $id === (int) $me['id']);
+        $rewards = $isStaff && (int) $u['owner_flag'] !== 1 && $me['is_owner'] ? \App\Core\Rewards::months($id) : null;
         $stats = ['vacancies' => (int) $db->value('SELECT COUNT(*) FROM {p}vacancies WHERE author_id = ?', [$id]), 'applications' => (int) $db->value('SELECT COUNT(*) FROM {p}applications WHERE user_id = ?', [$id])];
         return $this->render('user', $isStaff ? 'team' : 'clients', ['title' => $u['display_name'], 'u' => $u, 'phone' => $full ? $phone : mask_contact($phone), 'email' => $full ? $email : mask_contact($email), 'masked' => !$full,
-            'roles' => $roles, 'allRoles' => $allRoles, 'audit' => $audit, 'employers' => $employers, 'master' => $master, 'stats' => $stats, 'me' => $me, 'isStaff' => $isStaff, 'canEdit' => $canEdit]);
+            'roles' => $roles, 'allRoles' => $allRoles, 'audit' => $audit, 'employers' => $employers, 'master' => $master, 'stats' => $stats, 'me' => $me, 'isStaff' => $isStaff, 'canEdit' => $canEdit, 'rewards' => $rewards]);
     }
 
     public function userStatus(Request $req): Response
