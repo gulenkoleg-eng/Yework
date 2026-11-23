@@ -93,14 +93,84 @@ final class AdminController
 
     /* ---------------- модерація ---------------- */
 
+    public const MOD_PER_PAGE = 30;
+    /** Ключі фільтрів модерації, які зберігаємо в посиланнях і після дій (0.5.22). */
+    public const MOD_KEYS = ['status', 'q', 'cat', 'place', 'emp', 'author', 'page'];
+
+    /** Фільтри списку модерації з рядка запиту: лише відомі ключі й прості значення. */
+    public static function modFilters(array $q): array
+    {
+        $f = [
+            'status' => in_array($q['status'] ?? '', ['published', 'rejected'], true) ? (string) $q['status'] : 'pending',
+            'q' => mb_substr(trim((string) ($q['q'] ?? '')), 0, 100),
+            'cat' => max(0, (int) ($q['cat'] ?? 0)),
+            'place' => preg_match('/^[cs]:\d+$/', (string) ($q['place'] ?? '')) ? (string) $q['place'] : '',
+            'emp' => max(0, (int) ($q['emp'] ?? 0)),
+            'author' => max(0, (int) ($q['author'] ?? 0)),
+            'page' => max(1, (int) ($q['page'] ?? 1)),
+        ];
+        return $f;
+    }
+
+    /** Посилання на список модерації з фільтрами (порожні й типові значення не пишемо). */
+    public static function modUrl(array $f, array $over = []): string
+    {
+        $f = [...$f, ...$over];
+        return url('/admin/moderation', [
+            'status' => ($f['status'] ?? 'pending') === 'pending' ? null : $f['status'],
+            'q' => $f['q'] ?? null, 'cat' => ($f['cat'] ?? 0) ?: null, 'place' => $f['place'] ?? null,
+            'emp' => ($f['emp'] ?? 0) ?: null, 'author' => ($f['author'] ?? 0) ?: null, 'page' => ($f['page'] ?? 1) > 1 ? $f['page'] : null,
+        ]);
+    }
+
     public function moderation(Request $req): Response
     {
-        $status = in_array($req->query['status'] ?? 'pending', ['pending', 'published', 'rejected'], true) ? (string) ($req->query['status'] ?? 'pending') : 'pending';
-        $rows = App::db()->all("SELECT v.*, e.name AS employer, e.is_verified, e.edrpou, s.name AS settlement, c.name AS category, u.display_name AS author,
-            (SELECT COUNT(*) FROM {p}vacancies v2 WHERE v2.author_id = v.author_id AND v2.status = 'rejected') AS author_rejected
-            FROM {p}vacancies v JOIN {p}employers e ON e.id = v.employer_id JOIN {p}settlements s ON s.id = v.settlement_id JOIN {p}job_categories c ON c.id = v.category_id JOIN {p}users u ON u.id = v.author_id
-            WHERE v.status = ? AND v.deleted_at IS NULL ORDER BY " . ($status === 'pending' ? 'v.submitted_at ASC' : 'v.moderated_at DESC') . ' LIMIT 100', [$status]);
-        return $this->render('moderation', 'moderation', ['title' => 'Модерація вакансій', 'rows' => $rows, 'status' => $status, 'me' => App::auth()->user()]);
+        $db = App::db();
+        $f = self::modFilters($req->query);
+        $status = $f['status'];
+
+        // Умови фільтрів (крім стану): за ними ж рахуємо лічильники на вкладках.
+        $w = ['v.deleted_at IS NULL'];
+        $p = [];
+        if ($f['q'] !== '') {
+            $like = '%' . addcslashes($f['q'], '%_\\') . '%';
+            $w[] = '(v.title LIKE ? OR e.name LIKE ? OR e.edrpou LIKE ? OR u.display_name LIKE ? OR v.description LIKE ? OR v.id = ?)';
+            array_push($p, $like, $like, $like, $like, $like, ctype_digit($f['q']) ? (int) $f['q'] : 0);
+        }
+        if ($f['cat']) { $w[] = 'v.category_id = ?'; $p[] = $f['cat']; }
+        if ($f['place'] !== '') {
+            [$kind, $pid] = explode(':', $f['place']);
+            $w[] = $kind === 'c' ? 's.community_id = ?' : 'v.settlement_id = ?';
+            $p[] = (int) $pid;
+        }
+        if ($f['emp']) { $w[] = 'v.employer_id = ?'; $p[] = $f['emp']; }
+        if ($f['author']) { $w[] = 'v.author_id = ?'; $p[] = $f['author']; }
+        $from = ' FROM {p}vacancies v JOIN {p}employers e ON e.id = v.employer_id JOIN {p}settlements s ON s.id = v.settlement_id
+            JOIN {p}job_categories c ON c.id = v.category_id JOIN {p}users u ON u.id = v.author_id WHERE ' . implode(' AND ', $w);
+
+        $counts = ['pending' => 0, 'published' => 0, 'rejected' => 0];
+        foreach ($db->all('SELECT v.status, COUNT(*) AS n' . $from . " AND v.status IN ('pending','published','rejected') GROUP BY v.status", $p) as $r) {
+            $counts[$r['status']] = (int) $r['n'];
+        }
+        $total = $counts[$status];
+        $pages = max(1, (int) ceil($total / self::MOD_PER_PAGE));
+        $f['page'] = min($f['page'], $pages);
+        $rows = $db->all('SELECT v.*, e.name AS employer, e.legal_form, e.is_verified, e.edrpou, s.name AS settlement, c.name AS category, u.display_name AS author,
+            (SELECT COUNT(*) FROM {p}vacancies v2 WHERE v2.author_id = v.author_id AND v2.status = \'rejected\') AS author_rejected'
+            . $from . ' AND v.status = ? ORDER BY ' . ($status === 'pending' ? 'v.submitted_at ASC, v.id ASC' : 'v.moderated_at DESC, v.id DESC')
+            . ' LIMIT ' . self::MOD_PER_PAGE . ' OFFSET ' . (($f['page'] - 1) * self::MOD_PER_PAGE), [...$p, $status]);
+
+        // Довідники для фільтрів: лише ті роботодавці й автори, у яких є вакансії на модерації чи після неї.
+        $live = "v.deleted_at IS NULL AND v.status IN ('pending','published','rejected')";
+        $employers = $db->all("SELECT e.id, e.name, e.legal_form, COUNT(*) AS n FROM {p}vacancies v JOIN {p}employers e ON e.id = v.employer_id WHERE $live GROUP BY e.id, e.name, e.legal_form ORDER BY e.name");
+        $authors = $db->all("SELECT u.id, u.display_name AS name, COUNT(*) AS n FROM {p}vacancies v JOIN {p}users u ON u.id = v.author_id WHERE $live GROUP BY u.id, u.display_name ORDER BY u.display_name");
+        $places = $db->all('SELECT s.id, s.name, c.id AS community_id, c.name AS community FROM {p}settlements s JOIN {p}communities c ON c.id = s.community_id ORDER BY c.name, s.name');
+        $categories = $db->all('SELECT id, name FROM {p}job_categories ORDER BY sort, name');
+
+        return $this->render('moderation', 'moderation', ['title' => 'Модерація вакансій', 'rows' => $rows, 'status' => $status, 'f' => $f,
+            'counts' => $counts, 'total' => $total, 'pages' => $pages, 'employers' => $employers, 'authors' => $authors, 'places' => $places,
+            'categories' => $categories, 'me' => App::auth()->user(), 'canEdit' => App::auth()->can(ListingEditController::PERM),
+            'canVerify' => App::auth()->can('identity.user:update')]);
     }
 
     public function moderate(Request $req): Response
@@ -119,7 +189,7 @@ final class AdminController
             flash('ok', $st === 'scheduled' ? 'Вакансію схвалено. Вона з’явиться на сайті з ' . date('d.m', strtotime((string) $db->value('SELECT show_from FROM {p}vacancies WHERE id = ?', [$id]))) . '.' : 'Вакансію опубліковано.');
         } elseif ($decision === 'reject') {
             $reason = $req->str('reason', 500);
-            if (mb_strlen($reason) < 5) { flash('bad', 'Вкажіть причину відхилення — її побачить роботодавець.'); return Response::redirect(url('/admin/moderation')); }
+            if (mb_strlen($reason) < 5) { flash('bad', 'Вкажіть причину відхилення — її побачить роботодавець.'); return Response::redirect(self::modBack($req)); }
             if (!in_array($v['status'], ['pending', 'published'], true)) throw new HttpException(409, 'Вакансію вже оброблено.');
             $db->update('vacancies', ['status' => 'rejected', 'moderated_by' => $me['id'], 'moderated_at' => Db::now(), 'reject_reason' => $reason], 'id = ?', [$id]);
             Audit::log('jobs.vacancy_rejected', 'vacancy', $id, ['reason' => $reason]);
@@ -130,7 +200,14 @@ final class AdminController
             flash('ok', 'Роботодавця позначено як перевіреного.');
         }
         Stats::forget();
-        return Response::redirect(url('/admin/moderation', ['status' => $req->str('back', 12) ?: null]));
+        return Response::redirect(self::modBack($req));
+    }
+
+    /** Куди повернутися після дії: той самий список із тими самими фільтрами. */
+    private static function modBack(Request $req): string
+    {
+        parse_str($req->str('back', 600), $q);
+        return self::modUrl(self::modFilters(is_array($q) ? $q : []));
     }
 
     /* ---------------- банерна реклама ---------------- */

@@ -44,7 +44,8 @@ final class ListingEditController
         $v = $this->vacancy((int) $req->params['id']);
         [$settlements, $categories] = SiteController::reference();
         return new Response(view('cabinet/vacancy_form', ['title' => 'Виправлення вакансії', 'v' => $v, 'adminEdit' => true,
-            'employer' => ['name' => $v['employer_name']], 'settlements' => $settlements, 'categories' => $categories, 'premoderation' => false, 'me' => App::auth()->user()]));
+            'employer' => ['name' => $v['employer_name']], 'settlements' => $settlements, 'categories' => $categories, 'premoderation' => false, 'me' => App::auth()->user(),
+            'backUrl' => self::backUrl($req->query['back'] ?? null, (int) $v['id']), 'back' => is_string($req->query['back'] ?? null) ? mb_substr((string) $req->query['back'], 0, 600) : null]));
     }
 
     public function vacancySave(Request $req): Response
@@ -61,7 +62,7 @@ final class ListingEditController
         $id = (int) $cur['id'];
         if (!$changed) {
             flash('info', 'Нічого не змінено, тож власнику нічого не надсилали.');
-            return Response::redirect(url('/jobs/' . $id));
+            return Response::redirect(self::backUrl($req->input('back'), $id));
         }
 
         $db = App::db();
@@ -80,7 +81,15 @@ final class ListingEditController
         self::notifyOwner($cur, $d['title'], $labels, $note);
 
         flash('ok', 'Вакансію виправлено. Власник отримав сповіщення: змінено ' . implode(', ', $labels) . '.');
-        return Response::redirect(url('/jobs/' . $id));
+        return Response::redirect(self::backUrl($req->input('back'), $id));
+    }
+
+    /** Відкрили з модерації (0.5.22) — повертаємося туди ж із тими самими фільтрами, інакше на сторінку вакансії. */
+    public static function backUrl(mixed $back, int $id): string
+    {
+        if (!is_string($back)) return url('/jobs/' . $id);
+        parse_str(mb_substr($back, 0, 600), $q);
+        return AdminController::modUrl(AdminController::modFilters(is_array($q) ? $q : []));
     }
 
     /** Сповіщення в кабінеті + лист (або SMS, якщо email немає). Помилка пошти не скасовує виправлення. */
