@@ -6,6 +6,7 @@ namespace App\Controllers\Admin;
 use App\Core\App;
 use App\Core\Audit;
 use App\Core\Db;
+use App\Core\Demo;
 use App\Core\HttpException;
 use App\Core\Request;
 use App\Core\Response;
@@ -83,6 +84,29 @@ final class ServicesAdminController
             flash('ok', $m['status'] === 'published' ? 'Майстра знято з каталогу. Він побачить причину в кабінеті.' : 'Профіль відхилено. Майстер побачить причину в кабінеті.');
         }
         return Response::redirect($back);
+    }
+
+    /** Приклади оголошень (0.5.14): додати або видалити трьох майстрів і резюме-приклад. */
+    public function demo(Request $req): Response
+    {
+        $me = App::auth()->user();
+        if (!$me['is_staff']) throw new HttpException(403, 'Адмін-панель доступна лише персоналу.');
+        $back = Response::redirect(url($req->str('back', 10) === 'resumes' ? '/admin/resumes' : '/admin/masters', ['status' => 'published']));
+        if ($req->str('do', 8) === 'remove') {
+            if (empty($req->post['confirm'])) { flash('bad', 'Поставте галочку, що видаляєте приклади.'); return $back; }
+            $n = Demo::remove((int) $me['id']);
+            flash('ok', $n ? 'Приклади видалено разом із фото. На сайті їх більше немає.' : 'Прикладів уже не було.');
+            return $back;
+        }
+        try {
+            $n = Demo::add((int) $me['id']);
+        } catch (\Throwable $e) {
+            error_log('[YEWORK] demo add: ' . $e->getMessage());
+            flash('bad', 'Не вдалося додати приклади: ' . $e->getMessage());
+            return $back;
+        }
+        flash('ok', $n ? 'Додано приклади: 3 майстри в «Послугах» і резюме. Видалити їх можна тут же, однією кнопкою.' : 'Приклади вже додано.');
+        return $back;
     }
 
     /** Приховати або повернути відгук. Рейтинг майстра перераховується. */

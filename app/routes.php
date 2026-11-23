@@ -107,6 +107,7 @@ $router->post('/admin/vacancies/{id}/edit', [ListingEditController::class, 'vaca
 $router->get('/admin/resumes', [ResumeModerationController::class, 'index'], ['jobs.listing:moderate']);
 $router->post('/admin/resumes/{id}', [ResumeModerationController::class, 'decide'], ['jobs.listing:moderate']);
 $router->get('/admin/masters', [ServicesAdminController::class, 'index'], ['services.listing:moderate']);
+$router->post('/admin/demo', [ServicesAdminController::class, 'demo'], ['services.listing:moderate']);
 $router->post('/admin/masters/{id}', [ServicesAdminController::class, 'decide'], ['services.listing:moderate']);
 $router->post('/admin/reviews/{id}', [ServicesAdminController::class, 'review'], ['services.listing:moderate']);
 $router->get('/admin/service-categories', [ServicesAdminController::class, 'categories'], ['services.listing:update']);

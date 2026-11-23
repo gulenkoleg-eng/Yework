@@ -8,6 +8,7 @@ use App\Core\App;
 use App\Core\Audit;
 use App\Core\Crypto;
 use App\Core\Db;
+use App\Core\Demo;
 use App\Core\HttpException;
 use App\Core\Media;
 use App\Core\RateLimit;
@@ -119,6 +120,7 @@ final class ServicesController
     {
         RateLimit::hit('master-phone:' . $req->ip(), 60, 3600, 'Забагато запитів. Спробуйте пізніше.');
         [$m] = $this->load($req);
+        if (Demo::isDemoMaster((int) $m['id'])) return Response::json(['message' => 'Це приклад, номера немає']);
         $phone = $m['contact_phone'] ?: null;
         if (!$phone) return Response::json(['message' => 'Номер недоступний.'], 404);
         return Response::json(['phone' => $phone, 'pretty' => phone_pretty($phone)])->header('Cache-Control', 'private, no-store');
@@ -134,6 +136,7 @@ final class ServicesController
         $db = App::db();
         if ($isOwner) throw new ValidationException([], 'Це ваш профіль майстра — замовити в себе не можна.');
         if (!Services::isPublic($m)) throw new ValidationException([], 'Майстер зараз не приймає замовлення.');
+        if (Demo::isDemoMaster((int) $m['id'])) throw new ValidationException([], 'Це приклад оголошення: так виглядає сторінка майстра на сайті. Замовлення йому не надсилаються.');
         if ($db->value("SELECT 1 FROM {p}service_orders WHERE master_id = ? AND client_id = ? AND status IN ('new','accepted')", [$m['id'], $me['id']])) {
             throw new ValidationException([], 'У вас уже є відкрите замовлення в цього майстра. Дочекайтеся відповіді або скасуйте його в кабінеті.');
         }
