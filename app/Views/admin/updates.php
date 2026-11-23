@@ -57,19 +57,43 @@ $fmtDate = static fn (?string $d) => $d ? (strlen($d) === 10 ? date('d.m.Y', str
     <p class="muted small">Остання перевірка: <?= e(date('d.m.Y H:i', (int) $info['checkedAt'])) ?>. Сайт перевіряє GitHub не частіше ніж раз на годину, або коли ви натискаєте «Перевірити оновлення».</p></div>
 <?php endif ?>
 
-<div class="card pad stack"><div class="row" style="justify-content:space-between;gap:10px"><h3>Історія версій</h3>
+<div class="card pad stack" id="versions"><div class="row" style="justify-content:space-between;gap:10px"><h3>Історія версій</h3>
   <div class="upd-links"><a href="<?= e($repoUrl) ?>" target="_blank" rel="noopener">Репозиторій ↗</a><a href="<?= e($repoUrl . '/blob/' . rawurlencode($cfg['branch']) . '/CHANGELOG.md') ?>" target="_blank" rel="noopener">Усі зміни (CHANGELOG) ↗</a><a href="<?= e($repoUrl . '/pulls?q=is%3Apr+is%3Amerged') ?>" target="_blank" rel="noopener">Злиті PR ↗</a><a href="<?= e($repoUrl . '/commits/' . rawurlencode($cfg['branch'])) ?>" target="_blank" rel="noopener">Коміти ↗</a></div></div>
   <p class="small muted">Натисніть на версію, щоб побачити, що в ній змінилося. Посилання «PR» відкривають цю версію на GitHub: опис, обговорення і всі змінені файли.</p>
   <?php if (!$all): ?><p class="muted">Поки немає даних.</p><?php endif ?>
-  <?php foreach ($all as $v): $cmp = version_compare($v['version'], $version); ?>
+  <?php
+  // Сторінка «Історії версій»: по 10 версій. На першій видно 3 останні, решта розгортається кнопкою.
+  $perPage = 10; $showFirst = 3;
+  $pages = max(1, (int) ceil(count($all) / $perPage));
+  $vpage = min($vpage ?? 1, $pages);
+  $slice = array_slice(array_values($all), ($vpage - 1) * $perPage, $perPage);
+  $shown = $vpage === 1 ? array_slice($slice, 0, $showFirst) : $slice;
+  $hidden = $vpage === 1 ? array_slice($slice, $showFirst) : [];
+  $row = static function (array $v) use ($version, $fmtDate, $gh): void { $cmp = version_compare($v['version'], $version); ?>
     <details class="upd-notes"><summary><b><?= e($v['version']) ?></b>
       <?php if ($cmp === 0): ?><span class="tag ok">встановлено</span><?php elseif ($cmp > 0): ?><span class="tag warn">нова</span><?php endif ?>
       <?php if ($v['date']): ?><span class="muted small"><?= e($fmtDate($v['date'])) ?></span><?php endif ?>
-      <?php foreach ($v['prs'] ?? [] as $n): ?><span class="tag">PR #<?= (int) $n ?></span><?php endforeach ?></summary>
+      <?php foreach ($v['prs'] ?? [] as $n): ?><span class="tag">PR #<?= (int) $n ?></span><?php endforeach ?>
+      <?php if (empty($v['prs'])) foreach ($v['commits'] ?? [] as $c): ?><span class="tag">коміт <?= e(substr((string) $c, 0, 7)) ?></span><?php endforeach ?></summary>
       <div class="upd-md small"><?= $v['notes'] !== '' ? Updater::markdown($v['notes']) : '<p class="muted">Опису змін немає.</p>' ?></div>
       <?= $gh($v) ?>
     </details>
-  <?php endforeach ?>
+  <?php };
+  $pager = static function () use ($pages, $vpage): void {
+    if ($pages < 2) return; ?>
+    <nav class="pager upd-pager" aria-label="Сторінки історії версій"><?php if ($vpage > 1): ?><a href="<?= url('/admin/updates', ['vpage' => $vpage - 1]) ?>#versions" aria-label="Новіші версії">←</a><?php endif ?>
+      <?php for ($i = 1; $i <= $pages; $i++): ?><?= $i === $vpage ? "<span class=\"on\">$i</span>" : '<a href="' . url('/admin/updates', $i > 1 ? ['vpage' => $i] : []) . "#versions\">$i</a>" ?><?php endfor ?>
+      <?php if ($vpage < $pages): ?><a href="<?= url('/admin/updates', ['vpage' => $vpage + 1]) ?>#versions" aria-label="Старіші версії">→</a><?php endif ?></nav>
+  <?php };
+  ?>
+  <?php if ($vpage > 1): ?><p class="small muted">Сторінка <?= $vpage ?> з <?= $pages ?>: старіші версії. <a href="<?= url('/admin/updates') ?>#versions">← До останніх версій</a></p><?php endif ?>
+  <?php foreach ($shown as $v) $row($v) ?>
+  <?php if ($hidden): $moreLabel = 'Показати ще ' . plural(count($hidden), 'версію', 'версії', 'версій') . ($pages > 1 ? ' (усього ' . count($all) . ')' : ''); ?>
+    <div id="upd-more" class="stack upd-more" hidden><?php foreach ($hidden as $v) $row($v) ?></div>
+    <div><button type="button" class="btn sm upd-more-btn" aria-controls="upd-more" aria-expanded="false" data-more="<?= e($moreLabel) ?>" data-less="Згорнути"
+      onclick="var o=this.getAttribute('aria-expanded')!=='true';document.querySelectorAll('.upd-more').forEach(function(m){m.hidden=!o});this.setAttribute('aria-expanded',o);this.textContent=o?this.dataset.less:this.dataset.more"><?= e($moreLabel) ?></button></div>
+    <?php if ($pages > 1): ?><div class="upd-more" hidden><?php $pager() ?></div><?php endif ?>
+  <?php else: $pager(); endif ?>
 </div>
 
 <div class="card pad stack"><div class="row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>Резервні копії і відкат</h3>

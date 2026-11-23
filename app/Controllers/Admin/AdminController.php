@@ -528,7 +528,8 @@ final class AdminController
             WHERE a.action IN ('system.updated','system.update_failed','system.restored','system.upgraded') ORDER BY a.id DESC LIMIT 10");
         return $this->render('updates', 'updates', ['title' => 'Оновлення', 'info' => $info, 'version' => YW_VERSION, 'local' => $local,
             'backups' => $backups, 'users' => $users, 'history' => $history, 'problems' => Updater::serverProblems(),
-            'cfg' => Updater::config(), 'canConfigure' => App::auth()->can('settings.system:manage_settings'), 'pending' => Updater::pending()]);
+            'cfg' => Updater::config(), 'canConfigure' => App::auth()->can('settings.system:manage_settings'), 'pending' => Updater::pending(),
+            'vpage' => max(1, (int) ($req->query['vpage'] ?? 1))]);
     }
 
     public function updatesCheck(Request $req): Response
