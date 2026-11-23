@@ -340,6 +340,7 @@ final class ResumeController
         if (!$employer) return Response::redirect(url('/cabinet/employer'));
         if ($employer['status'] !== 'active') throw new HttpException(403, 'Профіль роботодавця заблоковано.');
         if ((int) $r['user_id'] === (int) $me['id']) throw new ValidationException([], 'Це ваше резюме.');
+        if (\App\Core\Demo::isDemoResume((int) $r['id'])) throw new ValidationException([], 'Це приклад резюме: так виглядає резюме на сайті. Запрошення цій людині не надсилаються.');
         if (!Resumes::isPublic($r) && $acc['reason'] !== 'applicant') throw new HttpException(404, 'Резюме приховано.');
         $vid = ((int) $req->input('vacancy_id')) ?: null;
         if ($vid && !$db->value("SELECT 1 FROM {p}vacancies WHERE id = ? AND employer_id = ? AND status = 'published' AND deleted_at IS NULL", [$vid, $employer['id']])) $vid = null;

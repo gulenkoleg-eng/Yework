@@ -72,7 +72,7 @@ $err = App::$errors;
   </div>
 
   <aside class="card side-card" id="order">
-    <?php if ($m['contact_phone'] && ($public || $isOwner || $isMod)): ?>
+    <?php if (($m['contact_phone'] || \App\Core\Demo::isDemoMaster((int) $m['id'])) && ($public || $isOwner || $isMod)): ?>
       <button type="button" class="btn pri block" id="showPhone" data-url="<?= url('/services/' . $m['id'] . '/phone') ?>"><?= icon('phone') ?>Показати номер</button>
     <?php endif ?>
     <?php if ($pays): ?><div><b class="small">Оплата</b><div class="pays" style="margin-top:6px"><?php foreach ($pays as $l): ?><span class="tag"><?= e($l) ?></span><?php endforeach ?></div></div><?php endif ?>

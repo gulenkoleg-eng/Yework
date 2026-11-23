@@ -3,6 +3,7 @@
 <div class="adm-h"><h1>Модерація резюме</h1><span class="spacer"></span>
   <div class="seg"><?php foreach (['pending' => 'Чекають', 'published' => 'Опубліковані', 'rejected' => 'Відхилені'] as $k => $l): ?><a class="<?= $status === $k ? 'on' : '' ?>" href="<?= url('/admin/resumes', ['status' => $k === 'pending' ? null : $k]) ?>"><?= $l ?></a><?php endforeach ?></div>
 </div>
+<?= App\Core\View::partial('partials/demo_admin', ['back' => 'resumes']) ?>
 <p class="small muted" style="margin:-6px 0 14px">Перевірте, що це справжнє резюме: без реклами, посилань, образ і чужих фото. Фото модератор бачить завжди, навіть якщо людина приховала його від роботодавців.</p>
 <?php if (!$rows): ?><div class="card empty"><h3><?= $status === 'pending' ? 'Черга порожня' : 'Нічого немає' ?></h3><p class="muted"><?= $status === 'pending' ? 'Усі резюме перевірено. Нові з’являться тут автоматично.' : '' ?></p></div><?php endif ?>
 <?php foreach ($rows as $r): $own = (int) $r['user_id'] === (int) $me['id']; $p = $r['profile']; ?>
@@ -10,7 +11,7 @@
     <div class="mod-h">
       <div class="row" style="flex-wrap:nowrap;align-items:flex-start">
         <span class="rz-ph sm"><?php if ($p['photo_file']): ?><img src="<?= e(Resumes::photoUrl($p)) ?>" alt=""><?php else: ?><?= icon('user', 26) ?><?php endif ?></span>
-        <div><h3 style="font-size:19px"><?= e($r['title']) ?></h3>
+        <div><h3 style="font-size:19px"><?= e($r['title']) ?><?php if (App\Core\Demo::isDemoResume((int) $r['id'])): ?> <span class="tag warn" style="font-size:12px;vertical-align:middle">Приклад</span><?php endif ?></h3>
           <div class="small muted"><?= e($r['name']) ?><?= $p['settlement'] ? ' · ' . e($p['settlement']) : '' ?><?= ($a = Resumes::age($p['birth_year'] !== null ? (int) $p['birth_year'] : null)) ? ' · ' . e($a) : '' ?> · <?= e(EMPLOYMENT_TYPES[$r['employment']] ?? '') ?><?= $r['salary_from'] ? ' · від ' . money((int) $r['salary_from']) . ' грн' : '' ?></div>
           <div class="small muted">Фото: <?= $p['photo_file'] ? e(mb_strtolower(Resumes::VISIBILITY[Resumes::vis($p, 'photo')])) : 'немає' ?> · телефон: <?= e(mb_strtolower(Resumes::VISIBILITY[Resumes::vis($p, 'phone')])) ?><?= $r['is_hidden'] ? ' · приховано власником' : '' ?></div>
         </div>

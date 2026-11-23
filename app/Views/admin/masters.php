@@ -3,6 +3,7 @@
 <div class="adm-h"><h1>Майстри</h1><span class="spacer"></span>
   <div class="seg"><?php foreach (SA::TABS as $k => $l): ?><a class="<?= $status === $k ? 'on' : '' ?>" href="<?= url('/admin/masters', ['status' => $k === 'pending' ? null : $k]) ?>"><?= $l ?><?= !empty($counts[$k]) ? ' (' . (int) $counts[$k] . ')' : '' ?></a><?php endforeach ?></div>
 </div>
+<?= App\Core\View::partial('partials/demo_admin', ['back' => 'masters']) ?>
 <?php if ($status === 'reviews'): ?>
   <p class="small muted" style="margin:-6px 0 14px">Кожен відгук прив’язаний до виконаного замовлення через сайт. Приховуйте лише образи, рекламу чи явну неправду: прихований відгук не впливає на рейтинг.</p>
   <?php if (!$reviews): ?><div class="card empty"><h3>Відгуків ще немає</h3></div><?php endif ?>
@@ -25,7 +26,7 @@
       <div class="mod-h">
         <div class="row" style="flex-wrap:nowrap;align-items:flex-start">
           <span class="m-ava sm"><?php if ($m['photo']): ?><img src="<?= e(S::photoUrl($m['photo'])) ?>" alt=""><?php else: ?><?= e(initials((string) $m['name'])) ?><?php endif ?></span>
-          <div><h3 style="font-size:19px"><?= e($m['name']) ?></h3>
+          <div><h3 style="font-size:19px"><?= e($m['name']) ?><?php if (App\Core\Demo::isDemoMaster((int) $m['id'])): ?> <span class="tag warn" style="font-size:12px;vertical-align:middle">Приклад</span><?php endif ?></h3>
             <div class="small muted"><?= e($m['category']) ?><?= $m['category2'] ? ' + ' . e($m['category2']) : '' ?><?= $m['settlement'] ? ' · ' . e($m['settlement']) : '' ?> · <?= e(S::LEGAL[$m['legal_form']] ?? 'Приватна особа') ?> · оплата: <?= e(mb_strtolower(implode(', ', S::payments($m['payments'])) ?: '—')) ?> · термін <?= e(S::PERIODS[(int) $m['period_months']] ?? '') ?></div>
             <div class="small muted">Телефон: <?= e(phone_pretty($m['contact_phone'])) ?><?= ($t = S::travelText($m, S::travelAreas((int) $m['id']))) ? ' · ' . e(mb_strtolower($t)) : '' ?><?= $m['areas'] ? ' · ' . e($m['areas']) : '' ?><?= $m['status'] === 'published' ? ' · до ' . e(date('d.m.Y', strtotime((string) $m['show_to']))) : '' ?></div>
           </div>
