@@ -12,9 +12,22 @@ $q = fn (array $over) => url('/resumes', array_merge(array_filter(['q' => $f['q'
     <?php else: ?>Повні резюме бачать зареєстровані роботодавці, а відкриті для всіх кандидати показують ім’я й фото кожному. <a href="<?= url('/login', ['next' => '/resumes']) ?>">Увійдіть</a> або <a href="<?= url('/register') ?>">зареєструйтеся</a>.<?php endif ?>
   </div>
 <?php endif ?>
+<?php
+$chips = [];
+$drop = fn (string $k) => $q([$k => null, 'page' => null]);
+if ($f['settlement']) foreach ($settlements as $s) if ((int) $s['id'] === $f['settlement']) $chips[] = ['label' => $s['name'], 'href' => $drop('settlement')];
+if ($f['category']) foreach ($categories as $c) if ((int) $c['id'] === $f['category']) $chips[] = ['label' => $c['name'], 'href' => $drop('category')];
+if ($f['employment'] && isset(EMPLOYMENT_TYPES[$f['employment']])) $chips[] = ['label' => EMPLOYMENT_TYPES[$f['employment']], 'href' => $drop('employment')];
+if ($f['salary']) $chips[] = ['label' => 'до ' . number_format((int) $f['salary'], 0, '', ' ') . ' грн', 'href' => $drop('salary')];
+if ($f['driving']) $chips[] = ['label' => 'Посвідчення ' . $f['driving'], 'href' => $drop('driving')];
+echo App\Core\View::partial('partials/mfilter', ['action' => '/resumes', 'qVal' => $f['q'], 'ph' => 'Посада або навичка', 'chips' => $chips,
+    'keep' => ['settlement' => $f['settlement'] ?: null, 'category' => $f['category'] ?: null, 'employment' => $f['employment'], 'salary' => $f['salary'] ?: null, 'driving' => $f['driving']],
+    'reset' => url('/resumes')]);
+?>
 <div class="jobs-layout">
-  <form class="card filters" method="get" action="<?= url('/resumes') ?>">
-    <div class="field"><label for="q">Пошук</label><input id="q" class="input" name="q" value="<?= e($f['q']) ?>" placeholder="Посада або навичка"></div>
+  <form class="card filters" id="flt" method="get" action="<?= url('/resumes') ?>">
+    <?= App\Core\View::partial('partials/sheet_head', []) ?>
+    <div class="field f-q"><label for="q">Пошук</label><input id="q" class="input" name="q" value="<?= e($f['q']) ?>" placeholder="Посада або навичка"></div>
     <div class="field"><label for="st">Населений пункт</label><select id="st" class="input" name="settlement"><option value="">Усі громади</option><?php foreach ($settlements as $s): ?><option value="<?= (int) $s['id'] ?>" <?= $f['settlement'] === (int) $s['id'] ? 'selected' : '' ?>><?= e($s['name']) ?></option><?php endforeach ?></select></div>
     <div class="field"><label for="cat">Сфера</label><select id="cat" class="input" name="category"><option value="">Усі сфери</option><?php foreach ($categories as $c): ?><option value="<?= (int) $c['id'] ?>" <?= $f['category'] === (int) $c['id'] ? 'selected' : '' ?>><?= e($c['name']) ?></option><?php endforeach ?></select></div>
     <div class="field"><label for="emp">Графік</label><select id="emp" class="input" name="employment"><option value="">Будь-який</option><?php foreach (EMPLOYMENT_TYPES as $k => $v): ?><option value="<?= $k ?>" <?= $f['employment'] === $k ? 'selected' : '' ?>><?= e($v) ?></option><?php endforeach ?></select></div>

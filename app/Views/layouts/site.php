@@ -61,6 +61,12 @@ $on = fn ($p) => str_starts_with(parse_url($path, PHP_URL_PATH) ?: '/', App::bas
   </div>
 </footer>
 <script>
+(function(){var r=document.documentElement,sh=document.getElementById('flt');if(!sh)return;var mq=document.querySelector('[data-mf-q]'),sq=sh.querySelector('input[name=q]');
+function open(e){if(e)e.preventDefault();if(mq&&sq)sq.value=mq.value;r.classList.add('sheet-open')}
+function close(e){if(e)e.preventDefault();r.classList.remove('sheet-open');if(location.hash==='#flt')history.replaceState(null,'',location.pathname+location.search)}
+document.querySelectorAll('[data-sheet-open]').forEach(function(a){a.addEventListener('click',open)});document.querySelectorAll('[data-sheet-close]').forEach(function(a){a.addEventListener('click',close)});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&r.classList.contains('sheet-open'))close()});
+if(location.hash==='#flt'){history.replaceState(null,'',location.pathname+location.search);open()}})();
 document.getElementById('modeBtn').onclick=function(){var r=document.documentElement,c=r.dataset.mode||getComputedStyle(r).colorScheme,n=(c==='dark')?'light':'dark';r.dataset.mode=n;try{localStorage.setItem('yw-mode',n)}catch(e){}};
 </script>
 <?php if ($ny && $ny['snow']): ?><script src="<?= asset('js/newyear.js') ?>" defer></script><?php endif ?>
