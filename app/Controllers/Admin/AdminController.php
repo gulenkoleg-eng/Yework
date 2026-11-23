@@ -60,6 +60,37 @@ final class AdminController
         return $this->render('dashboard', 'dashboard', ['title' => 'Огляд', 'k' => $k, 'pub' => $pub, 'recent' => $recent, 'me' => $me, 'mfa' => $mfa]);
     }
 
+    /* ---------------- відгуки і відвідувачі (0.5.20) ---------------- */
+
+    /** Список відгуків на вакансії: куди веде картка «відгуків» на «Огляді». Текст відгуку й контакти не показуються. */
+    public function applications(Request $req): Response
+    {
+        $this->staff();
+        $db = App::db();
+        $per = 50;
+        $total = (int) $db->value('SELECT COUNT(*) FROM {p}applications');
+        $page = max(1, min((int) ($req->query['page'] ?? 1), max(1, (int) ceil($total / $per))));
+        $rows = $db->all('SELECT a.id, a.status, a.created_at, a.user_id, v.id AS vacancy_id, v.title, v.status AS v_status, e.name AS employer, u.display_name
+            FROM {p}applications a JOIN {p}vacancies v ON v.id = a.vacancy_id JOIN {p}employers e ON e.id = v.employer_id JOIN {p}users u ON u.id = a.user_id
+            ORDER BY a.id DESC LIMIT ' . $per . ' OFFSET ' . (($page - 1) * $per));
+        $today = (int) $db->value('SELECT COUNT(*) FROM {p}applications WHERE created_at >= ?', [Stats::kyivDayStartUtc()]);
+        return $this->render('applications', 'dashboard', ['title' => 'Відгуки', 'rows' => $rows, 'total' => $total, 'today' => $today, 'page' => $page, 'per' => $per]);
+    }
+
+    /** Відвідувачі по днях за останні 30 днів (лише кількість, без персональних даних). */
+    public function visitors(Request $req): Response
+    {
+        $this->staff();
+        $db = App::db();
+        $from = gmdate('Y-m-d', time() - 29 * 86400);
+        $by = [];
+        foreach ($db->all('SELECT day, COUNT(*) AS n FROM {p}daily_visitors WHERE day >= ? GROUP BY day', [$from]) as $r) $by[(string) $r['day']] = (int) $r['n'];
+        $days = [];
+        for ($i = 0; $i < 30; $i++) { $d = gmdate('Y-m-d', time() - $i * 86400); $days[$d] = $by[$d] ?? 0; }
+        return $this->render('visitors', 'dashboard', ['title' => 'Відвідувачі', 'days' => $days, 'pub' => Stats::public(),
+            'total30' => (int) $db->value('SELECT COUNT(DISTINCT visitor_hash) FROM {p}daily_visitors WHERE day >= ?', [$from])]);
+    }
+
     /* ---------------- модерація ---------------- */
 
     public function moderation(Request $req): Response
