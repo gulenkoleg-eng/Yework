@@ -355,7 +355,30 @@ final class AdminController
             FROM {p}themes t JOIN {p}theme_versions tv ON tv.theme_id = t.id AND tv.version = (SELECT MAX(version) FROM {p}theme_versions x WHERE x.theme_id = t.id)
             WHERE t.deleted_at IS NULL ORDER BY t.id');
         $history = App::db()->all('SELECT p.*, t.name, u.display_name FROM {p}theme_publications p JOIN {p}theme_versions tv ON tv.id = p.theme_version_id JOIN {p}themes t ON t.id = tv.theme_id LEFT JOIN {p}users u ON u.id = p.published_by ORDER BY p.id DESC LIMIT 10');
-        return $this->render('themes', 'themes', ['title' => 'Теми оформлення', 'rows' => $rows, 'history' => $history]);
+        $published = '';
+        foreach ($rows as $r) if ($r['active']) $published = $r['name'];
+        return $this->render('themes', 'themes', ['title' => 'Теми оформлення', 'rows' => $rows, 'history' => $history, 'festive' => \App\Core\Festive::config(), 'published' => $published]);
+    }
+
+    /** Новорічне оформлення (0.5.4): режим, дати й ефекти. */
+    public function themeFestive(Request $req): Response
+    {
+        $F = \App\Core\Festive::class;
+        $mode = (string) $req->input('mode', 'off');
+        if (!isset($F::MODES[$mode])) $mode = 'off';
+        $from = $F::parseHuman((string) $req->input('from', ''));
+        $to = $F::parseHuman((string) $req->input('to', ''));
+        $err = [];
+        if (!$from) $err['from'] = 'Вкажіть дату як 15.12';
+        if (!$to) $err['to'] = 'Вкажіть дату як 15.01';
+        if ($err) throw new ValidationException($err);
+        $c = ['mode' => $mode, 'from' => $from, 'to' => $to];
+        foreach (['snow', 'garland', 'logo', 'theme'] as $k) $c[$k] = (bool) $req->input($k);
+        App::setSetting($F::KEY, $c, App::auth()->id());
+        Audit::log('theming.festive_updated', 'settings', $F::KEY, $c);
+        $now = $F::isOn($c) && in_array(true, [$c['snow'], $c['garland'], $c['logo'], $c['theme']], true);
+        flash('ok', $now ? 'Збережено. Новорічне оформлення вже на сайті.' : 'Збережено. Зараз новорічне оформлення на сайті не показується.');
+        return Response::redirect(url('/admin/themes'));
     }
 
     public function themePublish(Request $req): Response

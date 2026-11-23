@@ -1,6 +1,6 @@
 <form class="ist-card" method="post" action="<?= url('/install', ['step' => 4]) ?>">
   <?= csrf_field() ?>
-  <?= App\Core\View::partial('partials/ist_head', ['step' => 4, 'title' => 'Тема оформлення', 'sub' => 'Буде встановлено всі 6 тем. Обрана стане активною, змінити її можна будь-коли в розділі «Дизайн → Теми».', 'error' => $error]) ?>
+  <?= App\Core\View::partial('partials/ist_head', ['step' => 4, 'title' => 'Тема оформлення', 'sub' => 'Буде встановлено всі 7 тем. Обрана стане активною, змінити її можна будь-коли в розділі «Дизайн → Теми».', 'error' => $error]) ?>
   <div class="ist-themes">
     <?php foreach ($themes as $t): $c = $t[$t['defaultMode']]; ?>
       <label class="ist-theme">
