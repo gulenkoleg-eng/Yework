@@ -362,22 +362,6 @@ table.tbl{width:100%;border-collapse:collapse;font-size:14.5px}
 .emp-head{padding:18px 20px;display:flex;gap:16px;align-items:flex-start;margin-bottom:16px}
 
 /* ---------- банери (класи без слова «ad», щоб їх не ховали блокувальники) ---------- */
-.promos{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
-.promos.one{grid-template-columns:minmax(0,560px)}
-.promo{display:flex;flex-direction:column;overflow:hidden;text-decoration:none;color:inherit;border-color:color-mix(in srgb,var(--c-brand) 60%,var(--c-border));transition:transform .15s,box-shadow .15s}
-.promo:hover{transform:translateY(-1px);box-shadow:0 0 0 1px color-mix(in srgb,var(--c-brand) 70%,transparent),var(--shadow)}
-.promo-img{width:100%;aspect-ratio:3/1;object-fit:cover;display:block;background:var(--c-secondary)}
-.promo-b{padding:16px 18px;display:flex;flex-direction:column;gap:8px;flex:1}
-.promo-emp{display:flex;gap:10px;align-items:center;min-width:0}
-.promo-emp .elogo{width:40px;height:40px}
-.promo-emp span{display:flex;flex-direction:column;min-width:0;line-height:1.25}
-.promo-emp b{font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.promo-emp small{font-size:11.5px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.06em;font-weight:700}
-.promo h3{font-size:18px;color:var(--c-heading)}
-.promo p{font-size:14.5px;color:var(--c-muted);overflow-wrap:anywhere}
-.promo-go{margin-top:auto;display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--c-link);font-size:14.5px}
-.promo.wide{margin-bottom:16px}
-@media (min-width:700px){.promo.wide.with-img{flex-direction:row}.promo.wide.with-img .promo-img{width:38%;aspect-ratio:auto;min-height:100%}}
 
 /* ---------- кабінет: реклама і послуги ---------- */
 .free-note{border-left:4px solid var(--c-success)}

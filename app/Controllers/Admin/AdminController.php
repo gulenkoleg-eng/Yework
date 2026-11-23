@@ -153,6 +153,30 @@ final class AdminController
         return Response::redirect($back);
     }
 
+    /** Шаблони банерів: які доступні роботодавцям і який обрано за замовчуванням (0.5.12). */
+    public function bannerTemplates(Request $req): Response
+    {
+        $db = App::db();
+        $used = [];
+        try {
+            foreach ($db->all("SELECT template, COUNT(*) AS n FROM {p}banners WHERE status IN ('pending','approved') AND ends_on >= ? GROUP BY template", [Ads::today()]) as $r) $used[$r['template']] = (int) $r['n'];
+        } catch (\PDOException) {}
+        return $this->render('banner_templates', 'banners', ['title' => 'Шаблони банерів', 'set' => Ads::templateSettings(), 'used' => $used]);
+    }
+
+    public function bannerTemplatesSave(Request $req): Response
+    {
+        $on = array_values(array_intersect(array_keys(Ads::TEMPLATES), (array) ($req->post['on'] ?? [])));
+        if (!$on) { flash('bad', 'Залиште ввімкненим хоча б один шаблон.'); return Response::redirect(url('/admin/banners/templates')); }
+        $def = $req->str('default', 12);
+        if (!in_array($def, $on, true)) $def = $on[0];
+        $val = ['off' => array_values(array_diff(array_keys(Ads::TEMPLATES), $on)), 'default' => $def];
+        App::setSetting('ads.templates', $val, App::auth()->id());
+        Audit::log('ads.templates_updated', 'settings', 'ads.templates', $val);
+        flash('ok', 'Шаблони збережено. Роботодавці бачать лише ввімкнені шаблони.');
+        return Response::redirect(url('/admin/banners/templates'));
+    }
+
     /* ---------------- монетизація ---------------- */
 
     public function billing(Request $req): Response

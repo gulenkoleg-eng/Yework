@@ -35,7 +35,7 @@ $preview = ['id' => $b['id'], 'title' => $b['title'], 'body' => $b['body'], 'ima
     </section>
 
     <section class="stack" style="gap:10px"><h2 style="font-size:20px">Так банер виглядає на сайті</h2>
-      <div class="promos one"><?= App\Core\View::partial('partials/promo', ['b' => $preview]) ?></div></section>
+      <div class="bnrs one"><?= App\Core\View::partial('partials/promo', ['b' => $preview]) ?></div></section>
 
     <?php if ((int) $b['price'] > 0): ?>
       <div class="card pad row" style="justify-content:space-between"><div><b>Вартість: <?= money((int) $b['price']) ?> грн</b><p class="small muted"><?= $b['paid_at'] ? 'Оплачено ' . e(local_date($b['paid_at'], 'd.m.Y')) : 'Банер почне показуватися після оплати.' ?></p></div>

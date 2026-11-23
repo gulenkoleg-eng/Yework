@@ -1,5 +1,12 @@
 <?php use App\Core\Ads;
 $free = !$paid;
+$old = App\Core\App::$old;
+$oldPerks = array_values((array) ($old['perks'] ?? []));
+$tplNow = isset($templates[$old['template'] ?? '']) ? $old['template'] : $tplDefault;
+// Зразок для попереднього перегляду: поки поля порожні, показуємо приклад тексту (сірим у полях він теж є).
+$preview = $employer ? ['title' => ($old['title'] ?? '') ?: 'Шукаємо водія категорії C', 'body' => ($old['body'] ?? '') ?: 'Офіційне працевлаштування, доїзд з Миронівки. Досвід не обов’язковий, навчимо.',
+  'template' => $tplNow, 'badge' => $old['badge'] ?? '', 'cta' => $old['cta'] ?? '', 'perks' => json_encode(array_filter($oldPerks) ?: ['від 18 000 грн', 'Офіційно', 'Доїзд'], JSON_UNESCAPED_UNICODE),
+  'employer' => $employer['name'], 'legal_form' => $employer['legal_form'], 'logo' => $employer['logo'], 'vacancies' => $published, 'image' => null] : [];
 $days = [3 => '3 дні', 7 => '7 днів', 14 => '14 днів', 30 => '30 днів'];
 $services = [
   ['vacancy_bump', 'Підняти вакансію', 'Вакансія знову стане першою у списку, ніби щойно опублікована.'],
@@ -34,11 +41,38 @@ $services = [
 
     <form class="card pad stack" method="post" action="<?= url('/cabinet/ads') ?>" enctype="multipart/form-data" id="adForm"><?= csrf_field() ?>
       <div><h2 style="font-size:22px">Банер на сайті</h2>
-        <p class="muted">Ваш банер з логотипом і описом «кого шукаємо» бачать усі, хто заходить на сайт. Натискання веде на ваші вакансії, а поки банер діє, <b>ваші вакансії стоять першими в пошуку</b>. У кабінеті видно, скільки людей побачили банер і скільки перейшли.</p></div>
+        <p class="muted">Оберіть шаблон і напишіть текст: оформлення, кольори й анімацію ми зробимо самі, у стилі сайту. Натискання на банер веде на ваші вакансії, а поки банер діє, <b>ваші вакансії стоять першими в пошуку</b>. У кабінеті видно, скільки людей побачили банер і скільки перейшли.</p></div>
       <?php if (!$published): ?><div class="alert warn">У вас поки немає опублікованих вакансій. Банер веде саме на них, тож спершу <a href="<?= url('/cabinet/vacancies/new') ?>">розмістіть вакансію</a>.</div><?php endif ?>
-      <?php if (!$employer['logo']): ?><div class="alert info">Порада: <a href="<?= url('/cabinet/employer') ?>">додайте логотип</a> — банер з логотипом помічають значно частіше.</div><?php endif ?>
-      <?= input_field('title', 'Заголовок', ['maxlength' => 80, 'required' => true, 'placeholder' => 'Шукаємо водія категорії C і двох різноробочих']) ?>
-      <?= input_field('body', 'Кого шукаєте і що пропонуєте', ['type' => 'textarea', 'rows' => 3, 'maxlength' => 300, 'required' => true, 'placeholder' => 'Офіційне працевлаштування, зарплата від 18 000 грн, доїзд з Миронівки. Досвід не обов’язковий — навчимо.']) ?>
+      <?php if (!$employer['logo']): ?><div class="alert info">Порада: <a href="<?= url('/cabinet/employer') ?>">додайте логотип</a>, і він з’явиться на банері. Банер з логотипом помічають значно частіше.</div><?php endif ?>
+      <div class="bnr-maker">
+        <div class="stack">
+          <fieldset class="field<?= err_class('template') ?>"><legend class="lbl">Шаблон</legend>
+            <div class="bnr-tpls">
+              <?php foreach ($templates as $k => [$tl, $td]): ?>
+                <label class="bnr-tpl"><input type="radio" name="template" value="<?= e($k) ?>" <?= $tplNow === $k ? 'checked' : '' ?>><span><em class="sw-<?= e($k) ?>"></em><?= e($tl) ?><small><?= e($td) ?></small></span></label>
+              <?php endforeach ?>
+            </div>
+          </fieldset>
+          <?= input_field('title', 'Заголовок', ['maxlength' => 80, 'required' => true, 'placeholder' => 'Шукаємо водія категорії C']) ?>
+          <?= input_field('body', 'Кого шукаєте і що пропонуєте', ['type' => 'textarea', 'rows' => 3, 'maxlength' => 300, 'required' => true, 'placeholder' => 'Офіційне працевлаштування, доїзд з Миронівки. Досвід не обов’язковий, навчимо.']) ?>
+          <div class="field"><span class="lbl">Переваги (до 3, коротко)</span>
+            <div class="bnr-perk-in">
+              <?php foreach (['від 18 000 грн', 'Офіційно', 'Доїзд'] as $i => $ph): ?><input class="input" name="perks[]" maxlength="24" placeholder="<?= e($ph) ?>" value="<?= e($oldPerks[$i] ?? '') ?>" aria-label="Перевага <?= $i + 1 ?>"><?php endforeach ?>
+            </div><span class="hint">З’являться на банері кольоровими чипами. Можна залишити порожніми.</span></div>
+          <div class="grid2">
+            <div class="field"><label for="f_badge">Позначка</label><input id="f_badge" class="input" name="badge" maxlength="24" list="adBadges" placeholder="Без позначки" value="<?= e($old['badge'] ?? '') ?>"><span class="hint">Наприклад, «Терміново» чи «Новий набір».</span></div>
+            <div class="field"><label for="f_cta">Текст кнопки</label><input id="f_cta" class="input" name="cta" maxlength="32" list="adCtas" placeholder="<?= e(Ads::ctaOf(['vacancies' => $published])) ?>" value="<?= e($old['cta'] ?? '') ?>"><span class="hint">Порожньо: «<?= e(Ads::ctaOf(['vacancies' => $published])) ?>».</span></div>
+          </div>
+          <datalist id="adBadges"><?php foreach (Ads::BADGES as $x): ?><option value="<?= e($x) ?>"><?php endforeach ?></datalist>
+          <datalist id="adCtas"><?php foreach (Ads::CTAS as $x): ?><option value="<?= e($x) ?>"><?php endforeach ?></datalist>
+          <div class="field<?= err_class('image') ?>"><label for="f_image">Картинка <span class="muted" id="adImgReq">(необов’язково)</span></label><input id="f_image" type="file" name="image" accept="image/png,image/jpeg,image/webp"><span class="hint">Фото підприємства чи команди, до 3 МБ. Для шаблону «Фото» картинка обов’язкова, вона стане фоном усього банера.</span><?= field_error('image') ?></div>
+        </div>
+        <div class="bnr-live">
+          <div class="bnr-live-h"><span class="dot"></span>Так банер виглядатиме на сайті</div>
+          <?= App\Core\View::partial('partials/promo', ['b' => $preview, 'live' => true]) ?>
+          <p class="small muted">Перегляд оновлюється, поки ви пишете. Над списком вакансій на комп’ютері банер буде широким, з кнопкою праворуч.</p>
+        </div>
+      </div>
       <fieldset class="field<?= err_class('placement') ?>"><legend>Де показувати</legend>
         <div class="place-opts">
           <?php foreach (Ads::PLACEMENTS as $k => $l): $pd = $prices['banner_' . $k . '_day']; ?>
@@ -50,7 +84,6 @@ $services = [
         <?= input_field('starts_on', 'Початок показу', ['type' => 'date', 'value' => $today, 'required' => true]) ?>
         <?= input_field('days', 'Скільки днів', ['type' => 'select', 'value' => 7, 'options' => $days, 'hint' => 'Від 7 днів знижка ' . (int) $prices['discount_week'] . '%, від 30 — ' . (int) $prices['discount_month'] . '%']) ?>
       </div>
-      <div class="field<?= err_class('image') ?>"><label for="f_image">Картинка (необов’язково)</label><input id="f_image" type="file" name="image" accept="image/png,image/jpeg,image/webp"><span class="hint">Фото вашого підприємства чи команди. Широка, приблизно 1200×400, до 3 МБ. Без картинки банер теж виглядає добре.</span><?= field_error('image') ?></div>
       <div class="price-line" id="adPrice" data-week="<?= (int) $prices['discount_week'] ?>" data-month="<?= (int) $prices['discount_month'] ?>" data-free="<?= $free ? 1 : 0 ?>"></div>
       <div class="row"><button class="btn pri"><?= $free ? 'Замовити банер безкоштовно' : 'Замовити банер' ?></button><span class="small muted">Банер з’явиться після перевірки модератором.</span></div>
     </form>
@@ -80,4 +113,18 @@ function upd(){var r=f.querySelector('input[name=placement]:checked'),d=+f.query
 var disc=d>=30?+o.dataset.month:(d>=7?+o.dataset.week:0),sum=Math.round(+r.dataset.day*d*(100-disc)/100),t=sum.toLocaleString('uk-UA')+' грн';
 o.innerHTML=o.dataset.free==='1'?'Вартість: <s>'+t+'</s> <b>0 грн</b> — безкоштовно на період розвитку':'Вартість: <b>'+t+'</b>'+(disc?' (знижка '+disc+'%)':'');}
 f.addEventListener('change',upd);upd();})();
+(function(){var f=document.getElementById('adForm'),b=document.getElementById('bnrLive');if(!f||!b)return;
+var q=function(s){return b.querySelector(s)},h3=q('h3'),p=q('p'),ul=q('.bnr-perks'),bd=q('.bnr-badge'),cta=q('.bnr-cta>span'),ph=q('.bnr-photo'),im=q('.bnr-img'),req=document.getElementById('adImgReq');
+var E=f.elements,ex={title:h3.textContent,body:p.textContent,cta:cta.textContent},exPerks=f.querySelectorAll('[name="perks[]"]'),url='';
+function tpl(){var r=f.querySelector('input[name=template]:checked');return r?r.value:'classic'}
+function upd(){var t=tpl();b.className=b.className.replace(/\bt-\w+/,'t-'+t);
+h3.textContent=E.title.value.trim()||ex.title;p.textContent=E.body.value.trim()||ex.body;
+var ps=[].map.call(exPerks,function(i){return i.value.trim()}).filter(Boolean),any=[].some.call(exPerks,function(i){return i.value.trim()});
+if(!any)ps=[].map.call(exPerks,function(i){return i.placeholder});ul.innerHTML='';ps.forEach(function(x){var li=document.createElement('li');li.textContent=x;ul.appendChild(li)});ul.hidden=!ps.length;
+var bv=E.badge.value.trim();bd.hidden=!bv;bd.querySelector('span').textContent=bv;
+cta.textContent=E.cta.value.trim()||ex.cta;
+ph.hidden=!url;im.hidden=!url||t==='photo';if(url){ph.src=url;im.src=url}
+req.textContent=t==='photo'?'(обов’язково для «Фото»)':'(необов’язково)';}
+E.image.addEventListener('change',function(){if(url)URL.revokeObjectURL(url);var x=E.image.files&&E.image.files[0];url=x&&/^image\//.test(x.type)?URL.createObjectURL(x):'';upd()});
+f.addEventListener('input',upd);f.addEventListener('change',upd);upd();})();
 </script>

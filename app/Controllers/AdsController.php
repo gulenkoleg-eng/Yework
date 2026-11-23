@@ -36,7 +36,7 @@ final class AdsController
             FROM {p}banners b LEFT JOIN {p}banner_stats s ON s.banner_id = b.id WHERE b.employer_id = ? GROUP BY b.id ORDER BY b.id DESC', [$employer['id']]) : [];
         $published = $employer ? (int) App::db()->value("SELECT COUNT(*) FROM {p}vacancies WHERE employer_id = ? AND status = 'published' AND deleted_at IS NULL", [$employer['id']]) : 0;
         return $this->cab()->page('ads', 'ads', ['title' => 'Реклама і послуги', 'employer' => $employer, 'rows' => $rows, 'published' => $published,
-            'paid' => Ads::monetizationOn(), 'prices' => Ads::prices(), 'today' => Ads::today()]);
+            'paid' => Ads::monetizationOn(), 'prices' => Ads::prices(), 'today' => Ads::today(), 'templates' => Ads::availableTemplates(), 'tplDefault' => Ads::templateSettings()['default']]);
     }
 
     public function order(Request $req): Response
@@ -52,6 +52,17 @@ final class AdsController
             'placement' => array_key_exists($req->str('placement', 8), Ads::PLACEMENTS) ? $req->str('placement', 8) : '',
             'starts_on' => $req->str('starts_on', 10), 'days' => (int) $req->input('days', 0),
         ];
+        $tpls = Ads::availableTemplates();
+        $d['template'] = $req->str('template', 12);
+        if (!isset($tpls[$d['template']])) $d['template'] = Ads::templateSettings()['default'];
+        $d['badge'] = $req->str('badge', 24) ?: null;
+        $d['cta'] = $req->str('cta', 32) ?: null;
+        $perks = [];
+        foreach ((array) ($req->post['perks'] ?? []) as $pk) {
+            $pk = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $pk) ?? '', 0, 24));
+            if ($pk !== '' && count($perks) < Ads::MAX_PERKS) $perks[] = $pk;
+        }
+        $d['perks'] = $perks ? json_encode($perks, JSON_UNESCAPED_UNICODE) : null;
         $err = [];
         $today = Ads::today();
         if (mb_strlen($d['title']) < 3) $err['title'] = 'Напишіть заголовок, наприклад «Шукаємо водія категорії C»';
@@ -70,6 +81,7 @@ final class AdsController
             throw new ValidationException(['starts_on' => ' '], 'На ' . date('d.m', strtotime($full)) . ' усі рекламні місця вже зайняті. Оберіть інші дати або інше місце показу.');
         }
         $image = Media::store('banner', 'image', 'e' . $employer['id']);
+        if ($d['template'] === 'photo' && !$image) throw new ValidationException(['image' => 'Для шаблону «Фото» додайте картинку або оберіть інший шаблон']);
         $price = Ads::monetizationOn() ? Ads::bannerPrice($d['placement'], $d['days']) : 0;
         $id = $db->insert('banners', [...$d, 'employer_id' => $employer['id'], 'created_by' => $me['id'], 'image' => $image, 'price' => $price, 'status' => 'pending']);
         Audit::log('ads.banner_ordered', 'banner', $id, ['days' => $d['days'], 'placement' => $d['placement'], 'price' => $price]);

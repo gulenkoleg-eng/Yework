@@ -18,7 +18,7 @@
 
 <?php if (!empty($promos)): ?>
 <div class="sec-h"><h2>Шукають працівників</h2><a href="<?= url('/cabinet/ads') ?>">Розмістити свій банер →</a></div>
-<section class="promos"><?php foreach ($promos as $b) echo App\Core\View::partial('partials/promo', ['b' => $b]) ?></section>
+<section class="bnrs"><?php foreach ($promos as $b) echo App\Core\View::partial('partials/promo', ['b' => $b]) ?></section>
 <?php endif ?>
 
 <div class="sec-h"><h2>Три напрямки</h2></div>

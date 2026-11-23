@@ -21,6 +21,7 @@ $on = fn ($p) => str_starts_with(parse_url($path, PHP_URL_PATH) ?: '/', App::bas
 <link rel="stylesheet" href="<?= asset('css/app.css') ?>">
 <link rel="stylesheet" href="<?= asset('css/resume.css') ?>">
 <link rel="stylesheet" href="<?= asset('css/services.css') ?>">
+<link rel="stylesheet" href="<?= asset('css/banners.css') ?>">
 <?php if ($ny): ?><link rel="stylesheet" href="<?= asset('css/newyear.css') ?>"><?php endif ?>
 <style><?= Theme::css($theme) ?></style>
 <script>try{var m=localStorage.getItem('yw-mode');if(m)document.documentElement.dataset.mode=m}catch(e){}</script>
