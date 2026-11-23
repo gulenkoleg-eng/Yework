@@ -6,6 +6,7 @@ $site = (string) App::setting('site.name', 'YEWORK');
 $slogan = (string) App::setting('site.slogan', 'Є робота!');
 $path = $_SERVER['REQUEST_URI'] ?? '/';
 $ny = \App\Core\Festive::current(); // новорічне оформлення (0.5.4)
+$sale = \App\Core\Sale::splash(\App\Core\Request::capture(), $me); // святкова заставка зі знижкою (0.5.26)
 $nyClass = $ny ? 'ny' . ($ny['snow'] ? ' ny-has-snow' : '') . ($ny['garland'] ? ' ny-has-garland' : '') . ($ny['logo'] ? ' ny-has-logo' : '') : '';
 $on = fn ($p) => str_starts_with(parse_url($path, PHP_URL_PATH) ?: '/', App::basePath() . $p) ? ' class="on"' : '';
 ?><!doctype html>
@@ -23,6 +24,7 @@ $on = fn ($p) => str_starts_with(parse_url($path, PHP_URL_PATH) ?: '/', App::bas
 <link rel="stylesheet" href="<?= asset('css/services.css') ?>">
 <link rel="stylesheet" href="<?= asset('css/banners.css') ?>">
 <?php if ($ny): ?><link rel="stylesheet" href="<?= asset('css/newyear.css') ?>"><?php endif ?>
+<?php if ($sale): ?><link rel="stylesheet" href="<?= asset('css/sale.css') ?>"><?php endif ?>
 <style><?= Theme::css($theme) ?></style>
 <script>try{var m=localStorage.getItem('yw-mode');if(m)document.documentElement.dataset.mode=m}catch(e){}</script>
 </head>
@@ -71,5 +73,6 @@ if(location.hash==='#flt'){history.replaceState(null,'',location.pathname+locati
 document.getElementById('modeBtn').onclick=function(){var r=document.documentElement,c=r.dataset.mode||getComputedStyle(r).colorScheme,n=(c==='dark')?'light':'dark';r.dataset.mode=n;try{localStorage.setItem('yw-mode',n)}catch(e){}};
 </script>
 <?php if ($ny && $ny['snow']): ?><script src="<?= asset('js/newyear.js') ?>" defer></script><?php endif ?>
+<?php if ($sale): ?><?= \App\Core\View::partial('partials/sale_splash', ['sale' => $sale]) ?><?php endif ?>
 </body>
 </html>

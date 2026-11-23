@@ -47,7 +47,7 @@ $preview = [...$b, 'href' => Ads::targetUrl($b), 'employer' => $employer['name']
       <div class="bnrs one"><?= App\Core\View::partial('partials/promo', ['b' => $preview]) ?></div></section>
 
     <?php if ((int) $b['price'] > 0): ?>
-      <div class="card pad row" style="justify-content:space-between"><div><b>Вартість: <?= money((int) $b['price']) ?> грн</b><p class="small muted"><?= $b['paid_at'] ? 'Оплачено ' . e(local_date($b['paid_at'], 'd.m.Y')) : 'Банер почне показуватися після оплати.' ?></p></div>
+      <div class="card pad row" style="justify-content:space-between"><div><b>Вартість: <?= money((int) $b['price']) ?> грн</b><?php if (!empty($saleUse)): ?> <span class="tag ok">−<?= (int) $saleUse['percent'] ?>% «<?= e($saleUse['name']) ?>»</span><p class="small muted">Без святкової знижки було б <s><?= money((int) $saleUse['full_price']) ?> грн</s>.</p><?php endif ?><p class="small muted"><?= $b['paid_at'] ? 'Оплачено ' . e(local_date($b['paid_at'], 'd.m.Y')) : 'Банер почне показуватися після оплати.' ?></p></div>
         <?php if (!$b['paid_at'] && $paid): ?><a class="btn" href="<?= url('/cabinet/ads/' . $b['id'] . '/invoice') ?>" target="_blank">Виставити рахунок</a><?php endif ?></div>
     <?php else: ?>
       <p class="small muted">Вартість: 0 грн — безкоштовно на період розвитку сайту.</p>

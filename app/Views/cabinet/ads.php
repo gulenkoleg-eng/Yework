@@ -19,6 +19,7 @@ $services = [
   <div class="stack">
     <h1 style="font-size:28px">Реклама і послуги</h1>
     <?php if ($free): ?><div class="alert info free-note"><div><b>Поки сайт розвивається, усе безкоштовно.</b> Банер можна замовити вже зараз без оплати. Платні послуги з’являться пізніше, ціни нижче — для орієнтиру.</div></div><?php endif ?>
+    <?php if (!empty($sale)): ?><div class="alert ok sale-note"><div><b>🎉 Ви впіймали знижку «<?= e($sale['name']) ?>» −<?= (int) $sale['percent'] ?>% на рекламу.</b> Вона діє на банери, замовлені до <?= e(date('d.m.Y', strtotime($sale['ends_on']))) ?> включно, і вже врахована у вартості нижче.<?= $free ? ' Поки реклама безкоштовна, знижка спрацює, щойно послуги стануть платними.' : '' ?></div></div><?php endif ?>
     <?= form_alert() ?>
 
     <?php if (!$employer): ?>
@@ -61,7 +62,7 @@ $services = [
         <?= input_field('days', 'Скільки днів', ['type' => 'select', 'value' => 7, 'options' => $days, 'hint' => 'Від 7 днів знижка ' . (int) $prices['discount_week'] . '%, від 30 — ' . (int) $prices['discount_month'] . '%']) ?>
       </div>
       <?= App\Core\View::partial('partials/ad_free', ['occupancy' => $occupancy]) ?>
-      <div class="price-line" id="adPrice" data-week="<?= (int) $prices['discount_week'] ?>" data-month="<?= (int) $prices['discount_month'] ?>" data-free="<?= $free ? 1 : 0 ?>"></div>
+      <div class="price-line" id="adPrice" data-week="<?= (int) $prices['discount_week'] ?>" data-month="<?= (int) $prices['discount_month'] ?>" data-free="<?= $free ? 1 : 0 ?>" data-sale="<?= (int) ($sale['percent'] ?? 0) ?>"></div>
       <div class="row"><button class="btn pri"><?= $free ? 'Замовити банер безкоштовно' : 'Замовити банер' ?></button><span class="small muted">Банер з’явиться після перевірки модератором.</span></div>
     </form>
     <?php endif ?>
@@ -87,7 +88,9 @@ $services = [
 <script>
 (function(){var f=document.getElementById('adForm'),o=document.getElementById('adPrice');if(!f||!o)return;
 function upd(){var r=f.querySelector('input[name=placement]:checked'),d=+f.querySelector('[name=days]').value||0;if(!r){o.textContent='';return}
-var disc=d>=30?+o.dataset.month:(d>=7?+o.dataset.week:0),sum=Math.round(+r.dataset.day*d*(100-disc)/100),t=sum.toLocaleString('uk-UA')+' грн';
-o.innerHTML=o.dataset.free==='1'?'Вартість: <s>'+t+'</s> <b>0 грн</b> — безкоштовно на період розвитку':'Вартість: <b>'+t+'</b>'+(disc?' (знижка '+disc+'%)':'');}
+var disc=d>=30?+o.dataset.month:(d>=7?+o.dataset.week:0),sum=Math.round(+r.dataset.day*d*(100-disc)/100),t=sum.toLocaleString('uk-UA')+' грн',sp=+o.dataset.sale||0;
+if(o.dataset.free==='1'){o.innerHTML='Вартість: <s>'+t+'</s> <b>0 грн</b> — безкоштовно на період розвитку';return}
+var parts=[];if(disc)parts.push('знижка '+disc+'%');if(sp)parts.push('святкова −'+sp+'%');
+o.innerHTML='Вартість: '+(sp?'<s>'+t+'</s> <b>'+Math.round(sum*(100-sp)/100).toLocaleString('uk-UA')+' грн</b>':'<b>'+t+'</b>')+(parts.length?' ('+parts.join(', ')+')':'');}
 f.addEventListener('change',upd);upd();})();
 </script>

@@ -590,3 +590,7 @@ a.kpi.link:hover .kpi-go,a.kpi.link:focus-visible .kpi-go{opacity:1;transform:tr
 .verify-box.on .vb-ic{background:color-mix(in srgb,var(--c-success) 16%,var(--c-card));color:var(--c-success)}
 .verify-box .btn{flex:none}
 @media (max-width:560px){.verify-box{flex-wrap:wrap}.verify-box .btn{width:100%}}
+/* Знижка зі святкової заставки в кабінеті (0.5.26) */
+.sale-card{display:flex;align-items:center;gap:16px;color:var(--c-text);text-decoration:none;border-color:color-mix(in srgb,var(--c-success) 35%,var(--c-border));background:color-mix(in srgb,var(--c-success) 7%,var(--c-card))}
+.sale-card:hover{text-decoration:none;border-color:var(--c-success)}
+.sale-card-pct{flex:none;display:grid;place-items:center;min-width:76px;height:56px;padding:0 10px;border-radius:12px;background:linear-gradient(180deg,#ff3b3b,#b9121c);color:#fff;font-weight:900;font-size:24px;transform:rotate(-5deg);box-shadow:0 4px 0 #7d0b12}

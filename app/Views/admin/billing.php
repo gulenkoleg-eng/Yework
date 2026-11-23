@@ -22,6 +22,36 @@
   <?php endif ?>
 </form>
 
+<?php $S = App\Core\Sale::class; $sOld = App\Core\App::$old; $sEvent = $sOld['event'] ?? $sale['event']; $sRun = $S::running($sale); ?>
+<form class="card pad stack sale-admin" method="post" action="<?= url('/admin/billing') ?>"><?= csrf_field() ?><input type="hidden" name="section" value="sale">
+  <div class="row" style="justify-content:space-between"><h3>🎉 Святкова акція-заставка</h3><?= $sRun ? '<span class="tag ok">Зараз на сайті</span>' : ($sale['enabled'] && $sale['from'] > date('Y-m-d') ? '<span class="tag">Почнеться ' . e(date('d.m', strtotime($sale['from']))) . '</span>' : '<span class="tag muted">Вимкнено</span>') ?></div>
+  <p class="small muted">При вході на сайт на кілька секунд з’являється яскрава анімована заставка з назвою свята і знижкою. Хто встиг натиснути на неї, отримує знижку на рекламу (банери) до кінця акції: вона видна в кабінеті й сама враховується у вартості. Заставка показується одній людині не частіше разу на день, не заважає пошуковим системам, а для тих, хто вимкнув анімацію на телефоні чи комп’ютері, вона без руху.</p>
+  <?php if (!$on): ?><div class="alert warn"><div>Зараз монетизацію вимкнено і реклама безкоштовна. Заставку можна показувати й так: знижка запам’ятається за людиною і спрацює, щойно банери стануть платними (якщо акція ще триватиме). Люди побачать про це підказку.</div></div><?php endif ?>
+  <?= form_alert() ?>
+  <fieldset <?= $canEdit ? '' : 'disabled' ?> class="stack" style="border:0;padding:0;margin:0">
+    <label class="check"><input type="checkbox" name="enabled" value="1" <?= ($sOld ? !empty($sOld['enabled']) : $sale['enabled']) ? 'checked' : '' ?>> <b>Показувати заставку в дні акції</b></label>
+    <fieldset class="field"><legend>Подія</legend><div class="row" style="flex-wrap:wrap;gap:6px 18px">
+      <?php foreach ($S::EVENTS as $k => [$label, $def]): ?><label class="check"><input type="radio" name="event" value="<?= $k ?>" data-def="<?= e($def) ?>" <?= $sEvent === $k ? 'checked' : '' ?>> <?= e($label) ?></label><?php endforeach ?>
+    </div></fieldset>
+    <div class="grid2">
+      <?= input_field('title', 'Великий напис', ['value' => $sale['title'], 'placeholder' => $S::EVENTS[$sEvent][1], 'maxlength' => 40, 'hint' => 'Порожньо — напис події, як у підказці в полі. Наприклад: «КІБЕРПОНЕДІЛОК» чи «ДЕНЬ НАРОДЖЕННЯ САЙТУ»']) ?>
+      <?= input_field('subtitle', 'Підпис під знижкою', ['value' => $sale['subtitle'], 'placeholder' => $S::EVENTS[$sEvent][2], 'maxlength' => 90]) ?>
+    </div>
+    <div class="gridp">
+      <?= input_field('percent', 'Знижка, %', ['value' => $sale['percent'], 'inputmode' => 'numeric', 'hint' => 'Від 1 до 90. Додається до знижки за 7 чи 30 днів']) ?>
+      <?= input_field('from', 'Початок акції', ['type' => 'date', 'value' => $sale['from'] ?: date('Y-m-d')]) ?>
+      <?= input_field('to', 'Кінець акції (включно)', ['type' => 'date', 'value' => $sale['to'] ?: date('Y-m-d', strtotime('+6 days'))]) ?>
+      <?= input_field('seconds', 'Скільки показувати', ['type' => 'select', 'value' => $sale['seconds'], 'options' => $S::SECONDS, 'hint' => 'За цей час треба встигнути натиснути']) ?>
+    </div>
+    <?php if ($sale['id'] !== ''): ?><p class="small">Цю акцію впіймали: <b><?= plural((int) $saleStats['claims'], 'людина', 'людини', 'людей') ?></b>, банерів зі знижкою замовлено: <b><?= (int) $saleStats['used'] ?></b>. Якщо змінити подію, відсоток чи дати, почнеться нова акція і впіймати знижку можна буде знову. Уже впіймані знижки діють до кінця своєї акції, навіть якщо заставку вимкнути.</p><?php endif ?>
+    <div class="row"><?php if ($canEdit): ?><button class="btn pri">Зберегти акцію</button><?php endif ?><a class="btn" href="<?= url('/', ['sale_preview' => 1]) ?>" target="_blank">Переглянути заставку</a><span class="small muted">Перегляд показує збережений варіант і знижку не дає.</span></div>
+    <?php if (!$canEdit): ?><p class="small muted">Змінювати акцію може фінансовий або старший адміністратор.</p><?php endif ?>
+  </fieldset>
+</form>
+<script>
+(function(){var f=document.querySelector('.sale-admin');if(!f)return;var t=f.querySelector('[name=title]');f.addEventListener('change',function(e){if(e.target.name==='event'&&t)t.placeholder=e.target.dataset.def})})();
+</script>
+
 <section class="card pad stack">
   <h3>Зайнятість рекламних місць</h3>
   <?= App\Core\View::partial('partials/ad_places', ['occupancy' => $occupancy]) ?>

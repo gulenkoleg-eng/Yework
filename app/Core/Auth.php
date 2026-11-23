@@ -107,6 +107,7 @@ final class Auth
         $_COOKIE[self::COOKIE] = $token;
         $this->resolved = false;
         App::session()->regenerate();
+        Sale::attachPending($userId); // гість упіймав святкову знижку до входу (0.5.26)
     }
 
     public function logout(Request $req): void

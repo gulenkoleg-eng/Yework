@@ -3,6 +3,9 @@
   <div class="stack">
     <h1 style="font-size:28px">Вітаємо, <?= e($me['display_name']) ?></h1>
     <?= App\Core\View::partial('partials/notices', ['notices' => $notices ?? [], 'back' => '/cabinet']) ?>
+    <?php if ($sale = App\Core\Sale::activeFor((int) $me['id'])): ?>
+      <a class="card pad sale-card" href="<?= url('/cabinet/ads') ?>"><span class="sale-card-pct">−<?= (int) $sale['percent'] ?>%</span><span><b>Ваша знижка «<?= e($sale['name']) ?>»</b><br><span class="small">На рекламу на сайті до <?= e(date('d.m.Y', strtotime($sale['ends_on']))) ?> включно. Замовте банер, і знижка врахується сама.</span></span></a>
+    <?php endif ?>
     <div class="dirs" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
       <a class="card dir" href="<?= url('/cabinet/resume') ?>"><span class="ic"><?= icon('user', 22) ?></span><h3>Шукаю роботу</h3><p><?= ($resume ?? null) ? 'Моє резюме: ' . e(App\Core\Resumes::STATUS[$resume['status']][0] ?? '') . '. Відгукуйтеся на вакансії з резюме.' : 'Створіть резюме з фото, і роботодавці знайдуть вас самі.' ?></p></a>
       <a class="card dir" href="<?= url('/jobs') ?>"><span class="ic"><?= icon('search', 22) ?></span><h3>Вакансії</h3><p>Перегляньте вакансії і відгукніться в один клік.</p></a>

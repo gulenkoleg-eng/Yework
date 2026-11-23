@@ -387,7 +387,8 @@ final class AdminController
         ];
         return $this->render('billing', 'billing', ['title' => 'Монетизація', 'on' => Ads::monetizationOn(), 'prices' => Ads::prices(), 'slots' => Ads::slots(), 'sideSlots' => Ads::sideSlots(), 'occupancy' => Ads::occupancy(),
             'req' => (array) App::setting('billing.requisites', []), 'k' => $k, 'svcLimits' => \App\Core\Services::limits(),
-            'canToggle' => $a->can('billing.monetization:manage_settings'), 'canEdit' => $a->can('billing.plan:update')]);
+            'canToggle' => $a->can('billing.monetization:manage_settings'), 'canEdit' => $a->can('billing.plan:update'),
+            'sale' => $sale = \App\Core\Sale::config(), 'saleStats' => \App\Core\Sale::stats($sale['id'])]);
     }
 
     public function billingSave(Request $req): Response
@@ -422,8 +423,39 @@ final class AdminController
                 'bank' => $req->str('req_bank', 120), 'note' => $req->str('req_note', 300)], $me);
             Audit::log('billing.prices_updated', 'settings', 'billing.prices', $prices);
             flash('ok', 'Ціни збережено.');
+        } elseif ($section === 'sale') {
+            if (!$a->can('billing.plan:update')) throw new HttpException(403, 'Недостатньо прав для зміни акції.');
+            $this->saleSave($req, (int) $me);
         }
         return Response::redirect(url('/admin/billing'));
+    }
+
+    /** Святкова акція-заставка (0.5.26). Нова подія, відсоток чи дати — нова акція: впіймати знижку можна знову. */
+    private function saleSave(Request $req, int $me): void
+    {
+        $S = \App\Core\Sale::class;
+        $old = $S::config();
+        $event = $req->str('event', 20);
+        $c = [
+            'enabled' => $req->str('enabled', 1) === '1',
+            'event' => isset($S::EVENTS[$event]) ? $event : 'blackfriday',
+            'title' => $req->str('title', 40), 'subtitle' => $req->str('subtitle', 90),
+            'percent' => (int) preg_replace('/\D/', '', $req->str('percent', 3)),
+            'from' => $S::parseHuman($req->str('from', 12)) ?? '', 'to' => $S::parseHuman($req->str('to', 12)) ?? '',
+            'seconds' => (int) $req->input('seconds', 2),
+        ];
+        $err = [];
+        if ($c['percent'] < 1 || $c['percent'] > 90) $err['percent'] = 'Від 1 до 90%';
+        if ($c['from'] === '') $err['from'] = 'Вкажіть дату початку';
+        if ($c['to'] === '') $err['to'] = 'Вкажіть дату завершення';
+        elseif ($c['from'] !== '' && $c['to'] < $c['from']) $err['to'] = 'Завершення не може бути раніше за початок';
+        if (!isset($S::SECONDS[$c['seconds']])) $c['seconds'] = 2;
+        if ($err) throw new ValidationException($err, 'Перевірте поля святкової акції.');
+        $same = $old['id'] !== '' && $old['event'] === $c['event'] && $old['percent'] === $c['percent'] && $old['from'] === $c['from'] && $old['to'] === $c['to'];
+        $c['id'] = $same ? $old['id'] : substr(bin2hex(random_bytes(8)), 0, 12);
+        App::setSetting($S::KEY, $c, $me);
+        Audit::log('billing.sale_updated', 'settings', $S::KEY, ['enabled' => $c['enabled'], 'event' => $c['event'], 'percent' => $c['percent'], 'from' => $c['from'], 'to' => $c['to'], 'new' => !$same]);
+        flash('ok', $c['enabled'] ? ($S::running($c) ? 'Акцію збережено. Заставка вже показується відвідувачам.' : 'Акцію збережено. Заставка з’явиться ' . date('d.m.Y', strtotime($c['from'])) . '.') : 'Акцію збережено. Заставку вимкнено.');
     }
 
     /* ---------------- користувачі ---------------- */
