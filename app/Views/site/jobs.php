@@ -6,7 +6,7 @@
     <h1 style="font-size:26px"><?= e($en) ?><?= $employer['is_verified'] ? ' <span class="tag ok">' . icon('shield', 13) . ' Перевірений</span>' : '' ?></h1>
     <?php if ($employerPromo): ?><p><b><?= e($employerPromo['title']) ?>.</b> <?= e($employerPromo['body']) ?></p>
     <?php elseif ($employer['about']): ?><p class="muted"><?= e(mb_strimwidth($employer['about'], 0, 300, '…')) ?></p><?php endif ?>
-    <a class="small" href="<?= url('/jobs') ?>">← Усі вакансії</a>
+    <span class="row small" style="gap:14px"><a href="<?= url('/employers') ?>">← Усі роботодавці</a><a href="<?= url('/jobs') ?>">Усі вакансії</a></span>
   </div>
 </div>
 <?php endif ?>
