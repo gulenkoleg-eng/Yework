@@ -19,6 +19,7 @@ use App\Controllers\TelegramController;
 // Публічні сторінки
 $router->get('/', [SiteController::class, 'home']);
 $router->get('/jobs', [SiteController::class, 'jobs']);
+$router->get('/employers', [SiteController::class, 'employers']);
 $router->get('/jobs/{id}', [SiteController::class, 'vacancy']);
 $router->post('/jobs/{id}/apply', [SiteController::class, 'apply'], []);
 $router->get('/rules', [SiteController::class, 'rules']);

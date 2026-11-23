@@ -1,4 +1,4 @@
-<?php $q = fn (array $over) => url('/jobs', array_merge(array_filter(['q' => $f['q'], 'settlement' => $f['settlement'] ?: null, 'category' => $f['category'], 'employment' => $f['employment'], 'salary' => $f['salary'] ?: null, 'noexp' => $f['noexp'] ? 1 : null, 'sort' => $f['sort'] === 'salary' ? 'salary' : null, 'employer' => $f['employer'] ?: null]), $over)); ?>
+<?php $q = fn (array $over) => url('/jobs', array_merge(array_filter(['q' => $f['q'], 'settlement' => $f['settlement'] ?: null, 'category' => $f['category'], 'employment' => $f['employment'], 'salary' => $f['salary'] ?: null, 'noexp' => $f['noexp'] ? 1 : null, 'sort' => $f['sort'] === 'salary' ? 'salary' : null, 'employer' => $f['employer'] ?: null, 'today' => $f['today'] ? 1 : null]), $over)); ?>
 <?php if (!empty($employer)): $en = employer_name($employer['legal_form'], $employer['name']); ?>
 <div class="card emp-head">
   <?= $employer['logo'] ? employer_logo($employer['logo'], $en, 64, 'elogo lg') : '<span class="elogo lg ph">' . e(initials($employer['name'])) . '</span>' ?>
@@ -11,7 +11,7 @@
 </div>
 <?php endif ?>
 <?php if (!empty($promos)) echo App\Core\View::partial('partials/promo', ['b' => $promos[0], 'wide' => true]) ?>
-<div class="row" style="margin-bottom:16px"><h1 style="font-size:30px"><?= !empty($employer) ? 'Вакансії роботодавця' : 'Вакансії' ?></h1><span class="muted"><?= plural($total, 'вакансія', 'вакансії', 'вакансій') ?></span>
+<div class="row" style="margin-bottom:16px"><h1 style="font-size:30px"><?= !empty($employer) ? 'Вакансії роботодавця' : ($f['today'] ? 'Нові сьогодні' : 'Вакансії') ?></h1><span class="muted"><?= plural($total, 'вакансія', 'вакансії', 'вакансій') ?></span><?php if ($f['today']): ?><a class="small" href="<?= $q(['today' => null, 'page' => null]) ?>">Усі вакансії</a><?php endif ?>
   <span class="spacer"></span>
   <div class="seg" style="background:var(--c-secondary)"><a class="<?= $f['sort'] === 'new' ? 'on' : '' ?>" href="<?= $q(['sort' => null, 'page' => null]) ?>">Нові</a><a class="<?= $f['sort'] === 'salary' ? 'on' : '' ?>" href="<?= $q(['sort' => 'salary', 'page' => null]) ?>">Більша зарплата</a></div>
 </div>
@@ -23,8 +23,9 @@ if ($f['category']) foreach ($categories as $c) if ($c['slug'] === $f['category'
 if ($f['employment'] && isset(EMPLOYMENT_TYPES[$f['employment']])) $chips[] = ['label' => EMPLOYMENT_TYPES[$f['employment']], 'href' => $drop('employment')];
 if ($f['salary']) $chips[] = ['label' => 'від ' . number_format((int) $f['salary'], 0, '', ' ') . ' грн', 'href' => $drop('salary')];
 if ($f['noexp']) $chips[] = ['label' => 'Без досвіду', 'href' => $drop('noexp')];
+if ($f['today']) $chips[] = ['label' => 'Сьогодні', 'href' => $drop('today')];
 echo App\Core\View::partial('partials/mfilter', ['action' => '/jobs', 'qVal' => $f['q'], 'ph' => 'Посада або компанія', 'chips' => $chips,
-    'keep' => ['settlement' => $f['settlement'] ?: null, 'category' => $f['category'], 'employment' => $f['employment'], 'salary' => $f['salary'] ?: null, 'noexp' => $f['noexp'] ? 1 : null, 'sort' => $f['sort'] === 'salary' ? 'salary' : null, 'employer' => $f['employer'] ?: null],
+    'keep' => ['settlement' => $f['settlement'] ?: null, 'category' => $f['category'], 'employment' => $f['employment'], 'salary' => $f['salary'] ?: null, 'noexp' => $f['noexp'] ? 1 : null, 'sort' => $f['sort'] === 'salary' ? 'salary' : null, 'employer' => $f['employer'] ?: null, 'today' => $f['today'] ? 1 : null],
     'reset' => url('/jobs', ['sort' => $f['sort'] === 'salary' ? 'salary' : null, 'employer' => $f['employer'] ?: null])]);
 ?>
 <div class="jobs-layout">
@@ -38,6 +39,7 @@ echo App\Core\View::partial('partials/mfilter', ['action' => '/jobs', 'qVal' => 
     <label class="check"><input type="checkbox" name="noexp" value="1" <?= $f['noexp'] ? 'checked' : '' ?>> Без досвіду</label>
     <?php if ($f['sort'] === 'salary'): ?><input type="hidden" name="sort" value="salary"><?php endif ?>
     <?php if ($f['employer']): ?><input type="hidden" name="employer" value="<?= (int) $f['employer'] ?>"><?php endif ?>
+    <?php if ($f['today']): ?><label class="check"><input type="checkbox" name="today" value="1" checked> Лише сьогоднішні</label><?php endif ?>
     <button class="btn pri block">Показати</button>
     <a class="btn ghost block" href="<?= url('/jobs') ?>">Скинути фільтри</a>
   </form>
