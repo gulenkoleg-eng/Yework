@@ -42,7 +42,7 @@
     <p class="small muted">Коли всі місця на якісь дні зайняті, роботодавець не зможе замовити банер на ці дні. У формі замовлення він бачить, до якої дати місце зайняте і з якого дня звільниться.</p>
     <div class="gridp">
       <?= input_field('slots', 'Банерів по центру', ['value' => $slots, 'inputmode' => 'numeric', 'hint' => 'Від 1 до 10. На головній у блоці «Шукають працівників» і над списком вакансій. Рекомендуємо 1']) ?>
-      <?= input_field('slots_side', 'Банерів збоку на головній', ['value' => $sideSlots, 'inputmode' => 'numeric', 'hint' => 'Від 1 до ' . Ads::MAX_SIDE_SLOTS . '. Колонка праворуч на комп’ютері, на телефоні вони нижче. Рекомендуємо 4']) ?>
+      <?= input_field('slots_side', 'Банерів збоку на головній', ['value' => $sideSlots, 'inputmode' => 'numeric', 'hint' => 'Від 1 до ' . Ads::MAX_SIDE_SLOTS . '. Колонка праворуч лише на комп’ютері, на телефоні бокових банерів немає. Рекомендуємо 4']) ?>
     </div>
     <p class="small"><b>Приклад:</b> банер на головній на 7 днів — <?= money(Ads::bannerPrice('home', 7)) ?> грн, на 30 днів — <?= money(Ads::bannerPrice('home', 30)) ?> грн; збоку на 7 днів — <?= money(Ads::bannerPrice('side', 7)) ?> грн, на 30 днів — <?= money(Ads::bannerPrice('side', 30)) ?> грн; в обох місцях по центру на 30 днів — <?= money(Ads::bannerPrice('both', 30)) ?> грн.</p>
     <h3 style="margin-top:6px">Послуги для вакансій <span class="tag muted">скоро</span></h3>
