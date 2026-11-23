@@ -247,3 +247,18 @@ function logo_settings(): array
         'perkText' => (string) ($s['perkText'] ?? ''),
     ];
 }
+
+/**
+ * Перемикач «Перевірений роботодавець» в один клік (0.5.23): кнопка-позначка у списках адмінки.
+ * $back — адреса в адмінці, куди повернутися після натискання (з фільтрами й сторінкою).
+ * $mini — лише іконка (для тісних рядків модерації).
+ */
+function verify_toggle(int $employerId, bool $on, string $back, bool $mini = false): string
+{
+    $label = $on ? 'Перевірений' : 'Позначити перевіреним';
+    $title = $on ? 'Перевірений роботодавець. Натисніть, щоб зняти позначку' : 'Натисніть, щоб позначити роботодавця перевіреним';
+    return '<form method="post" class="vt-form" action="' . e(url('/admin/employers/' . $employerId . '/verified')) . '">' . csrf_field()
+        . '<input type="hidden" name="on" value="' . ($on ? '0' : '1') . '"><input type="hidden" name="back" value="' . e($back) . '">'
+        . '<button class="vt' . ($on ? ' on' : '') . ($mini ? ' mini' : '') . '" title="' . e($title) . '" aria-pressed="' . ($on ? 'true' : 'false') . '">'
+        . icon('shield', 14) . ($mini ? '' : '<span>' . $label . '</span>') . '</button></form>';
+}

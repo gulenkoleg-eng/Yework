@@ -134,6 +134,8 @@ $router->post('/admin/billing', [AdminController::class, 'billingSave'], ['billi
 // Люди (0.5.16): клієнти окремо від команди; адміністратор виправляє картку клієнта (ім’я, профіль роботодавця, логотип, фото майстра)
 $router->get('/admin/clients', [PeopleController::class, 'clients'], ['identity.user:view']);
 $router->get('/admin/team', [PeopleController::class, 'team'], ['identity.user:view']);
+// 0.5.23: «Перевірений роботодавець» одним натисканням (список клієнтів, картка клієнта, модерація)
+$router->post('/admin/employers/{id}/verified', [PeopleController::class, 'verifyToggle'], ['identity.user:update']);
 $router->get('/admin/users', [PeopleController::class, 'legacy'], ['identity.user:view']);
 $router->get('/admin/users/{id}', [AdminController::class, 'user'], ['identity.user:view']);
 $router->get('/admin/users/{id}/edit', [PeopleController::class, 'editForm'], ['identity.user:update']);
