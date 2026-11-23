@@ -210,7 +210,7 @@ function ywBk(btn) {
 <?php foreach ($history as $r): $d = $r['data'] ? json_decode($r['data'], true) : []; ?><tr>
   <td class="muted small" style="white-space:nowrap"><?= e(local_date($r['created_at'])) ?></td>
   <td><?= e(App\Core\Audit::label($r['action'])) ?><?php if (!empty($d['from']) || !empty($d['to'])): ?> <span class="small muted"><?= e(($d['from'] ?? '?') . ' → ' . ($d['to'] ?? '?')) ?></span><?php endif ?>
-    <?php if (!empty($d['error'])): ?><div class="small muted"><?= e($d['error']) ?></div><?php endif ?></td>
+    <?php if (!empty($d['error'])): ?><div class="small muted">Причина: <?= e($d['error']) ?></div><?php endif ?></td>
   <td><?= e($r['display_name'] ?? '—') ?></td></tr><?php endforeach ?>
 </tbody></table></div></div>
 <?php endif ?>

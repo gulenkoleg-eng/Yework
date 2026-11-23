@@ -11,6 +11,9 @@
 <?php if ($k['failedMessages']): ?><div class="alert bad">За добу не вдалося надіслати <?= $k['failedMessages'] ?> повідомлень. <a href="<?= url('/admin/outbox') ?>">Переглянути</a></div><?php endif ?>
 <?php if ($recent): ?>
 <div class="card"><div class="pad" style="padding-bottom:0"><h3>Останні дії</h3></div><div class="tbl-wrap"><table class="tbl"><tbody>
-<?php foreach ($recent as $r): ?><tr><td class="muted" style="white-space:nowrap"><?= e(local_date($r['created_at'], 'd.m H:i')) ?></td><td><?= e(App\Core\Audit::label($r['action'])) ?></td><td><?= e($r['display_name'] ?? '—') ?></td></tr><?php endforeach ?>
+<?php foreach ($recent as $r): $d = $r['data'] ? (json_decode($r['data'], true) ?: []) : []; $upd = in_array($r['action'], App\Core\Audit::UPDATE_ACTIONS, true); ?><tr><td class="muted" style="white-space:nowrap"><?= e(local_date($r['created_at'], 'd.m H:i')) ?></td>
+  <td><?php if ($upd): ?><a href="<?= url('/admin/updates') ?>"><?= e(App\Core\Audit::label($r['action'])) ?></a><?php if (!empty($d['from']) || !empty($d['to'])): ?> <span class="small muted"><?= e(($d['from'] ?? '?') . ' → ' . ($d['to'] ?? '?')) ?></span><?php endif ?><?php else: ?><?= e(App\Core\Audit::label($r['action'])) ?><?php endif ?>
+    <?php if ($upd && !empty($d['error'])): ?><div class="small muted">Причина: <?= e($d['error']) ?></div><?php endif ?></td>
+  <td><?= e($r['display_name'] ?? '—') ?></td></tr><?php endforeach ?>
 </tbody></table></div></div>
 <?php endif ?>
