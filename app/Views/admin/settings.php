@@ -8,6 +8,17 @@
   <label class="check"><input type="checkbox" name="pre_services" value="1" <?= ($pre['services'] ?? true) ? 'checked' : '' ?>> Премодерація майстрів (профіль майстра з’являється в «Послугах» лише після перевірки; подальші зміни видно одразу, а модератор бачить їх у вкладці «Змінені»)</label>
   <div><button class="btn pri">Зберегти</button></div>
 </form>
+<form class="card pad stack" method="post" action="<?= url('/admin/settings') ?>" enctype="multipart/form-data"><?= csrf_field() ?><input type="hidden" name="section" value="favicon">
+  <h3>Іконка сайту</h3>
+  <p class="small muted">Маленька картинка у вкладці браузера, у закладках і на екрані телефона, якщо сайт додали на головний екран.</p>
+  <div class="row" style="align-items:center;gap:16px;flex-wrap:wrap">
+    <img src="<?= e($favicon['preview']) ?>" alt="Іконка сайту" width="64" height="64" style="border-radius:14px;flex:none">
+    <img src="<?= e($favicon['preview']) ?>" alt="" width="16" height="16" style="flex:none">
+    <span class="small muted"><?= $favicon['custom'] ? 'Стоїть ваша іконка.' : 'Стоїть стандартна іконка «YE» у кольорах сайту.' ?></span>
+  </div>
+  <div class="field<?= err_class('icon') ?>"><label for="f_icon">Завантажити свою</label><input id="f_icon" type="file" name="icon" accept="image/png,image/jpeg,image/webp"><span class="hint">Квадратна картинка PNG, краще 512×512, до 3 МБ. Простий знак або літери, без дрібного тексту: у вкладці її видно розміром з ніготь.</span><?= field_error('icon') ?></div>
+  <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn pri">Зберегти іконку</button><?php if ($favicon['custom']): ?><button class="btn" name="reset" value="1">Повернути стандартну</button><?php endif ?></div>
+</form>
 <form class="card pad stack" method="post" action="<?= url('/admin/settings') ?>"><?= csrf_field() ?><input type="hidden" name="section" value="logo">
   <h3>Логотипи роботодавців</h3>
   <p class="small muted">Вакансії з логотипом виділяються в списку. Підказка показується в кабінеті роботодавцям, які ще не додали логотип.</p>
