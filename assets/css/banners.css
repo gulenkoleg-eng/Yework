@@ -89,26 +89,21 @@ a.bnr.t-photo:hover .bnr-photo{transform:scale(1.06)}
 .bnrs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}
 .bnrs.one{grid-template-columns:minmax(0,600px)}
 
-/* ---------- Бокові банери на головній (0.5.19) ----------
-   ≥1280 px: колонка праворуч від основного вмісту (сторінка розширюється вправо, ліворуч лишається вирівняною з меню).
-   Вужче й на телефоні: блок «Також шукають» під «Трьома напрямками»; на телефоні — стрічка, яку гортають пальцем. */
+/* ---------- Бокові банери на головній (0.5.19, 0.5.21.2) ----------
+   Лише на комп’ютері (від 1280 px): колонка праворуч від основного вмісту, сторінка розширюється вправо, ліворуч лишається вирівняною з меню.
+   Колонка закріплена: під час прокрутки лишається на екрані під меню. Якщо банерів більше, ніж вміщує екран, колонку можна прокрутити окремо.
+   На телефоні й вузьких екранах бокових банерів немає — там лише банер по центру. */
 .side-bnrs-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c-muted)}
 .side-bnrs-h span{white-space:nowrap}
 .side-bnrs-more{display:inline-block;margin-top:10px;font-size:13px;font-weight:600}
 .side-bnrs-list{display:flex;flex-direction:column;gap:12px}
 .side-col{display:none}
-.side-inline{margin-top:26px}
-.side-inline .side-bnrs-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:12px}
-@media (max-width:699.98px){
-  .side-inline .side-bnrs-list{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:min(78%,280px);overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;padding:4px 2px 8px;margin:-4px -2px 0;scrollbar-width:thin}
-  .side-inline .bnr{scroll-snap-align:start}
-}
 @media (min-width:1280px){
   .wrap:has(>.home.has-side){width:auto;max-width:calc(var(--wrap) + 250px);margin-left:max(16px,(100% - var(--wrap))/2);margin-right:16px}
   .home.has-side{display:grid;grid-template-columns:minmax(0,1fr) 230px;column-gap:20px;align-items:start}
   .home-main{min-width:0}
-  .side-col{display:block}
-  .side-inline{display:none}
+  .side-col{display:block;position:sticky;top:84px;max-height:calc(100vh - 100px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;padding:2px 4px 4px;margin:-2px -4px 0}
+  .side-col::-webkit-scrollbar{display:none}
 }
 
 /* Менший боковий банер */

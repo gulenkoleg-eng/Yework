@@ -40,7 +40,7 @@ final class SiteController
         $latest = App::db()->all(self::LIST_SQL . " WHERE v.status = 'published' AND v.deleted_at IS NULL ORDER BY v.published_at DESC LIMIT 6");
         $promos = Ads::forPlacement('home', Ads::slots());
         $side = Ads::forPlacement('side', Ads::sideSlots()); // менші банери в колонці праворуч (0.5.19)
-        Ads::trackImpressions($req, [...$promos, ...$side]);
+        Ads::trackImpressions($req, $promos); // бокові рахуються окремо, лише коли їх справді видно на комп’ютері (0.5.21.2)
         return new Response(view('site/home', ['stats' => Stats::public(), 'settlements' => $settlements, 'categories' => $categories, 'latest' => $latest, 'promos' => $promos, 'side' => $side]));
     }
 
@@ -190,6 +190,21 @@ final class SiteController
         if (!$b) return Response::redirect(url('/jobs'));
         Ads::trackClick($req, $b);
         return Response::redirect(Ads::targetUrl($b), 302);
+    }
+
+    /**
+     * Покази бокових банерів (0.5.21.2). Бокова колонка є лише на широкому екрані, тож показ рахує сама сторінка,
+     * коли колонку видно. Беремо лише бокові банери, що зараз показуються, не більше ліміту.
+     */
+    public function promoSeen(Request $req): Response
+    {
+        $ids = array_slice(array_values(array_unique(array_filter(array_map('intval', explode(',', (string) ($req->query['ids'] ?? '')))))), 0, Ads::sideSlots());
+        if ($ids) {
+            $t = Ads::today();
+            $rows = App::db()->all('SELECT b.id, e.owner_id FROM {p}banners b JOIN {p}employers e ON e.id = b.employer_id WHERE b.id IN (' . implode(',', $ids) . ") AND b.placement = 'side' AND " . Ads::LIVE_SQL, [$t, $t]);
+            Ads::trackImpressions($req, $rows);
+        }
+        return Response::json(['ok' => true]);
     }
 
     public function about(Request $req): Response { return $this->page('about'); }
