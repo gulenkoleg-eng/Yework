@@ -381,6 +381,7 @@ final class AdminController
         return $this->render('settings', 'settings', ['title' => 'Налаштування', 'email' => $email,
             'site' => ['name' => App::setting('site.name'), 'slogan' => App::setting('site.slogan'), 'url' => App::setting('site.url')],
             'pre' => (array) App::setting('moderation.premoderation', ['jobs' => true]), 'version' => YW_VERSION, 'logo' => logo_settings(),
+            'favicon' => ['custom' => \App\Core\Favicon::custom() !== null, 'preview' => \App\Core\Favicon::url(192)],
             'pendingMigrations' => $this->pendingMigrations()]);
     }
 
@@ -404,6 +405,17 @@ final class AdminController
         } elseif ($section === 'logo') {
             App::setSetting('employers.logo', ['hint' => !empty($req->post['hint']), 'hintText' => $req->str('hintText', 300) ?: logo_settings()['hintText'],
                 'perk' => !empty($req->post['perk']), 'perkText' => $req->str('perkText', 200)], $me);
+        } elseif ($section === 'favicon') {
+            if (!empty($req->post['reset'])) {
+                \App\Core\Favicon::reset($me);
+                Audit::log('settings.updated', 'settings', 'site.favicon', ['reset' => true]);
+                flash('ok', 'Повернуто стандартну іконку сайту.');
+                return Response::redirect(url('/admin/settings'));
+            }
+            if (!\App\Core\Favicon::store('icon', $me)) throw new ValidationException(['icon' => 'Оберіть картинку']);
+            Audit::log('settings.updated', 'settings', 'site.favicon');
+            flash('ok', 'Іконку сайту оновлено. Якщо у вкладці ще стара, оновіть сторінку (Ctrl+F5): браузери запам’ятовують іконки.');
+            return Response::redirect(url('/admin/settings'));
         } elseif ($section === 'email') {
             $driver = $req->str('driver', 10);
             $prev = (array) App::setting('messaging.email', []);

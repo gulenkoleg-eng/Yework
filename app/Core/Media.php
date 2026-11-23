@@ -17,6 +17,7 @@ final class Media
         'master' => [600, 600, 'jpg'],      // фото майстра (0.5.0)
         'work' => [1600, 1600, 'jpg'],      // фото виконаних робіт
         'workthumb' => [480, 480, 'jpg'],   // мініатюра того ж фото для списків
+        'favicon' => [512, 512, 'png'],     // іконка сайту у вкладці (0.5.2), розміри робить Favicon
     ];
     public const MAX_BYTES = 3 * 1024 * 1024;
     private const MIME = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'webp' => 'image/webp', 'gif' => 'image/gif'];

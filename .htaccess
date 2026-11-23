@@ -26,7 +26,7 @@ DirectoryIndex index.php
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
-<FilesMatch "\.(css|js|svg|png|jpg|jpeg|webp|woff2)$">
+<FilesMatch "\.(css|js|svg|png|ico|jpg|jpeg|webp|woff2)$">
   <IfModule mod_headers.c>
     Header set Cache-Control "public, max-age=604800"
   </IfModule>

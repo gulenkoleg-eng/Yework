@@ -157,6 +157,16 @@ final class SiteController
         return Media::serve((string) $req->params['kind'], (string) $req->params['file']);
     }
 
+    /** Іконки й назва сайту для «Додати на головний екран» на телефоні. */
+    public function manifest(Request $req): Response
+    {
+        $name = (string) App::setting('site.name', 'YEWORK');
+        $r = new Response((string) json_encode(\App\Core\Favicon::manifest($name, $name), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $r->header('Content-Type', 'application/manifest+json; charset=utf-8');
+        $r->header('Cache-Control', 'public, max-age=3600');
+        return $r;
+    }
+
     /** Перехід з банера: рахуємо клік і ведемо на вакансії роботодавця. */
     public function promoClick(Request $req): Response
     {

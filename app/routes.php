@@ -25,6 +25,7 @@ $router->get('/rules', [SiteController::class, 'rules']);
 $router->get('/about', [SiteController::class, 'about']);
 $router->get('/contacts', [SiteController::class, 'contacts']);
 $router->get('/media/{kind}/{file}', [SiteController::class, 'media']);
+$router->get('/site.webmanifest', [SiteController::class, 'manifest']);
 $router->get('/go/{id}', [SiteController::class, 'promoClick']);
 
 // Резюме: пошук для роботодавців, сторінка резюме, PDF, запрошення, фото профілю
