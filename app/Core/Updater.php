@@ -243,11 +243,14 @@ final class Updater
                     $changelog = (string) self::apiRaw('/repos/' . $repo . '/contents/CHANGELOG.md?ref=' . $sha);
                     $zip = self::api() . '/repos/' . $repo . '/zipball/' . $sha;
                 } else {
-                    $base = self::rawBase() . '/' . $repo . '/' . self::refPath($cfg['branch']);
+                    // Точний коміт гілки (без ліміту API й без кешу), щоб raw і архів не віддали стару копію
+                    // з кешу CDN (raw.githubusercontent.com кешує файли гілки до 5 хвилин). З 0.5.21.1.
+                    $sha = self::branchSha($repo, $cfg['branch']);
+                    $base = self::rawBase() . '/' . $repo . '/' . ($sha ?? self::refPath($cfg['branch']));
                     $boot = self::rawFile($base . '/app/bootstrap.php');
                     if ($boot === null) throw new RuntimeException('Не вдалося прочитати гілку «' . $cfg['branch'] . '» репозиторію ' . $repo . '. Перевірте назву гілки або, якщо репозиторій закритий, додайте токен GitHub у блоці «Підключення до GitHub» нижче.');
                     $changelog = (string) self::rawFile($base . '/CHANGELOG.md');
-                    $zip = self::codeload() . '/' . $repo . '/zip/refs/heads/' . self::refPath($cfg['branch']);
+                    $zip = self::codeload() . '/' . $repo . '/zip/' . ($sha ?? 'refs/heads/' . self::refPath($cfg['branch']));
                 }
                 $latest = preg_match("/YW_VERSION\s*=\s*'([^']+)'/", $boot, $m) ? self::normVersion($m[1]) : null;
                 if ($latest === null) throw new RuntimeException('Не вдалося визначити версію в гілці «' . $cfg['branch'] . '».');
@@ -277,6 +280,26 @@ final class Updater
         $c = @json_decode((string) @file_get_contents(self::releasesCachePath()), true);
         if (!is_array($c) || ($c['repo'] ?? '') !== self::config()['repo']) return true;
         return (int) ($c['count'] ?? 0) > 0 || (int) ($c['checkedAt'] ?? 0) < time() - 6 * 3600;
+    }
+
+    /**
+     * Останній коміт гілки через git (github.com/…/info/refs): працює без токена, не рахується в ліміт API
+     * і не кешується CDN. null — не вдалося (тоді беремо гілку за назвою).
+     */
+    private static function branchSha(string $repo, string $branch): ?string
+    {
+        try {
+            $r = self::http(self::gitBase() . '/' . $repo . '.git/info/refs?service=git-upload-pack', '*/*');
+        } catch (Throwable) {
+            return null;
+        }
+        if ($r['status'] !== 200) return null;
+        return preg_match('~([0-9a-f]{40}) refs/heads/' . preg_quote($branch, '~') . '(?:\x00|\n|$)~', $r['body'], $m) ? $m[1] : null;
+    }
+
+    private static function gitBase(): string
+    {
+        return rtrim((string) (getenv('YW_UPDATES_GIT') ?: 'https://github.com'), '/');
     }
 
     private static function rawBase(): string
@@ -440,6 +463,7 @@ final class Updater
         if (version_compare($version, YW_VERSION, '<=')) throw new RuntimeException('Версія ' . $version . ' не новіша за встановлену (' . YW_VERSION . '). Щоб повернутися назад, скористайтеся резервною копією.');
 
         return self::locked(function () use ($version, $actorId) {
+            $asked = $version;
             self::prepareRuntime();
             // Одразу після злиття PR GitHub кілька секунд може віддавати ще стару гілку, 404 на архів
             // або архів попередньої версії. Тому завантаження пробуємо кілька разів з паузою (з 0.5.19.1).
@@ -448,7 +472,7 @@ final class Updater
             foreach (self::RETRY_WAITS as $wait) {
                 if ($wait) sleep($wait);
                 try {
-                    $src = self::download($version);
+                    [$src, $version] = self::download($version);
                     break;
                 } catch (RetryableUpdateError $e) {
                     $err = $e->getMessage();
@@ -470,15 +494,16 @@ final class Updater
             file_put_contents(self::pendingPath(), json_encode(['backup' => $backup, 'from' => YW_VERSION, 'to' => $version, 'by' => $actorId, 'at' => time()]), LOCK_EX);
             self::cleanWork();
             if (function_exists('opcache_reset')) @opcache_reset();
-            return ['backup' => $backup, 'to' => $version];
+            return ['backup' => $backup, 'to' => $version, 'asked' => $asked];
         });
     }
 
     /**
-     * Знайти версію на GitHub, завантажити й розпакувати архів. Повертає папку з файлами нової версії.
+     * Знайти версію на GitHub, завантажити й розпакувати архів. Повертає [папка з файлами, версія в архіві]
+     * (версія може бути новішою за обрану, якщо на GitHub уже вийшла наступна).
      * Тимчасові збої GitHub (щойно злитий PR, 404/5xx, архів зі старою версією) — RetryableUpdateError.
      */
-    private static function download(string $version): string
+    private static function download(string $version): array
     {
         self::cleanWork();
         $info = self::check(true);
@@ -488,6 +513,11 @@ final class Updater
         }
         $target = null;
         foreach ($info['versions'] as $v) if ($v['version'] === $version && $v['zip'] !== '') $target = $v;
+        // Поки адмін дивився на сторінку, могла вийти ще новіша версія: у режимі гілки архів є лише в найновішої,
+        // тож встановлюємо її (з 0.5.21.1).
+        if (!$target && $info['latest'] && version_compare($info['latest'], $version, '>')) {
+            foreach ($info['versions'] as $v) if ($v['version'] === $info['latest'] && $v['zip'] !== '') $target = $v;
+        }
         if (!$target) throw new RetryableUpdateError('Версію ' . $version . ' не знайдено на GitHub (найновіша там зараз ' . ($info['latest'] ?? 'невідома') . '). Зачекайте хвилину й натисніть «Перевірити оновлення».');
         $zip = self::dir('work') . '/package.zip';
         $url = str_starts_with($target['zip'], 'http') ? $target['zip'] : self::api() . $target['zip'];
@@ -501,8 +531,8 @@ final class Updater
             throw new RetryableUpdateError($e->getMessage());
         }
         $pkgVersion = self::packageVersion($src);
-        if ($pkgVersion !== $version) throw new RetryableUpdateError('В архіві з GitHub версія ' . ($pkgVersion ?? 'невідома') . ', а очікувалась ' . $version . '.');
-        return $src;
+        if ($pkgVersion === null || version_compare($pkgVersion, $version, '<')) throw new RetryableUpdateError('В архіві з GitHub версія ' . ($pkgVersion ?? 'невідома') . ', а очікувалась ' . $version . '.');
+        return [$src, $pkgVersion];
     }
 
     public static function pending(): ?array
