@@ -214,6 +214,13 @@ final class SiteController
         return Response::json($r, $r['ok'] ? 200 : 409);
     }
 
+    /** Повторний показ заставки натисканням на «YE» в шапці (0.5.27). */
+    public function saleShow(Request $req): Response
+    {
+        $ok = \App\Core\Sale::show($req);
+        return Response::json(['ok' => $ok], $ok ? 200 : 409);
+    }
+
     public function about(Request $req): Response { return $this->page('about'); }
     public function rules(Request $req): Response { return $this->page('rules'); }
     public function contacts(Request $req): Response { return $this->page('contacts'); }
