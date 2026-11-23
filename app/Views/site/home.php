@@ -26,9 +26,9 @@ $side ??= [];
 
 <div class="sec-h"><h2>Три напрямки</h2></div>
 <section class="dirs">
-  <a class="card dir" href="<?= url('/jobs') ?>"><span class="ic"><?= icon('briefcase', 22) ?></span><h3>Вакансії</h3><p>Постійна робота у місцевих підприємствах, магазинах, школах і фермерських господарствах.</p><span class="small"><b><?= (int) $stats['vacanciesActive'] ?></b> активних</span></a>
-  <a class="card dir" href="<?= url('/jobs', ['employment' => 'one_time']) ?>"><span class="ic"><?= icon('bolt', 22) ?></span><h3>Підробіток</h3><p>Разова робота на день чи тиждень: допомога на городі, переїзд, сезонні роботи.</p><span class="small muted">Окремий розділ з’явиться найближчим часом</span></a>
-  <a class="card dir" href="<?= url('/services') ?>"><span class="ic"><?= icon('tool', 22) ?></span><h3>Послуги</h3><p>Майстри поруч: кондиціонери, відеонагляд, ремонт, сантехніка, електрика. Ціни, фото робіт і відгуки.</p><span class="small"><?= ($mc = App\Core\Services::liveCount()) ? '<b>' . $mc . '</b> ' . e(mb_substr(plural($mc, 'майстер', 'майстри', 'майстрів'), mb_strlen((string) $mc) + 1)) : 'Додайте себе першим →' ?></span></a>
+  <a class="card dir" href="<?= url('/jobs') ?>"><span class="ic"><?= icon('briefcase', 19) ?></span><h3>Вакансії</h3><p>Постійна робота у місцевих підприємствах, магазинах, школах і фермерських господарствах.</p><span class="small"><b><?= (int) $stats['vacanciesActive'] ?></b> активних</span></a>
+  <a class="card dir" href="<?= url('/jobs', ['employment' => 'one_time']) ?>"><span class="ic"><?= icon('bolt', 19) ?></span><h3>Підробіток</h3><p>Разова робота на день чи тиждень: допомога на городі, переїзд, сезонні роботи.</p><span class="small muted">Окремий розділ з’явиться найближчим часом</span></a>
+  <a class="card dir" href="<?= url('/services') ?>"><span class="ic"><?= icon('tool', 19) ?></span><h3>Послуги</h3><p>Майстри поруч: кондиціонери, відеонагляд, ремонт, сантехніка, електрика. Ціни, фото робіт і відгуки.</p><span class="small"><?= ($mc = App\Core\Services::liveCount()) ? '<b>' . $mc . '</b> ' . e(mb_substr(plural($mc, 'майстер', 'майстри', 'майстрів'), mb_strlen((string) $mc) + 1)) : 'Додайте себе першим →' ?></span></a>
 </section>
 
 <div class="sec-h"><h2>Категорії</h2><a href="<?= url('/jobs') ?>">Усі вакансії →</a></div>
