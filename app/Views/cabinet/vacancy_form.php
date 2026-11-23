@@ -5,8 +5,9 @@
 <div class="cab">
   <?php if (!$adminEdit): ?><?= App\Core\View::partial('partials/cab_nav', compact('tab', 'counts', 'me')) ?><?php endif ?>
   <form class="card pad stack" method="post" action="<?= url($adminEdit ? '/admin/vacancies/' . $v['id'] . '/edit' : ($v ? '/cabinet/vacancies/' . $v['id'] . '/edit' : '/cabinet/vacancies/new')) ?>"<?= $adminEdit ? ' style="grid-column:1/-1"' : '' ?>><?= csrf_field() ?>
-    <?php if ($adminEdit): ?>
-    <div><h1 style="font-size:26px">Виправлення вакансії</h1><p class="muted">Роботодавець: <b><?= e($employer['name']) ?></b> · <a href="<?= url('/jobs/' . $v['id']) ?>">повернутися до вакансії</a></p></div>
+    <?php if ($adminEdit): $backUrl = $backUrl ?? url('/jobs/' . $v['id']); $fromMod = ($back ?? null) !== null; ?>
+    <?php if ($fromMod): ?><input type="hidden" name="back" value="<?= e($back) ?>"><?php endif ?>
+    <div><h1 style="font-size:26px">Виправлення вакансії</h1><p class="muted">Роботодавець: <b><?= e($employer['name']) ?></b> · <a href="<?= $backUrl ?>"><?= $fromMod ? 'повернутися до модерації' : 'повернутися до вакансії' ?></a><?= $fromMod ? ' · <a href="' . url('/jobs/' . $v['id']) . '" target="_blank">сторінка вакансії</a>' : '' ?></p></div>
     <div class="alert info">Ви редагуєте чуже оголошення від імені адміністрації. Стан вакансії не зміниться (повторної модерації не буде). Власник отримає сповіщення в кабінеті та на пошту з переліком змінених полів.</div>
     <?php else: ?>
     <div><h1 style="font-size:26px"><?= $v ? 'Редагування вакансії' : 'Нова вакансія' ?></h1><p class="muted">Від імені: <b><?= e($employer['name']) ?></b> · <a href="<?= url('/cabinet/employer') ?>">змінити профіль</a></p></div>
@@ -47,7 +48,7 @@
     <?php endif ?>
     <?php if ($adminEdit): ?>
     <?= input_field('admin_note', 'Коментар для власника (необов’язково)', ['type' => 'textarea', 'rows' => 2, 'maxlength' => 500, 'placeholder' => 'Наприклад: прибрали телефон з опису, виправили помилки', 'hint' => 'Власник побачить його в сповіщенні разом із переліком змін']) ?>
-    <div class="row"><button class="btn pri">Зберегти й повідомити власника</button><a class="btn" href="<?= url('/jobs/' . $v['id']) ?>">Скасувати</a></div>
+    <div class="row"><button class="btn pri">Зберегти й повідомити власника</button><a class="btn" href="<?= $backUrl ?>">Скасувати</a></div>
     <?php else: ?>
     <div class="row"><button class="btn pri" name="action" value="submit"><?= $premoderation ? 'Надіслати на перевірку' : 'Опублікувати' ?></button><button class="btn" name="action" value="draft">Зберегти чернетку</button></div>
     <?php endif ?>
