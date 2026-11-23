@@ -2,6 +2,7 @@
   <?= App\Core\View::partial('partials/cab_nav', compact('tab', 'counts', 'me')) ?>
   <div class="stack">
     <h1 style="font-size:28px">Вітаємо, <?= e($me['display_name']) ?></h1>
+    <?= App\Core\View::partial('partials/notices', ['notices' => $notices ?? [], 'back' => '/cabinet']) ?>
     <div class="dirs" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
       <a class="card dir" href="<?= url('/cabinet/resume') ?>"><span class="ic"><?= icon('user', 22) ?></span><h3>Шукаю роботу</h3><p><?= ($resume ?? null) ? 'Моє резюме: ' . e(App\Core\Resumes::STATUS[$resume['status']][0] ?? '') . '. Відгукуйтеся на вакансії з резюме.' : 'Створіть резюме з фото, і роботодавці знайдуть вас самі.' ?></p></a>
       <a class="card dir" href="<?= url('/jobs') ?>"><span class="ic"><?= icon('search', 22) ?></span><h3>Вакансії</h3><p>Перегляньте вакансії і відгукніться в один клік.</p></a>

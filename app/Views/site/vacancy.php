@@ -17,6 +17,12 @@
     <?php if (trim((string) $v['requirements']) !== ''): ?><section class="prose"><h3>Вимоги</h3><?= e($v['requirements']) ?></section><?php endif ?>
     <?php if (trim((string) $v['offers']) !== ''): ?><section class="prose"><h3>Ми пропонуємо</h3><?= e($v['offers']) ?></section><?php endif ?>
     <p class="small muted">Опубліковано <?= e(ago($v['published_at'])) ?> · <?= icon('eye', 13) ?> <?= (int) $v['views'] ?> переглядів</p>
+    <?php if (!empty($canEdit) && !$isOwner): ?>
+      <div class="row admin-edit" style="border-top:1px dashed var(--c-border);padding-top:12px;gap:10px">
+        <a class="btn sm" href="<?= url('/admin/vacancies/' . $v['id'] . '/edit') ?>"><?= icon('tool', 15) ?>Редагувати (адміністрація)</a>
+        <span class="small muted">Власник отримає сповіщення, що адміністрація виправила вакансію.</span>
+      </div>
+    <?php endif ?>
   </article>
   <aside class="card side-card">
     <?php $en = employer_name($v['legal_form'], $v['employer']); ?>

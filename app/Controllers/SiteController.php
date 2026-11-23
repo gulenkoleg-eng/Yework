@@ -99,13 +99,13 @@ final class SiteController
             WHERE v.id = ? AND v.deleted_at IS NULL", [$id]);
         $me = App::auth()->user();
         $isOwner = $v && $me && (int) $v['owner_id'] === (int) $me['id'];
-        $canModerate = App::auth()->can('jobs.listing:moderate');
+        $canModerate = App::auth()->can('jobs.listing:moderate') || App::auth()->can('jobs.listing:update');
         if (!$v || ($v['status'] !== 'published' && !$isOwner && !$canModerate)) throw new HttpException(404, 'Вакансію не знайдено або її знято з публікації.');
         if ($v['status'] === 'published' && !$isOwner) $db->run('UPDATE {p}vacancies SET views = views + 1 WHERE id = ?', [$id]);
         $applied = $me ? (bool) $db->value('SELECT 1 FROM {p}applications WHERE vacancy_id = ? AND user_id = ?', [$id, $me['id']]) : false;
         $myResume = $me && !$isOwner ? Resumes::ofUser((int) $me['id']) : null;
         $similar = $db->all(self::LIST_SQL . " WHERE v.status = 'published' AND v.deleted_at IS NULL AND v.id <> ? AND v.category_id = ? ORDER BY v.published_at DESC LIMIT 3", [$id, $v['category_id']]);
-        return new Response(view('site/vacancy', ['v' => $v, 'isOwner' => $isOwner, 'applied' => $applied, 'myResume' => $myResume, 'similar' => $similar, 'title' => $v['title'], 'description' => mb_substr(preg_replace('/\s+/', ' ', $v['description']), 0, 160)]));
+        return new Response(view('site/vacancy', ['v' => $v, 'isOwner' => $isOwner, 'canEdit' => App::auth()->can('jobs.listing:update'), 'applied' => $applied, 'myResume' => $myResume, 'similar' => $similar, 'title' => $v['title'], 'description' => mb_substr(preg_replace('/\s+/', ' ', $v['description']), 0, 160)]));
     }
 
     public function apply(Request $req): Response

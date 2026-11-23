@@ -301,7 +301,39 @@ final class AdminController
         $roles = $db->all('SELECT r.*, (SELECT COUNT(*) FROM {p}user_roles ur WHERE ur.role_id = r.id) AS members FROM {p}roles r WHERE r.deleted_at IS NULL ORDER BY r.id');
         $rp = [];
         foreach ($db->all('SELECT role_id, permission_code FROM {p}role_permissions') as $x) $rp[$x['role_id']][] = $x['permission_code'];
-        return $this->render('roles', 'roles', ['title' => 'Ролі та права', 'roles' => $roles, 'rp' => $rp, 'perms' => Permissions::all()]);
+        return $this->render('roles', 'roles', ['title' => 'Ролі та права', 'roles' => $roles, 'rp' => $rp, 'perms' => Permissions::all(),
+            'canManage' => App::auth()->can('access.role:manage_settings')]);
+    }
+
+    /** Галочки прав ролі (0.5.3). Критичні права й роль власника тут не змінюються. Вимкнене право не повертається після оновлення сайту. */
+    public function rolePermissions(Request $req): Response
+    {
+        $db = App::db();
+        $role = $db->one('SELECT * FROM {p}roles WHERE id = ? AND deleted_at IS NULL', [(int) $req->params['id']]);
+        if (!$role || $role['slug'] === 'owner') throw new HttpException(404, 'Роль не знайдено.');
+        $allowed = Permissions::codes();
+        $want = array_values(array_intersect($allowed, array_map('strval', (array) ($req->post['perms'] ?? []))));
+        $have = array_column($db->all('SELECT permission_code FROM {p}role_permissions WHERE role_id = ?', [$role['id']]), 'permission_code');
+        $have = array_values(array_intersect($allowed, $have));
+        $add = array_values(array_diff($want, $have));
+        $del = array_values(array_diff($have, $want));
+        if (!$add && !$del) {
+            flash('info', 'Права ролі «' . $role['name'] . '» не змінилися.');
+            return Response::redirect(url('/admin/roles', ['open' => $role['id']]));
+        }
+        $db->tx(function (Db $db) use ($role, $add, $del) {
+            foreach ($add as $c) {
+                $db->run('INSERT IGNORE INTO {p}role_permissions (role_id, permission_code) VALUES (?, ?)', [$role['id'], $c]);
+                $db->run('DELETE FROM {p}role_permission_removed WHERE role_id = ? AND permission_code = ?', [$role['id'], $c]);
+            }
+            foreach ($del as $c) {
+                $db->run('DELETE FROM {p}role_permissions WHERE role_id = ? AND permission_code = ?', [$role['id'], $c]);
+                $db->run('INSERT IGNORE INTO {p}role_permission_removed (role_id, permission_code) VALUES (?, ?)', [$role['id'], $c]);
+            }
+        });
+        Audit::log('access.role_permissions', 'role', (int) $role['id'], ['role' => $role['slug'], 'added' => $add, 'removed' => $del]);
+        flash('ok', 'Права ролі «' . $role['name'] . '» збережено. Діють одразу.');
+        return Response::redirect(url('/admin/roles', ['open' => $role['id']]));
     }
 
     public function audit(Request $req): Response

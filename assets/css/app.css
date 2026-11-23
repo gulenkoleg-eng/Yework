@@ -373,3 +373,6 @@ fieldset.field legend{font-weight:600;font-size:14.5px;margin-bottom:6px;padding
 .upd-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:14px}
 .upd-links a{font-weight:600;text-decoration:none}
 .upd-links a:hover{text-decoration:underline}
+/* 0.5.3: галочки прав ролі */
+.perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px 18px}
+.perm-grid .perm-key span{font-weight:700}
