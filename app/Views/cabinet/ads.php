@@ -46,10 +46,13 @@ $services = [
       <?php if (!$published): ?><div class="alert warn">У вас поки немає опублікованих вакансій. Кнопка банера веде на вашу вакансію, тож спершу <a href="<?= url('/cabinet/vacancies/new') ?>">розмістіть вакансію</a>.</div><?php endif ?>
       <?php if (!$employer['logo']): ?><div class="alert info">Порада: <a href="<?= url('/cabinet/employer') ?>">додайте логотип</a>, і він з’явиться на банері. Банер з логотипом помічають значно частіше.</div><?php endif ?>
       <?= App\Core\View::partial('partials/banner_maker', ['templates' => $templates, 'tplNow' => $tplNow, 'old' => $old, 'oldPerks' => $oldPerks, 'preview' => $preview, 'ctaDefault' => Ads::ctaOf(['vacancies' => $published]), 'targets' => $targets, 'targetNow' => $targetNow]) ?>
+      <div class="field"><span class="lbl">Коли місця вільні</span>
+        <?= App\Core\View::partial('partials/ad_places', ['occupancy' => $occupancy]) ?>
+        <span class="hint">По центру одночасно <?= plural($occupancy['home']['limit'], 'банер', 'банери', 'банерів') ?>, збоку — до <?= (int) $occupancy['side']['limit'] ?>. Якщо місце зайняте, оберіть дату, коли воно звільниться: банер почне показуватися сам.</span></div>
       <fieldset class="field<?= err_class('placement') ?>"><legend>Де показувати</legend>
         <div class="place-opts">
           <?php foreach (Ads::PLACEMENTS as $k => $l): $pd = $prices['banner_' . $k . '_day']; ?>
-            <label class="place-opt"><input type="radio" name="placement" value="<?= $k ?>" data-day="<?= (int) $pd ?>" <?= (App\Core\App::$old['placement'] ?? 'both') === $k ? 'checked' : '' ?>><span><b><?= e($l) ?></b><small><?= $free ? '<s>' . money($pd) . ' грн/день</s> безкоштовно' : money($pd) . ' грн/день' ?></small></span></label>
+            <label class="place-opt"><input type="radio" name="placement" value="<?= $k ?>" data-day="<?= (int) $pd ?>" <?= (App\Core\App::$old['placement'] ?? 'both') === $k ? 'checked' : '' ?>><span><b><?= e($l) ?></b><small><?= e(Ads::PLACEMENT_HINTS[$k]) ?></small><small><?= $free ? '<s>' . money($pd) . ' грн/день</s> безкоштовно' : money($pd) . ' грн/день' ?></small><em class="place-free" data-for="<?= $k ?>"></em></span></label>
           <?php endforeach ?>
         </div><?= field_error('placement') ?>
       </fieldset>
@@ -57,6 +60,7 @@ $services = [
         <?= input_field('starts_on', 'Початок показу', ['type' => 'date', 'value' => $today, 'required' => true]) ?>
         <?= input_field('days', 'Скільки днів', ['type' => 'select', 'value' => 7, 'options' => $days, 'hint' => 'Від 7 днів знижка ' . (int) $prices['discount_week'] . '%, від 30 — ' . (int) $prices['discount_month'] . '%']) ?>
       </div>
+      <?= App\Core\View::partial('partials/ad_free', ['occupancy' => $occupancy]) ?>
       <div class="price-line" id="adPrice" data-week="<?= (int) $prices['discount_week'] ?>" data-month="<?= (int) $prices['discount_month'] ?>" data-free="<?= $free ? 1 : 0 ?>"></div>
       <div class="row"><button class="btn pri"><?= $free ? 'Замовити банер безкоштовно' : 'Замовити банер' ?></button><span class="small muted">Банер з’явиться після перевірки модератором.</span></div>
     </form>

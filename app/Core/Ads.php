@@ -9,7 +9,16 @@ namespace App\Core;
  */
 final class Ads
 {
-    public const PLACEMENTS = ['home' => 'Головна сторінка', 'jobs' => 'Сторінка вакансій', 'both' => 'Головна і вакансії'];
+    public const PLACEMENTS = ['home' => 'Головна сторінка', 'jobs' => 'Сторінка вакансій', 'both' => 'Головна і вакансії', 'side' => 'Збоку на головній'];
+    /** Короткий опис місця для форми замовлення. */
+    public const PLACEMENT_HINTS = [
+        'home' => 'Великий банер по центру, у блоці «Шукають працівників»',
+        'jobs' => 'Широкий банер над списком вакансій',
+        'both' => 'По центру на головній і над списком вакансій',
+        'side' => 'Менший банер у колонці праворуч. На телефоні — нижче на сторінці',
+    ];
+    /** Окремі місця, які мають свій ліміт одночасних банерів. 'both' займає home і jobs. */
+    public const PLACES = ['home' => 'По центру на головній', 'jobs' => 'Над списком вакансій', 'side' => 'Збоку на головній'];
     public const MAX_DAYS = 90;
 
     /** Шаблони банерів (0.5.12): роботодавець пише лише текст, вигляд дає шаблон. Стилі — assets/css/banners.css. */
@@ -34,6 +43,7 @@ final class Ads
         'banner_home_day' => 30,    // банер на головній, за день
         'banner_jobs_day' => 20,    // банер над списком вакансій, за день
         'banner_both_day' => 40,    // обидва місця, за день
+        'banner_side_day' => 15,    // менший банер збоку на головній, за день (0.5.19)
         'discount_week' => 10,      // % знижки від 7 днів
         'discount_month' => 25,     // % знижки від 30 днів
         'vacancy_bump' => 20,       // підняти вакансію нагору списку (разово)
@@ -47,6 +57,7 @@ final class Ads
         'banner_home_day' => 'Банер на головній, грн за день',
         'banner_jobs_day' => 'Банер на сторінці вакансій, грн за день',
         'banner_both_day' => 'Банер в обох місцях, грн за день',
+        'banner_side_day' => 'Банер збоку на головній, грн за день',
         'discount_week' => 'Знижка від 7 днів, %',
         'discount_month' => 'Знижка від 30 днів, %',
         'vacancy_bump' => 'Підняти вакансію нагору, грн',
@@ -56,8 +67,13 @@ final class Ads
         'master_top' => 'Майстер: підняти нагору каталогу на 7 днів, грн',
     ];
 
-    /** Скільки банерів одночасно в одному місці (більше — замовлення на ці дні не приймається). */
-    public const DEFAULT_SLOTS = 3;
+    /**
+     * Скільки банерів одночасно (0.5.19): по центру (на головній і над вакансіями) і збоку на головній.
+     * Більше — замовлення на ці дні не приймається, а роботодавець бачить, коли місце звільниться.
+     */
+    public const DEFAULT_SLOTS = 1;
+    public const DEFAULT_SIDE_SLOTS = 4;
+    public const MAX_SIDE_SLOTS = 8;
 
     public static function monetizationOn(): bool
     {
@@ -72,9 +88,27 @@ final class Ads
         return $out;
     }
 
+    /** Банерів по центру одночасно (головна й сторінка вакансій). */
     public static function slots(): int
     {
-        return max(1, min(10, (int) App::setting('ads.slots', self::DEFAULT_SLOTS)));
+        return max(1, min(10, (int) App::setting('ads.slots_main', self::DEFAULT_SLOTS)));
+    }
+
+    /** Банерів збоку на головній одночасно. */
+    public static function sideSlots(): int
+    {
+        return max(1, min(self::MAX_SIDE_SLOTS, (int) App::setting('ads.slots_side', self::DEFAULT_SIDE_SLOTS)));
+    }
+
+    public static function limitFor(string $place): int
+    {
+        return $place === 'side' ? self::sideSlots() : self::slots();
+    }
+
+    /** Які окремі місця займає банер: 'both' — головну по центру і сторінку вакансій. */
+    public static function placesOf(string $placement): array
+    {
+        return $placement === 'both' ? ['home', 'jobs'] : (isset(self::PLACES[$placement]) ? [$placement] : []);
     }
 
     /** Повна ціна банера (без урахування того, чи ввімкнена монетизація). */
@@ -267,7 +301,7 @@ final class Ads
             return App::db()->all('SELECT b.*, e.name AS employer, e.legal_form, e.logo, e.owner_id,
                 (SELECT COUNT(*) FROM {p}vacancies v WHERE v.employer_id = b.employer_id AND v.status = \'published\' AND v.deleted_at IS NULL) AS vacancies
                 FROM {p}banners b JOIN {p}employers e ON e.id = b.employer_id
-                WHERE ' . self::LIVE_SQL . " AND b.placement IN (?, 'both') AND e.status = 'active' AND e.deleted_at IS NULL
+                WHERE ' . self::LIVE_SQL . ' AND ' . ($where === 'side' ? 'b.placement = ?' : "b.placement IN (?, 'both')") . " AND e.status = 'active' AND e.deleted_at IS NULL
                 ORDER BY RAND() LIMIT " . max(1, $limit), [$t, $t, $where]);
         } catch (\PDOException) {
             return []; // база ще не оновлена (немає таблиці) — сайт працює без банерів
@@ -328,21 +362,81 @@ final class Ads
     }
 
     /**
+     * Заброньовані періоди кожного місця (0.5.19): банери на модерації й схвалені, які ще не завершилися.
+     * Повертає [place => [[starts_on, ends_on], …]] за датою початку. Назви роботодавців не потрібні: роботодавець бачить лише, коли місце зайняте.
+     */
+    public static function bookings(?int $exceptId = null): array
+    {
+        $out = array_fill_keys(array_keys(self::PLACES), []);
+        try {
+            $rows = App::db()->all("SELECT id, placement, starts_on, ends_on FROM {p}banners WHERE status IN ('pending','approved') AND ends_on >= ?"
+                . ($exceptId ? ' AND id <> ' . (int) $exceptId : '') . ' ORDER BY starts_on, ends_on', [self::today()]);
+        } catch (\PDOException) {
+            return $out;
+        }
+        foreach ($rows as $r) foreach (self::placesOf((string) $r['placement']) as $pl) $out[$pl][] = [$r['starts_on'], $r['ends_on']];
+        return $out;
+    }
+
+    /** Скільки банерів стоїть у місці на день. */
+    private static function busyOn(array $periods, string $day): int
+    {
+        $n = 0;
+        foreach ($periods as [$s, $e]) if ($s <= $day && $e >= $day) $n++;
+        return $n;
+    }
+
+    /**
      * Перевіряє, чи є вільні місця на всі дні періоду. Повертає перший зайнятий день або null.
      */
-    public static function firstFullDay(string $placement, string $from, string $to, ?int $exceptId = null): ?string
+    public static function firstFullDay(string $placement, string $from, string $to, ?int $exceptId = null, ?array $bookings = null): ?string
     {
-        $places = $placement === 'both' ? ['home', 'jobs'] : [$placement];
-        $rows = App::db()->all("SELECT id, placement, starts_on, ends_on FROM {p}banners WHERE status IN ('pending','approved') AND starts_on <= ? AND ends_on >= ?" . ($exceptId ? ' AND id <> ' . $exceptId : ''), [$to, $from]);
-        $slots = self::slots();
+        $bookings ??= self::bookings($exceptId);
         for ($d = $from; $d <= $to; $d = date('Y-m-d', strtotime($d . ' +1 day'))) {
-            foreach ($places as $pl) {
-                $n = 0;
-                foreach ($rows as $r) if (($r['placement'] === $pl || $r['placement'] === 'both') && $r['starts_on'] <= $d && $r['ends_on'] >= $d) $n++;
-                if ($n >= $slots) return $d;
-            }
+            foreach (self::placesOf($placement) as $pl) if (self::busyOn($bookings[$pl], $d) >= self::limitFor($pl)) return $d;
         }
         return null;
+    }
+
+    /** Найближча дата від $from, з якої банер на $days днів поміститься в обране місце (шукаємо на рік уперед). */
+    public static function nextFreeStart(string $placement, int $days, ?string $from = null, ?int $exceptId = null, ?array $bookings = null): ?string
+    {
+        $bookings ??= self::bookings($exceptId);
+        $d = max($from ?? self::today(), self::today());
+        for ($i = 0; $i < 366; $i++) {
+            $end = date('Y-m-d', strtotime($d . ' +' . (max(1, $days) - 1) . ' days'));
+            $full = self::firstFullDay($placement, $d, $end, null, $bookings);
+            if ($full === null) return $d;
+            $d = date('Y-m-d', strtotime($full . ' +1 day'));
+            if ($d > date('Y-m-d', strtotime('+366 days'))) break;
+        }
+        return null;
+    }
+
+    /**
+     * Зайнятість місць для форми замовлення: ліміт, заброньовані періоди і з якого дня місце вільне.
+     * [place => ['label', 'limit', 'periods' => [[from, to, live]], 'free_from' => дата|null, 'now' => скільки зараз]]
+     */
+    public static function occupancy(?int $exceptId = null): array
+    {
+        $b = self::bookings($exceptId);
+        $t = self::today();
+        $out = [];
+        foreach (self::PLACES as $pl => $label) {
+            $out[$pl] = ['label' => $label, 'limit' => self::limitFor($pl), 'now' => self::busyOn($b[$pl], $t),
+                'periods' => array_map(static fn ($p) => [$p[0], $p[1], $p[0] <= $t], $b[$pl]),
+                'free_from' => self::nextFreeStart($pl, 1, $t, null, $b)];
+        }
+        return $out;
+    }
+
+    /** Повідомлення, коли обрані дні зайняті: з якого дня можна поставити банер. */
+    public static function fullMessage(string $placement, string $full, int $days, ?int $exceptId = null): string
+    {
+        $next = self::nextFreeStart($placement, $days, null, $exceptId);
+        $where = mb_strtolower(self::PLACEMENTS[$placement] ?? 'це місце');
+        return 'На ' . date('d.m', strtotime($full)) . ' місце «' . $where . '» вже зайняте.'
+            . ($next ? ' Найближче вільне на ' . plural($days, 'день', 'дні', 'днів') . ': з ' . date('d.m.Y', strtotime($next)) . '. Оберіть цю дату або інше місце показу.' : ' Оберіть інші дати або інше місце показу.');
     }
 
     /** Статистика банера по днях: [day => [impressions, clicks]] за весь період показу. */

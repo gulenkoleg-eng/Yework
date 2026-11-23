@@ -38,7 +38,7 @@ final class AdsController
         $targets = $employer ? Ads::targetVacancies([$employer['id']]) : [];
         return $this->cab()->page('ads', 'ads', ['title' => 'Реклама і послуги', 'employer' => $employer, 'rows' => $rows, 'published' => $published,
             'paid' => Ads::monetizationOn(), 'prices' => Ads::prices(), 'today' => Ads::today(), 'templates' => Ads::availableTemplates(), 'tplDefault' => Ads::templateSettings()['default'],
-            'targets' => $targets, 'targetNow' => count($targets) === 1 ? (string) $targets[0]['id'] : '']);
+            'targets' => $targets, 'targetNow' => count($targets) === 1 ? (string) $targets[0]['id'] : '', 'occupancy' => Ads::occupancy()]);
     }
 
     public function order(Request $req): Response
@@ -60,7 +60,7 @@ final class AdsController
         $open = (int) $db->value("SELECT COUNT(*) FROM {p}banners WHERE employer_id = ? AND status IN ('pending','approved') AND ends_on >= ?", [$employer['id'], $today]);
         if ($open >= 2) throw new ValidationException([], 'Одночасно можна мати до 2 банерів. Дочекайтеся завершення або скасуйте один із них.');
         if ($full = Ads::firstFullDay($d['placement'], $d['starts_on'], $d['ends_on'])) {
-            throw new ValidationException(['starts_on' => ' '], 'На ' . date('d.m', strtotime($full)) . ' усі рекламні місця вже зайняті. Оберіть інші дати або інше місце показу.');
+            throw new ValidationException(['starts_on' => ' '], Ads::fullMessage($d['placement'], $full, $d['days']));
         }
         $image = Media::store('banner', 'image', 'e' . $employer['id']);
         if ($d['template'] === 'photo' && !$image) throw new ValidationException(['image' => 'Для шаблону «Фото» додайте картинку або оберіть інший шаблон']);
@@ -90,7 +90,7 @@ final class AdsController
         $templates = Ads::availableTemplates();
         if (!isset($templates[$b['template']]) && isset(Ads::TEMPLATES[$b['template']])) $templates[$b['template']] = Ads::TEMPLATES[$b['template']]; // свій шаблон лишається, навіть якщо його вимкнули
         return $this->cab()->page('ad_edit', 'ads', ['title' => 'Редагувати банер', 'b' => $b, 'employer' => $employer, 'templates' => $templates,
-            'targets' => Ads::targetVacancies([$b['employer_id']]), 'locked' => Ads::datesLocked($b), 'paid' => Ads::monetizationOn(), 'prices' => Ads::prices()]);
+            'targets' => Ads::targetVacancies([$b['employer_id']]), 'locked' => Ads::datesLocked($b), 'paid' => Ads::monetizationOn(), 'prices' => Ads::prices(), 'occupancy' => Ads::occupancy((int) $b['id'])]);
     }
 
     public function update(Request $req): Response
@@ -109,7 +109,7 @@ final class AdsController
         if ($err) throw new ValidationException($err);
         $d['ends_on'] = date('Y-m-d', strtotime($d['starts_on'] . ' +' . ($d['days'] - 1) . ' days'));
         if (!$locked && ($full = Ads::firstFullDay($d['placement'], $d['starts_on'], $d['ends_on'], (int) $b['id']))) {
-            throw new ValidationException(['starts_on' => ' '], 'На ' . date('d.m', strtotime($full)) . ' усі рекламні місця вже зайняті. Оберіть інші дати або інше місце показу.');
+            throw new ValidationException(['starts_on' => ' '], Ads::fullMessage($d['placement'], $full, $d['days'], (int) $b['id']));
         }
         $d['image'] = Ads::editImage($req, $b);
         if ($d['template'] === 'photo' && !$d['image']) throw new ValidationException(['image' => 'Для шаблону «Фото» додайте картинку або оберіть інший шаблон']);

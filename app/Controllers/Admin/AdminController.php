@@ -190,7 +190,9 @@ final class AdminController
         $id = $db->insert('banners', [...$d, 'employer_id' => $emp['id'], 'created_by' => $me['id'], 'image' => $image, 'price' => 0, 'status' => 'approved',
             'moderated_by' => $me['id'], 'moderated_at' => Db::now()]);
         Audit::log('ads.banner_created_by_admin', 'banner', $id, ['employer' => (int) $emp['id'], 'days' => $d['days'], 'placement' => $d['placement'], 'template' => $d['template']]);
-        flash('ok', 'Банер створено й схвалено. Він показуватиметься з ' . date('d.m', strtotime($d['starts_on'])) . ' по ' . date('d.m', strtotime($d['ends_on'])) . '.');
+        $full = Ads::firstFullDay($d['placement'], $d['starts_on'], $d['ends_on'], $id);
+        flash('ok', 'Банер створено й схвалено. Він показуватиметься з ' . date('d.m', strtotime($d['starts_on'])) . ' по ' . date('d.m', strtotime($d['ends_on'])) . '.'
+            . ($full ? ' Зверніть увагу: на ' . date('d.m', strtotime($full)) . ' це місце вже було зайняте, тож банери в ці дні показуватимуться по черзі.' : ''));
         return Response::redirect(url('/admin/banners', ['status' => 'approved']));
     }
 
@@ -275,7 +277,7 @@ final class AdminController
             'withLogo' => (int) $db->value('SELECT COUNT(*) FROM {p}employers WHERE logo IS NOT NULL AND deleted_at IS NULL'),
             'employers' => (int) $db->value('SELECT COUNT(*) FROM {p}employers WHERE deleted_at IS NULL'),
         ];
-        return $this->render('billing', 'billing', ['title' => 'Монетизація', 'on' => Ads::monetizationOn(), 'prices' => Ads::prices(), 'slots' => Ads::slots(),
+        return $this->render('billing', 'billing', ['title' => 'Монетизація', 'on' => Ads::monetizationOn(), 'prices' => Ads::prices(), 'slots' => Ads::slots(), 'sideSlots' => Ads::sideSlots(), 'occupancy' => Ads::occupancy(),
             'req' => (array) App::setting('billing.requisites', []), 'k' => $k, 'svcLimits' => \App\Core\Services::limits(),
             'canToggle' => $a->can('billing.monetization:manage_settings'), 'canEdit' => $a->can('billing.plan:update')]);
     }
@@ -300,7 +302,10 @@ final class AdminController
                 $prices[$key] = $v === '' ? $def : min(str_starts_with($key, 'discount') ? 90 : 1_000_000, (int) $v);
             }
             App::setSetting('billing.prices', $prices, $me);
-            App::setSetting('ads.slots', max(1, min(10, (int) $req->input('slots', Ads::DEFAULT_SLOTS))), $me);
+            $slots = ['main' => max(1, min(10, (int) $req->input('slots', Ads::slots()))), 'side' => max(1, min(Ads::MAX_SIDE_SLOTS, (int) $req->input('slots_side', Ads::sideSlots())))];
+            if ($slots !== ['main' => Ads::slots(), 'side' => Ads::sideSlots()]) Audit::log('ads.slots_updated', 'settings', 'ads.slots', $slots);
+            App::setSetting('ads.slots_main', $slots['main'], $me);
+            App::setSetting('ads.slots_side', $slots['side'], $me);
             $lim = \App\Core\Services::limits();
             $svc = ['works' => max(0, min(50, (int) $req->input('svc_works', $lim['works']))), 'photos' => max(1, min(20, (int) $req->input('svc_photos', $lim['photos'])))];
             if ($svc !== $lim) Audit::log('services.limits_updated', 'settings', 'services.limits', $svc);
