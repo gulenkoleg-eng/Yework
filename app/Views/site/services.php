@@ -10,10 +10,21 @@ $allCnt = array_sum(array_map(static fn ($c) => (int) $c['cnt'], $cats));
   <a class="<?= $cat ? '' : 'on' ?>" href="<?= $q(['category' => null, 'page' => null]) ?>">Усі</a>
   <?php foreach ($cats as $c): ?><a class="<?= $cat && $cat['id'] === $c['id'] ? 'on' : '' ?>" href="<?= $q(['category' => $c['slug'], 'page' => null]) ?>"><?= e($c['name']) ?><?php if ((int) $c['cnt']): ?><em><?= (int) $c['cnt'] ?></em><?php endif ?></a><?php endforeach ?>
 </nav>
+<?php
+$chips = [];
+$drop = fn (string $k) => $q([$k => null, 'page' => null]);
+if ($f['settlement']) foreach ($settlements as $s) if ((int) $s['id'] === $f['settlement']) $chips[] = ['label' => $s['name'], 'href' => $drop('settlement')];
+if ($f['sort'] === 'new') $chips[] = ['label' => 'Нові майстри', 'href' => $drop('sort')];
+if ($f['sort'] === 'price') $chips[] = ['label' => 'Дешевші', 'href' => $drop('sort')];
+echo App\Core\View::partial('partials/mfilter', ['action' => '/services', 'qVal' => $f['q'], 'ph' => 'Кондиціонер, камери, плитка…', 'chips' => $chips,
+    'keep' => ['category' => $f['category'] ?: null, 'settlement' => $f['settlement'] ?: null, 'sort' => $f['sort'] !== 'rating' ? $f['sort'] : null],
+    'reset' => url('/services', ['category' => $f['category'] ?: null])]);
+?>
 <div class="jobs-layout">
-  <form class="card filters" method="get" action="<?= url('/services') ?>">
+  <form class="card filters" id="flt" method="get" action="<?= url('/services') ?>">
+    <?= App\Core\View::partial('partials/sheet_head', []) ?>
     <?php if ($cat): ?><input type="hidden" name="category" value="<?= e($cat['slug']) ?>"><?php endif ?>
-    <div class="field"><label for="q">Пошук</label><input id="q" class="input" name="q" value="<?= e($f['q']) ?>" placeholder="Кондиціонер, камери, плитка…"></div>
+    <div class="field f-q"><label for="q">Пошук</label><input id="q" class="input" name="q" value="<?= e($f['q']) ?>" placeholder="Кондиціонер, камери, плитка…"></div>
     <div class="field"><label for="st">Населений пункт</label><select id="st" class="input" name="settlement"><option value="">Усі громади</option><?php foreach ($settlements as $s): ?><option value="<?= (int) $s['id'] ?>" <?= $f['settlement'] === (int) $s['id'] ? 'selected' : '' ?>><?= e($s['name']) ?></option><?php endforeach ?></select></div>
     <div class="field"><label for="so">Спочатку</label><select id="so" class="input" name="sort"><option value="rating">З кращими відгуками</option><option value="new" <?= $f['sort'] === 'new' ? 'selected' : '' ?>>Нові майстри</option><option value="price" <?= $f['sort'] === 'price' ? 'selected' : '' ?>>Дешевші</option></select></div>
     <button class="btn pri block">Показати</button>
