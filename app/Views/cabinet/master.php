@@ -3,6 +3,11 @@ use App\Core\App;
 use App\Core\Media;
 use App\Core\Services as S;
 $old = App::$old;
+// 0.5.24: та сама форма відкривається в адмінці для правки чужої анкети ($adminEdit, $ctx з Admin\MasterEditController).
+$adminEdit = !empty($adminEdit);
+$ctx = $ctx ?? ['base' => url('/cabinet/master'), 'works' => '/cabinet/master/works', 'q' => []];
+$act = $ctx['base'];
+$wurl = static fn (string $tail) => url($ctx['works'] . $tail, $ctx['q'] ?? []);
 $errs = App::$errors;
 $st = $m['status'] ?? null;
 $pv = fn (string $k, $def) => array_key_exists($k, $old) && ($old['section'] ?? 'profile') === 'profile' ? $old[$k] : $def;
@@ -29,22 +34,37 @@ $free = !$paid;
 $nWorks = count($works);
 ?>
 <div class="cab">
-  <?= \App\Core\View::partial('partials/cab_nav', compact('tab', 'counts', 'me')) ?>
-  <div class="stack">
+  <?php if (!$adminEdit): ?><?= \App\Core\View::partial('partials/cab_nav', compact('tab', 'counts', 'me')) ?><?php endif ?>
+  <div class="stack"<?= $adminEdit ? ' style="grid-column:1/-1;max-width:1000px;width:100%;margin:0 auto"' : '' ?>>
+    <?php if ($adminEdit): ?>
+    <div class="rz-h">
+      <a class="btn sm ghost" href="<?= e($ctx['backUrl']) ?>" title="Повернутися">←</a>
+      <h1 style="font-size:26px">Анкета майстра</h1>
+      <span class="tag <?= S::STATUS[$st][1] ?>"><?= S::STATUS[$st][0] ?></span><?php if ($m['is_hidden']): ?><span class="tag muted">На паузі</span><?php endif ?><?php if (\App\Core\Demo::isDemoMaster((int) $m['id'])): ?><span class="tag warn">Приклад</span><?php endif ?>
+      <span class="spacer"></span>
+      <a class="btn sm" href="<?= url('/services/' . $m['id']) ?>" target="_blank" rel="noopener"><?= icon('eye', 16) ?>Сторінка майстра</a>
+      <a class="btn sm" href="<?= url('/admin/users/' . $m['user_id']) ?>"><?= icon('user', 16) ?>Картка власника</a>
+    </div>
+    <p class="muted" style="margin:-6px 0 0"><b><?= e($m['name']) ?></b> · власник <a href="<?= url('/admin/users/' . $m['user_id']) ?>"><?= e($owner['display_name'] ?? '—') ?></a><?php if ($st === 'published'): ?> · у каталозі до <?= e(date('d.m.Y', strtotime((string) $m['show_to']))) ?><?php endif ?> · <a href="<?= e($ctx['backUrl']) ?>"><?= ($ctx['back'] ?? null) === 'client' ? 'повернутися до картки клієнта' : 'повернутися до списку майстрів' ?></a></p>
+    <div class="alert info">Ви редагуєте чужу анкету від імені адміністрації: опис, прайс, зону виїзду, фото й галерею робіт. Стан анкети не зміниться і повторної перевірки не буде. Власник отримає сповіщення в кабінеті й лист (або SMS) з переліком змін.</div>
+    <?php if ($st === 'rejected'): ?><div class="alert bad">Анкету відхилено: <?= e($m['reject_reason']) ?></div><?php endif ?>
+    <?php else: ?>
     <div class="rz-h">
       <h1 style="font-size:28px">Я майстер</h1>
       <?php if ($st): ?><span class="tag <?= S::STATUS[$st][1] ?>"><?= S::STATUS[$st][0] ?></span><?php if ($m['is_hidden']): ?><span class="tag muted">На паузі</span><?php endif ?><?php endif ?>
       <span class="spacer"></span>
       <?php if ($m): ?><a class="btn sm" href="<?= url('/services/' . $m['id']) ?>"><?= icon('eye', 16) ?>Як бачать клієнти</a><a class="btn sm" href="<?= url('/cabinet/orders') ?>">Замовлення<?php if ($newOrders): ?> <span class="tag warn"><?= (int) $newOrders ?></span><?php endif ?></a><?php endif ?>
     </div>
+    <?php endif ?>
 
-    <?php if (!$m): ?>
+    <?php if ($adminEdit): ?>
+    <?php elseif (!$m): ?>
       <p class="muted">Займаєтеся кондиціонерами, відеоспостереженням, ремонтом чи іншою справою? Заповніть профіль, додайте прайс і фото робіт — клієнти з громади знайдуть вас у розділі «Послуги», зателефонують або замовлять через сайт. Після виконаного замовлення клієнт ставить вам зірки.</p>
     <?php elseif ($st === 'rejected'): ?><div class="alert bad">Модератор відхилив профіль: <?= e($m['reject_reason']) ?>. Виправте й надішліть ще раз.</div>
     <?php elseif ($st === 'pending'): ?><div class="alert info">Профіль на перевірці. Поки що додайте прайс і фото робіт — після схвалення все з’явиться в «Послугах».</div>
     <?php elseif ($st === 'published'): ?><div class="alert ok"><div>Профіль показується в «Послугах» до <b><?= e(date('d.m.Y', strtotime((string) $m['show_to']))) ?></b>. Переглядів: <?= (int) $m['views'] ?> · виконано замовлень: <?= (int) $m['orders_done'] ?> · <?= e(S::ratingText($m)) ?>.<?= $m['is_hidden'] ? ' <b>Зараз на паузі — у каталозі не видно.</b>' : '' ?></div></div>
     <?php elseif ($st === 'archived'): ?>
-      <form class="card pad stack" method="post" action="<?= url('/cabinet/master') ?>"><?= csrf_field() ?><input type="hidden" name="section" value="restore">
+      <form class="card pad stack" method="post" action="<?= e($act) ?>"><?= csrf_field() ?><input type="hidden" name="section" value="restore">
         <div class="alert warn">Профіль в архіві (<?= e(mb_strtolower(S::ARCHIVE_REASONS[$m['archive_reason']] ?? 'знято')) ?><?= $m['archived_at'] ? ', ' . e(local_date($m['archived_at'], 'd.m.Y')) : '' ?>). Його не видно в каталозі. Прайс, фото й відгуки збережено.</div>
         <div class="row"><select class="input" name="period_months" aria-label="Термін показу" style="max-width:200px"><?= $opt(S::PERIODS, $m['period_months']) ?></select><button class="btn pri">Поновити</button><span class="small muted">Повертається одразу, без повторної перевірки.</span></div>
       </form>
@@ -54,8 +74,8 @@ $nWorks = count($works);
       <a class="on" href="#profile">1. Профіль</a><a href="<?= $m ? '#prices' : '#next' ?>">2. Прайс</a><a href="<?= $m ? '#works' : '#next' ?>">3. Галерея робіт (фото об’єктів)</a>
     </nav>
 
-    <form id="profile" class="card pad stack" method="post" action="<?= url('/cabinet/master') ?>" enctype="multipart/form-data"><?= csrf_field() ?><input type="hidden" name="section" value="profile">
-      <div><h2 style="font-size:20px">Профіль майстра</h2><p class="small muted">Це бачать клієнти в каталозі «Послуги» і на вашій сторінці.</p></div>
+    <form id="profile" class="card pad stack" method="post" action="<?= e($act) ?>" enctype="multipart/form-data"><?= csrf_field() ?><input type="hidden" name="section" value="profile">
+      <div><h2 style="font-size:20px">Профіль майстра</h2><p class="small muted"><?= $adminEdit ? 'Назва, напрям, місце роботи й виїзд, опис, телефон і оплата. Це бачать клієнти в каталозі «Послуги».' : 'Це бачать клієнти в каталозі «Послуги» і на вашій сторінці.' ?></p></div>
       <?php if (!$m): ?><div class="gal-tip"><?= icon('image', 20) ?><div><b>Галерея робіт і прайс — на наступному кроці.</b> Заповніть профіль і натисніть «Зберегти чернетку»: нижче відкриються «Прайс» і «Галерея робіт», куди можна додати виконані об’єкти з фото (до <?= plural((int) $limits['works'], 'об’єкта', 'об’єктів', 'об’єктів') ?>, у кожному до <?= (int) $limits['photos'] ?> фото).</div></div><?php endif ?>
       <div class="rz-person">
         <div class="rz-photo">
@@ -94,7 +114,12 @@ $nWorks = count($works);
         <div class="chips"><?php foreach (S::PAYMENTS as $k => $l): ?><label><input type="checkbox" name="payments[]" value="<?= e($k) ?>" <?= in_array($k, $pays, true) ? 'checked' : '' ?>> <?= e($l) ?></label><?php endforeach ?></div><?= field_error('payments') ?></fieldset>
       <?= input_field('period_months', 'Скільки показувати в каталозі', ['type' => 'select', 'value' => $pv('period_months', $m['period_months'] ?? 3), 'options' => S::PERIODS, 'hint' => 'Після цього профіль сам перейде в архів — його можна поновити одним натиском. Зараз безкоштовно.']) ?>
       <div class="rz-actions">
-        <?php if (!$m || in_array($st, ['draft', 'rejected'], true)): ?>
+        <?php if ($adminEdit): ?>
+          <?php if (\App\Core\Demo::isDemoMaster((int) $m['id'])): ?><p class="small muted" style="flex-basis:100%;margin:0">Це приклад оголошення, тож сповіщення нікому не надсилається.</p>
+          <?php else: ?><div style="flex-basis:100%"><?= input_field('admin_note', 'Коментар для власника (необов’язково)', ['type' => 'textarea', 'rows' => 2, 'maxlength' => 500, 'placeholder' => 'Наприклад: прибрали телефон з опису, виправили помилки', 'hint' => 'Власник побачить його в сповіщенні разом із переліком змін']) ?></div><?php endif ?>
+          <button class="btn pri" name="action" value="save">Зберегти профіль</button>
+          <a class="btn" href="<?= e($ctx['backUrl']) ?>">Скасувати</a>
+        <?php elseif (!$m || in_array($st, ['draft', 'rejected'], true)): ?>
           <button class="btn pri" name="action" value="submit"><?= $premod ? 'Надіслати на перевірку' : 'Опублікувати' ?></button>
           <button class="btn" name="action" value="draft">Зберегти чернетку</button>
           <?php if ($premod): ?><span class="small muted">Перший раз профіль перевіряє модератор, далі зміни видно одразу.</span><?php endif ?>
@@ -112,7 +137,7 @@ $nWorks = count($works);
       </div>
     <?php endif ?>
     <?php if ($m): ?>
-    <form id="prices" class="card pad stack" method="post" action="<?= url('/cabinet/master') ?>"><?= csrf_field() ?><input type="hidden" name="section" value="prices">
+    <form id="prices" class="card pad stack" method="post" action="<?= e($act) ?>"><?= csrf_field() ?><input type="hidden" name="section" value="prices">
       <div><h2 style="font-size:20px">Прайс</h2><p class="small muted">Послуги з ціною «від – до» або точною сумою, а також обладнання й матеріали, які ви продаєте разом із роботою (наприклад, сам кондиціонер). Зміни прайсу видно одразу.</p></div>
       <?= field_error('prices') ?>
       <div class="rz-rows" id="price-list" data-next="<?= count($priceRows) ?>"><?php foreach ($priceRows as $i => $p) echo $prow($i, $p, $errs) ?></div>
@@ -122,16 +147,17 @@ $nWorks = count($works);
 
     <section id="works" class="card pad stack">
       <div class="row"><div style="flex:1;min-width:220px"><h2 style="font-size:20px">Галерея робіт <span class="muted"><?= $nWorks ?> з <?= (int) $limits['works'] ?></span></h2><p class="small muted">Виконані об’єкти з фото: до <?= plural((int) $limits['works'], 'об’єкта', 'об’єктів', 'об’єктів') ?>, у кожному до <?= (int) $limits['photos'] ?> фото. Фото роботи переконують краще за будь-який опис.</p></div>
-        <?php if ($nWorks < $limits['works']): ?><a class="btn pri" href="<?= url('/cabinet/master/works/new') ?>"><?= icon('plus') ?>Додати об’єкт</a><?php endif ?></div>
+        <?php if ($nWorks < $limits['works']): ?><a class="btn pri" href="<?= $wurl('/new') ?>"><?= icon('plus') ?>Додати об’єкт</a><?php endif ?></div>
       <?php if ($works): ?><div class="wk-list"><?php foreach ($works as $w): $ph = $w['photos'][0]['file'] ?? null; ?>
         <div class="wk">
           <?php if ($ph): ?><img src="<?= e(Media::url('workthumb', $ph)) ?>" alt="" loading="lazy"><?php else: ?><span class="ph"></span><?php endif ?>
           <div style="min-width:0"><b><?= e($w['title']) ?></b><div class="small muted"><?= e(implode(' · ', array_filter([$w['place'], $w['done_on'], plural(count($w['photos']), 'фото', 'фото', 'фото')]))) ?></div></div>
-          <div class="row"><a class="btn sm" href="<?= url('/cabinet/master/works/' . $w['id']) ?>">Змінити</a>
-            <form method="post" action="<?= url('/cabinet/master/works/' . $w['id'] . '/delete') ?>" onsubmit="return confirm('Видалити об’єкт разом із фото?')"><?= csrf_field() ?><button class="btn sm ghost bad">Видалити</button></form></div>
+          <div class="row"><a class="btn sm" href="<?= $wurl('/' . $w['id']) ?>">Змінити</a>
+            <form method="post" action="<?= $wurl('/' . $w['id'] . '/delete') ?>" onsubmit="return confirm('Видалити об’єкт разом із фото?')"><?= csrf_field() ?><button class="btn sm ghost bad">Видалити</button></form></div>
         </div>
       <?php endforeach ?></div>
       <?php else: ?><p class="muted small">Ще немає робіт. Додайте 2–3 найкращі об’єкти з фото «до» і «після».</p><?php endif ?>
+      <?php if (!$adminEdit): ?>
       <div class="upsell">
         <div><b>Більше об’єктів у портфоліо</b><div class="small muted">+10 об’єктів: <?= $free ? '<s>' . money((int) $billPrices['master_more_works']) . ' грн/міс</s>' : money((int) $billPrices['master_more_works']) . ' грн/міс' ?></div></div>
         <button class="btn sm" type="button" disabled>Скоро</button>
@@ -140,14 +166,15 @@ $nWorks = count($works);
         <div><b>Підняти нагору каталогу</b><div class="small muted">На 7 днів ваш профіль стоїть першим у своїй категорії: <?= $free ? '<s>' . money((int) $billPrices['master_top']) . ' грн</s>' : money((int) $billPrices['master_top']) . ' грн' ?></div></div>
         <button class="btn sm" type="button" disabled>Скоро</button>
       </div>
+      <?php endif ?>
     </section>
 
-    <?php if ($st === 'published'): ?>
+    <?php if ($st === 'published' && !$adminEdit): ?>
     <div class="card pad rz-actions">
-      <form method="post" action="<?= url('/cabinet/master') ?>"><?= csrf_field() ?><input type="hidden" name="section" value="pause"><input type="hidden" name="hide" value="<?= $m['is_hidden'] ? '0' : '1' ?>">
+      <form method="post" action="<?= e($act) ?>"><?= csrf_field() ?><input type="hidden" name="section" value="pause"><input type="hidden" name="hide" value="<?= $m['is_hidden'] ? '0' : '1' ?>">
         <button class="btn"><?= $m['is_hidden'] ? 'Зняти з паузи' : 'Поставити на паузу' ?></button></form>
       <span class="small muted" style="flex:1;min-width:200px"><?= $m['is_hidden'] ? 'Зараз профіль не видно в каталозі.' : 'Наприклад, у відпустці або коли завантажені роботою: профіль зникне з каталогу, але термін показу йде далі.' ?></span>
-      <form method="post" action="<?= url('/cabinet/master') ?>" onsubmit="return confirm('Перенести профіль в архів? Його можна буде поновити.')"><?= csrf_field() ?><input type="hidden" name="section" value="archive"><button class="btn ghost">В архів</button></form>
+      <form method="post" action="<?= e($act) ?>" onsubmit="return confirm('Перенести профіль в архів? Його можна буде поновити.')"><?= csrf_field() ?><input type="hidden" name="section" value="archive"><button class="btn ghost">В архів</button></form>
     </div>
     <?php endif ?>
     <?php endif ?>

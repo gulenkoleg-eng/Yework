@@ -183,11 +183,11 @@ final class ServicesController
     {
         $section = $req->str('section', 12);
         return match ($section) {
-            'prices' => $this->pricesSave($req),
+            'prices' => $this->pricesSave($req, self::ownCtx()),
             'pause' => $this->pause($req),
             'archive' => $this->archive($req),
             'restore' => $this->restore($req),
-            default => $this->profileSave($req),
+            default => $this->profileSave($req, self::ownCtx()),
         };
     }
 
@@ -198,13 +198,33 @@ final class ServicesController
         return $m;
     }
 
-    private function profileSave(Request $req): Response
+    /**
+     * Чий профіль майстра редагуємо (0.5.24): свій у кабінеті або чужий — адміністрація (Admin\MasterEditController::ctx).
+     * uid — власник профілю, m — запис masters або null, base — адреса сторінки профілю, works — адреса портфоліо,
+     * admin — правка від імені адміністрації (без повторної перевірки, власник отримує сповіщення).
+     */
+    public static function ownCtx(): array
+    {
+        $uid = (int) App::auth()->id();
+        return ['uid' => $uid, 'm' => Services::ofUser($uid), 'admin' => false, 'base' => url('/cabinet/master'), 'works' => '/cabinet/master/works'];
+    }
+
+    /** Що змінилося в профілі майстра — підписи для сповіщення власнику. */
+    public const MASTER_FIELDS = [
+        'name' => 'назва', 'category_id' => 'напрям роботи', 'category2_id' => 'напрям роботи', 'settlement_id' => 'місце роботи і виїзд',
+        'areas' => 'місце роботи і виїзд', 'travel_all' => 'місце роботи і виїзд', 'travel' => 'місце роботи і виїзд', 'experience_years' => 'досвід',
+        'about' => 'опис', 'contact_phone' => 'телефон', 'legal_form' => 'форма (ФОП, ТОВ…)', 'payments' => 'способи оплати',
+        'period_months' => 'термін показу', 'photo' => 'фото або логотип',
+    ];
+
+    public function profileSave(Request $req, array $ctx): Response
     {
         $me = App::auth()->user();
-        $uid = (int) $me['id'];
+        $uid = (int) $ctx['uid'];
+        $admin = !empty($ctx['admin']);
         $db = App::db();
-        $cur = Services::ofUser($uid);
-        $submit = ($req->post['action'] ?? '') === 'submit';
+        $cur = $ctx['m'];
+        $submit = !$admin && ($req->post['action'] ?? '') === 'submit';
         $phoneRaw = $req->str('contact_phone', 30);
         $phone = $phoneRaw !== '' ? Crypto::normalizePhone($phoneRaw) : null;
         $pays = array_values(array_intersect(array_keys(Services::PAYMENTS), array_map('strval', (array) ($req->post['payments'] ?? []))));
@@ -250,13 +270,14 @@ final class ServicesController
         } else {
             $photo = Media::store('master', 'photo', 'm' . $uid);
             if ($photo) {
-                RateLimit::hit('master-photo:' . $uid, 30, 86400, 'Забагато завантажень фото за добу. Спробуйте завтра.');
+                if (!$admin) RateLimit::hit('master-photo:' . $uid, 30, 86400, 'Забагато завантажень фото за добу. Спробуйте завтра.');
                 $d['photo'] = $photo;
                 if ($cur && $cur['photo']) Media::delete('master', $cur['photo']);
             }
         }
 
         $premod = Services::premoderation();
+        if ($admin) return $this->adminProfileSaved($req, $ctx, $d, $travel, $photo !== null || array_key_exists('photo', $d));
         if (!$cur) {
             $id = $db->insert('masters', [...$d, 'user_id' => $uid, 'status' => 'draft']);
             Audit::log('services.master_created', 'master', $id);
@@ -292,12 +313,14 @@ final class ServicesController
         } else {
             flash('ok', $cur['status'] === 'published' ? 'Зміни збережено й уже видно на сайті.' : 'Профіль збережено.');
         }
-        return Response::redirect(url('/cabinet/master') . (!empty($isNew) ? '#prices' : ''));
+        return Response::redirect($ctx['base'] . (!empty($isNew) ? '#prices' : ''));
     }
 
-    private function pricesSave(Request $req): Response
+    public function pricesSave(Request $req, array $ctx): Response
     {
-        $m = $this->own();
+        $m = $ctx['m'] ?? null;
+        if (!$m) throw new HttpException(404, 'Спочатку заповніть профіль майстра.');
+        $before = array_map(static fn ($p) => [$p['kind'], $p['title'], $p['price_type'], $p['price_from'] === null ? null : (int) $p['price_from'], $p['price_to'] === null ? null : (int) $p['price_to'], $p['unit'], $p['note']], Services::prices((int) $m['id']));
         $num = static fn ($v) => ($v = preg_replace('/\D/', '', (string) $v)) === '' ? null : min((int) $v, 100_000_000);
         $rows = [];
         $err = [];
@@ -332,9 +355,11 @@ final class ServicesController
             foreach ($rows as $i => $r) $db->insert('master_prices', [...$r, 'master_id' => $m['id'], 'sort' => $i]);
             $db->update('masters', ['updated_at' => Db::now()], 'id = ?', [$m['id']]);
         });
-        Audit::log('services.prices_updated', 'master', $m['id'], ['rows' => count($rows)]);
-        flash('ok', $rows ? 'Прайс збережено: ' . plural(count($rows), 'позиція', 'позиції', 'позицій') . '.' : 'Прайс очищено.');
-        return Response::redirect(url('/cabinet/master') . '#prices');
+        Audit::log(!empty($ctx['admin']) ? 'services.prices_admin_edited' : 'services.prices_updated', 'master', $m['id'], ['rows' => count($rows)]);
+        $after = array_map(static fn ($p) => array_values($p), $rows);
+        if (!empty($ctx['admin']) && $after != $before) self::notifyMaster($m, ['прайс'], '');
+        flash('ok', ($rows ? 'Прайс збережено: ' . plural(count($rows), 'позиція', 'позиції', 'позицій') . '.' : 'Прайс очищено.') . (!empty($ctx['admin']) && $after != $before && !Demo::isDemoMaster((int) $m['id']) ? ' Власник отримав сповіщення.' : ''));
+        return Response::redirect($ctx['base'] . '#prices');
     }
 
     private function pause(Request $req): Response
@@ -374,27 +399,43 @@ final class ServicesController
 
     public function workForm(Request $req): Response
     {
-        $m = Services::ofUser((int) App::auth()->id());
+        return $this->workFormFor($req, self::ownCtx());
+    }
+
+    public function workFormFor(Request $req, array $ctx): Response
+    {
+        $m = $ctx['m'];
         if (!$m) { flash('info', 'Спочатку заповніть профіль майстра.'); return Response::redirect(url('/cabinet/master')); }
-        $w = isset($req->params['id']) ? Services::work((int) $m['id'], (int) $req->params['id']) : null;
-        if (isset($req->params['id']) && !$w) throw new HttpException(404, 'Об’єкт не знайдено.');
+        $wid = !empty($ctx['admin']) ? ($req->params['wid'] ?? null) : ($req->params['id'] ?? null);
+        $w = $wid !== null ? Services::work((int) $m['id'], (int) $wid) : null;
+        if ($wid !== null && !$w) throw new HttpException(404, 'Об’єкт не знайдено.');
         $limits = Services::limits();
         $count = (int) App::db()->value('SELECT COUNT(*) FROM {p}master_works WHERE master_id = ?', [$m['id']]);
         if (!$w && $count >= $limits['works']) {
             flash('info', 'Безкоштовно можна додати ' . plural($limits['works'], 'об’єкт', 'об’єкти', 'об’єктів') . '. Видаліть старий або дочекайтеся платної опції «Більше об’єктів».');
-            return Response::redirect(url('/cabinet/master') . '#works');
+            return Response::redirect($ctx['base'] . '#works');
         }
-        return $this->cab('master_work', 'master', ['title' => $w ? 'Об’єкт: ' . $w['title'] : 'Новий об’єкт', 'm' => $m, 'w' => $w, 'limits' => $limits]);
+        $data = ['title' => $w ? 'Об’єкт: ' . $w['title'] : 'Новий об’єкт', 'm' => $m, 'w' => $w, 'limits' => $limits, 'ctx' => $ctx];
+        if (!empty($ctx['admin'])) return new Response(view('cabinet/master_work', [...$data, 'adminEdit' => true, 'me' => App::auth()->user()]));
+        return $this->cab('master_work', 'master', $data);
     }
 
     public function workSave(Request $req): Response
     {
+        return $this->workSaveFor($req, self::ownCtx());
+    }
+
+    public function workSaveFor(Request $req, array $ctx): Response
+    {
         $uid = (int) App::auth()->id();
-        $m = $this->own();
+        $admin = !empty($ctx['admin']);
+        $m = $ctx['m'];
+        if (!$m) throw new HttpException(404, 'Спочатку заповніть профіль майстра.');
         $db = App::db();
         $limits = Services::limits();
-        $w = isset($req->params['id']) ? Services::work((int) $m['id'], (int) $req->params['id']) : null;
-        if (isset($req->params['id']) && !$w) throw new HttpException(404, 'Об’єкт не знайдено.');
+        $wid = $admin ? ($req->params['wid'] ?? null) : ($req->params['id'] ?? null);
+        $w = $wid !== null ? Services::work((int) $m['id'], (int) $wid) : null;
+        if ($wid !== null && !$w) throw new HttpException(404, 'Об’єкт не знайдено.');
         if (!$w && (int) $db->value('SELECT COUNT(*) FROM {p}master_works WHERE master_id = ?', [$m['id']]) >= $limits['works']) {
             throw new ValidationException([], 'Досягнуто ліміт об’єктів у портфоліо.');
         }
@@ -412,7 +453,7 @@ final class ServicesController
         if (!$w && !$files) $err['photos'] = 'Додайте хоча б одне фото роботи';
         if ($w && !$keep && !$files) $err['photos'] = 'В об’єкті має лишитися хоча б одне фото';
         if ($err) throw new ValidationException($err);
-        if ($files) RateLimit::hit('work-photo:' . $uid, 60, 86400, 'Забагато завантажень фото за добу. Спробуйте завтра.');
+        if ($files && !$admin) RateLimit::hit('work-photo:' . $uid, 60, 86400, 'Забагато завантажень фото за добу. Спробуйте завтра.');
 
         // Спершу зберігаємо файли (якщо якийсь не підійде — нічого не змінюємо в базі).
         $stored = [];
@@ -439,23 +480,85 @@ final class ServicesController
         $n = (int) $db->value('SELECT COALESCE(MAX(sort), 0) FROM {p}master_work_photos WHERE work_id = ?', [$wid]);
         foreach ($stored as $f) $db->insert('master_work_photos', ['work_id' => $wid, 'file' => $f, 'sort' => ++$n]);
         $set = ['updated_at' => Db::now()];
-        if ($m['status'] === 'published' && Services::premoderation() && ($stored || !$w || $w['title'] !== $d['title'] || (string) $w['description'] !== (string) $d['description'])) $set['needs_review'] = 1;
+        if (!$admin && $m['status'] === 'published' && Services::premoderation() && ($stored || !$w || $w['title'] !== $d['title'] || (string) $w['description'] !== (string) $d['description'])) $set['needs_review'] = 1;
         $db->update('masters', $set, 'id = ?', [$m['id']]);
-        Audit::log($w ? 'services.work_updated' : 'services.work_created', 'master', $m['id'], ['work' => $wid, 'photos' => count($stored)]);
-        flash('ok', $w ? 'Об’єкт збережено.' : 'Об’єкт додано в портфоліо.');
-        return Response::redirect(url('/cabinet/master') . '#works');
+        Audit::log(($w ? 'services.work_updated' : 'services.work_created') . ($admin ? '_by_admin' : ''), 'master', $m['id'], ['work' => $wid, 'photos' => count($stored)]);
+        $changed = !$w || $stored || $del || $w['title'] !== $d['title'] || (string) $w['description'] !== (string) $d['description'] || (string) $w['place'] !== (string) $d['place'] || (string) $w['done_on'] !== (string) $d['done_on'];
+        if ($admin && $changed) self::notifyMaster($m, ['галерея робіт'], '');
+        flash('ok', ($w ? 'Об’єкт збережено.' : 'Об’єкт додано в портфоліо.') . ($admin && $changed && !Demo::isDemoMaster((int) $m['id']) ? ' Власник отримав сповіщення.' : ''));
+        return Response::redirect($ctx['base'] . '#works');
     }
 
     public function workDelete(Request $req): Response
     {
-        $m = $this->own();
-        $w = Services::work((int) $m['id'], (int) $req->params['id']);
+        return $this->workDeleteFor($req, self::ownCtx());
+    }
+
+    public function workDeleteFor(Request $req, array $ctx): Response
+    {
+        $admin = !empty($ctx['admin']);
+        $m = $ctx['m'];
+        if (!$m) throw new HttpException(404, 'Спочатку заповніть профіль майстра.');
+        $w = Services::work((int) $m['id'], (int) ($admin ? $req->params['wid'] : $req->params['id']));
         if (!$w) throw new HttpException(404, 'Об’єкт не знайдено.');
         App::db()->run('DELETE FROM {p}master_works WHERE id = ?', [$w['id']]);
         foreach ($w['photos'] as $p) { Media::delete('work', $p['file']); Media::delete('workthumb', $p['file']); }
-        Audit::log('services.work_deleted', 'master', $m['id'], ['work' => (int) $w['id']]);
-        flash('ok', 'Об’єкт видалено з портфоліо.');
-        return Response::redirect(url('/cabinet/master') . '#works');
+        Audit::log($admin ? 'services.work_deleted_by_admin' : 'services.work_deleted', 'master', $m['id'], ['work' => (int) $w['id']]);
+        if ($admin) self::notifyMaster($m, ['галерея робіт (видалено об’єкт «' . $w['title'] . '»)'], '');
+        flash('ok', 'Об’єкт видалено з портфоліо.' . ($admin && !Demo::isDemoMaster((int) $m['id']) ? ' Власник отримав сповіщення.' : ''));
+        return Response::redirect($ctx['base'] . '#works');
+    }
+
+    /* ---------------- правка адміністрацією (0.5.24) ---------------- */
+
+    /** Профіль майстра зберігає адміністрація: стан і перевірка не змінюються, власник отримує перелік змін. */
+    private function adminProfileSaved(Request $req, array $ctx, array $d, array $travel, bool $photoChanged): Response
+    {
+        $db = App::db();
+        $cur = $ctx['m'];
+        $id = (int) $cur['id'];
+        $note = trim($req->str('admin_note', 500));
+        $changed = [];
+        foreach ($d as $k => $v) if ($k !== 'photo' && (string) ($cur[$k] ?? '') !== (string) ($v ?? '')) $changed[] = $k;
+        if ($photoChanged) $changed[] = 'photo';
+        $oldTravel = array_map('intval', array_column(Services::travelAreas($id), 'id'));
+        $newTravel = $d['travel_all'] ? [] : $travel;
+        sort($oldTravel); sort($newTravel);
+        if (!$cur['travel_all'] && $oldTravel !== $newTravel) $changed[] = 'travel';
+        if (!$changed) {
+            flash('info', 'Нічого не змінено, тож власнику нічого не надсилали.');
+            return Response::redirect($ctx['base']);
+        }
+        $set = [...$d, 'updated_at' => Db::now()];
+        if ($cur['status'] === 'published' && (int) $cur['period_months'] !== $d['period_months']) $set['show_to'] = Services::showTo($d['period_months']);
+        $db->update('masters', $set, 'id = ?', [$id]);
+        $db->run('DELETE FROM {p}master_areas WHERE master_id = ?', [$id]);
+        foreach ($newTravel as $sid) $db->insert('master_areas', ['master_id' => $id, 'settlement_id' => $sid]);
+        $labels = array_values(array_unique(array_map(static fn ($k) => self::MASTER_FIELDS[$k] ?? $k, $changed)));
+        Audit::log('services.master_admin_edited', 'master', $id, ['fields' => $changed, 'note' => $note ?: null, 'owner' => (int) $cur['user_id']]);
+        self::notifyMaster([...$cur, 'name' => $d['name']], $labels, $note);
+        flash('ok', 'Анкету майстра збережено: змінено ' . implode(', ', $labels) . '.' . (Demo::isDemoMaster($id) ? '' : ' Власник отримав сповіщення.'));
+        return Response::redirect($ctx['base']);
+    }
+
+    /** Сповіщення власнику профілю: адміністрація змінила його анкету майстра. Для прикладів не надсилаємо. */
+    public static function notifyMaster(array $m, array $labels, string $note): void
+    {
+        if (Demo::isDemoMaster((int) $m['id'])) return;
+        $owner = (int) $m['user_id'];
+        $site = (string) App::setting('site.name', 'YEWORK');
+        $head = 'Адміністрація сайту виправила вашу анкету майстра «' . $m['name'] . '»';
+        $what = 'Змінено: ' . implode(', ', $labels) . '.';
+        $body = $what . ($note !== '' ? "\nКоментар адміністрації: $note" : '');
+        try {
+            \App\Core\Notices::add($owner, 'admin_edit', $head, $body, '/cabinet/master', 'master', (int) $m['id']);
+        } catch (\Throwable $e) {
+            error_log('[YEWORK] notice failed: ' . $e->getMessage());
+        }
+        $link = Services::siteBase() . url('/cabinet/master');
+        Services::notifyUser($owner, "Адміністрація виправила вашу анкету майстра — $site",
+            "$head.\n\n$body\n\nПереглянути анкету: $link\n\nЯкщо щось не так, просто відредагуйте її в кабінеті.\n\n— $site",
+            "$site: адміністрація виправила вашу анкету майстра. " . $what, 'admin_edit');
     }
 
     /* ================= замовлення й відгуки ================= */

@@ -1,11 +1,15 @@
-<?php use App\Core\Media; $nPh = $w ? count($w['photos']) : 0; ?>
+<?php use App\Core\Media; $nPh = $w ? count($w['photos']) : 0;
+// 0.5.24: в адмінці ця ж форма редагує галерею чужого майстра ($adminEdit, $ctx).
+$adminEdit = !empty($adminEdit);
+$ctx = $ctx ?? ['base' => url('/cabinet/master'), 'works' => '/cabinet/master/works', 'q' => []]; ?>
 <div class="cab">
-  <?= App\Core\View::partial('partials/cab_nav', compact('tab', 'counts', 'me')) ?>
-  <div class="stack">
-    <nav class="crumbs"><a href="<?= url('/cabinet/master') ?>">Я майстер</a>›<a href="<?= url('/cabinet/master') ?>#works">Галерея робіт</a>›<?= $w ? e($w['title']) : 'Новий об’єкт' ?></nav>
+  <?php if (!$adminEdit): ?><?= App\Core\View::partial('partials/cab_nav', compact('tab', 'counts', 'me')) ?><?php endif ?>
+  <div class="stack"<?= $adminEdit ? ' style="grid-column:1/-1;max-width:1000px;width:100%;margin:0 auto"' : '' ?>>
+    <nav class="crumbs"><?php if ($adminEdit): ?><a href="<?= e($ctx['backUrl']) ?>">Майстри</a>›<a href="<?= e($ctx['base']) ?>"><?= e($m['name']) ?></a><?php else: ?><a href="<?= url('/cabinet/master') ?>">Я майстер</a><?php endif ?>›<a href="<?= e($ctx['base']) ?>#works">Галерея робіт</a>›<?= $w ? e($w['title']) : 'Новий об’єкт' ?></nav>
+    <?php if ($adminEdit): ?><div class="alert info">Ви редагуєте галерею робіт майстра «<?= e($m['name']) ?>» від імені адміністрації. Власник отримає сповіщення про зміни.</div><?php endif ?>
     <h1 style="font-size:28px"><?= $w ? 'Об’єкт' : 'Новий об’єкт' ?></h1>
     <?= form_alert() ?>
-    <form class="card pad stack" method="post" action="<?= url($w ? '/cabinet/master/works/' . $w['id'] : '/cabinet/master/works/new') ?>" enctype="multipart/form-data"><?= csrf_field() ?>
+    <form class="card pad stack" method="post" action="<?= url($ctx['works'] . ($w ? '/' . $w['id'] : '/new'), $ctx['q'] ?? []) ?>" enctype="multipart/form-data"><?= csrf_field() ?>
       <?= input_field('title', 'Що зробили', ['value' => $w['title'] ?? '', 'maxlength' => 160, 'required' => true, 'placeholder' => 'Монтаж двох кондиціонерів у приватному будинку']) ?>
       <div class="grid2">
         <?= input_field('place', 'Де', ['value' => $w['place'] ?? '', 'maxlength' => 120, 'placeholder' => 'Миронівка, приватний будинок']) ?>
@@ -20,7 +24,7 @@
       <div class="field<?= err_class('photos') ?>"><label for="f_photos"><?= $w ? 'Додати фото' : 'Фото' ?></label>
         <input id="f_photos" class="rz-file" style="max-width:none" type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple>
         <span class="hint">До <?= (int) $limits['photos'] ?> фото в об’єкті<?= $w ? ' (зараз ' . $nPh . ')' : '' ?>, кожне до 3 МБ. Можна вибрати кілька одразу. Найкраще — «до» і «після».</span><?= field_error('photos') ?></div>
-      <div class="row"><button class="btn pri"><?= $w ? 'Зберегти' : 'Додати в портфоліо' ?></button><a class="btn ghost" href="<?= url('/cabinet/master') ?>#works">Скасувати</a></div>
+      <div class="row"><button class="btn pri"><?= $w ? 'Зберегти' : 'Додати в портфоліо' ?></button><a class="btn ghost" href="<?= e($ctx['base']) ?>#works">Скасувати</a></div>
     </form>
   </div>
 </div>

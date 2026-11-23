@@ -10,6 +10,7 @@ use App\Controllers\Admin\ServicesAdminController;
 use App\Controllers\SiteController;
 use App\Controllers\Admin\AdminController;
 use App\Controllers\Admin\ListingEditController;
+use App\Controllers\Admin\MasterEditController;
 use App\Controllers\Admin\PeopleController;
 use App\Controllers\Admin\ResumeModerationController;
 use App\Controllers\Admin\TelegramAdminController;
@@ -118,6 +119,14 @@ $router->get('/admin/masters', [ServicesAdminController::class, 'index'], ['serv
 $router->post('/admin/demo', [ServicesAdminController::class, 'demo'], ['services.listing:moderate']);
 $router->post('/admin/masters/{id}', [ServicesAdminController::class, 'decide'], ['services.listing:moderate']);
 $router->post('/admin/reviews/{id}', [ServicesAdminController::class, 'review'], ['services.listing:moderate']);
+// Правка анкети майстра адміністрацією (0.5.24): профіль, прайс, галерея робіт.
+$router->get('/admin/masters/{id}/edit', [MasterEditController::class, 'form'], [MasterEditController::PERM]);
+$router->post('/admin/masters/{id}/edit', [MasterEditController::class, 'save'], [MasterEditController::PERM]);
+$router->get('/admin/masters/{id}/works/new', [MasterEditController::class, 'workForm'], [MasterEditController::PERM]);
+$router->post('/admin/masters/{id}/works/new', [MasterEditController::class, 'workSave'], [MasterEditController::PERM]);
+$router->get('/admin/masters/{id}/works/{wid}', [MasterEditController::class, 'workForm'], [MasterEditController::PERM]);
+$router->post('/admin/masters/{id}/works/{wid}', [MasterEditController::class, 'workSave'], [MasterEditController::PERM]);
+$router->post('/admin/masters/{id}/works/{wid}/delete', [MasterEditController::class, 'workDelete'], [MasterEditController::PERM]);
 $router->get('/admin/service-categories', [ServicesAdminController::class, 'categories'], ['services.listing:update']);
 $router->post('/admin/service-categories', [ServicesAdminController::class, 'categoriesSave'], ['services.listing:update']);
 $router->get('/admin/banners', [AdminController::class, 'banners'], ['ads.banner:moderate']);
