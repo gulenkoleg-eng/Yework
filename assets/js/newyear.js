@@ -10,7 +10,13 @@
   var KEY = 'yw-snow';
   var canvas, ctx, flakes = [], sprites = [], raf = 0, last = 0, W = 0, H = 0, dpr = 1, t0 = performance.now();
 
-  function stored() { try { return localStorage.getItem(KEY) !== 'off'; } catch (e) { return true; } }
+  /* Без вибору людини: сніг є, крім випадку «зменшити рух» у системі. Тоді його можна ввімкнути кнопкою ❄ (0.5.13). */
+  function stored() {
+    var v = null;
+    try { v = localStorage.getItem(KEY); } catch (e) {}
+    if (v === 'on' || v === 'off') return v === 'on';
+    return !(reduce && reduce.matches);
+  }
   function store(on) { try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch (e) {} }
 
   /* Спрайти: м’які кружечки й кілька шестипроменевих кристалів. Білий з блакитним обідком, щоб було видно і на білому фоні. */
@@ -105,7 +111,7 @@
   }
 
   function start() {
-    if (raf || (reduce && reduce.matches)) return;
+    if (raf) return;
     if (!canvas) {
       canvas = document.createElement('canvas');
       canvas.className = 'ny-canvas';
@@ -148,7 +154,7 @@
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) stop(false); else if (on) start();
   });
-  if (reduce && reduce.addEventListener) reduce.addEventListener('change', function () { reduce.matches ? stop(true) : on && start(); });
+  if (reduce && reduce.addEventListener) reduce.addEventListener('change', function () { on = stored(); paint(); on ? start() : stop(true); });
 
   if (on) start();
 })();
