@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const YW_VERSION = '0.5.21.2';
+const YW_VERSION = '0.5.21.3';
 
 mb_internal_encoding('UTF-8');
 date_default_timezone_set('Europe/Kyiv');
