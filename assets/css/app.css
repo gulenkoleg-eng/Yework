@@ -375,6 +375,19 @@ table.tbl{width:100%;border-collapse:collapse;font-size:14.5px}
 .upd-act>summary{list-style:none;display:inline-flex;width:max-content}
 .upd-act[open]>summary{margin-bottom:10px}
 .upd-act form.stack{background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--r-btn);padding:14px;gap:12px}
+.upd-bk-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.upd-act[hidden]{display:none}
+.upd-bk-acts .btn[aria-expanded=true]:not(.pri){background:var(--c-bg);border-color:var(--c-border)}
+.upd-bk-info{background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--r-btn);padding:14px;display:flex;flex-direction:column;gap:10px}
+.upd-bk-info dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0}
+.upd-bk-info dt{color:var(--c-muted)}
+.upd-bk-info dd{margin:0;overflow-wrap:anywhere}
+.upd-del{color:var(--c-danger,#c0392b)}
+.bk-more[hidden]{display:none}
+.upd-clean{border-top:1px solid var(--c-border);padding-top:12px;display:flex;flex-direction:column;gap:10px}
+.upd-clean h4{margin:0;font-size:15px}
+.upd-clean form.row{gap:8px;flex-wrap:wrap;align-items:center}
+.upd-clean select{max-width:100%}
 
 /* ---------- логотипи роботодавців ---------- */
 .elogo{width:44px;height:44px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid var(--c-border);flex:none;display:block}

@@ -96,30 +96,113 @@ $fmtDate = static fn (?string $d) => $d ? (strlen($d) === 10 ? date('d.m.Y', str
   <?php else: $pager(); endif ?>
 </div>
 
-<div class="card pad stack"><div class="row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>Резервні копії і відкат</h3>
-  <form method="post" action="<?= url('/admin/updates/backup') ?>" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Створюємо…'"><?= csrf_field() ?><button class="btn sm">Створити копію зараз</button></form></div>
-  <p class="small muted">Копія містить файли сайту і всю базу даних. Зберігаються останні 6 копій у папці <code>storage/backups</code> на хостингу. Файл конфігурації <code>config/…</code> не копіюється і не змінюється.</p>
-  <?php if (!$backups): ?><p class="muted">Копій ще немає. Вона з’явиться автоматично перед першим оновленням.</p><?php endif ?>
-  <?php foreach ($backups as $i => $b): $mig = $b['migrations'] ?? []; $dbDefault = !($b['kind'] === 'update' && isset($b['migrations']) && !$mig); ?>
+<?php
+$keep = Updater::keepCount();
+$bkTotal = array_sum(array_map(static fn ($b) => (int) ($b['size'] ?? 0), $backups));
+$bkShowFirst = 3;
+$bkDate = static fn (array $b) => date('d.m.Y H:i', strtotime($b['createdAt']));
+$bkRow = static function (array $b, int $i) use ($kinds, $users, $bkDate, $canConfigure): void {
+  $mig = $b['migrations'] ?? []; $dbDefault = !($b['kind'] === 'update' && isset($b['migrations']) && !$mig);
+  $blocker = Updater::deleteBlocker($b['id']); ?>
     <div class="upd-bk">
       <div class="upd-bk-h">
-        <div><b>Версія <?= e($b['version']) ?></b> · <?= e(date('d.m.Y H:i', strtotime($b['createdAt']))) ?>
+        <div><b>Версія <?= e($b['version']) ?></b> · <?= e($bkDate($b)) ?><?php if ($i === 0): ?> <span class="tag ok">найновіша</span><?php endif ?>
           <div class="small muted"><?= e($b['note'] ?? ($kinds[$b['kind']] ?? '')) ?><?php if (!empty($b['by']) && isset($users[(int) $b['by']])): ?> · <?= e($users[(int) $b['by']]) ?><?php endif ?> · <?= e(Updater::humanSize((int) ($b['size'] ?? 0))) ?></div>
           <?php if (!empty($b['to'])): ?><div class="small">Після неї встановлено <?= e($b['to']) ?><?= $mig ? ', змінено структуру бази' : ', база не змінювалась' ?>.</div><?php endif ?>
         </div>
       </div>
-      <details class="upd-act"><summary class="btn sm<?= $i === 0 && !empty($b['to']) ? ' pri' : '' ?>">Повернути цю копію</summary>
+      <?php $pid = 'bk-' . preg_replace('/[^0-9A-Za-z-]/', '-', $b['id']); ?>
+      <div class="upd-bk-acts">
+        <button type="button" class="btn sm<?= $i === 0 && !empty($b['to']) ? ' pri' : '' ?>" aria-expanded="false" aria-controls="<?= $pid ?>-r" onclick="ywBk(this)">Повернути цю копію</button>
+        <button type="button" class="btn sm ghost" aria-expanded="false" aria-controls="<?= $pid ?>-i" onclick="ywBk(this)">Що всередині</button>
+        <button type="button" class="btn sm ghost upd-del" aria-expanded="false" aria-controls="<?= $pid ?>-d" onclick="ywBk(this)">Видалити</button>
+      </div>
+      <div class="upd-act" id="<?= $pid ?>-r" hidden>
         <form class="stack" method="post" action="<?= url('/admin/updates/restore') ?>" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Відновлюємо…'"><?= csrf_field() ?>
           <input type="hidden" name="id" value="<?= e($b['id']) ?>">
           <p class="small">Файли сайту стануть такими, як у версії <b><?= e($b['version']) ?></b>. Перед цим автоматично збережеться копія поточного стану, тож відновлення теж можна скасувати.</p>
-          <label class="check"><input type="checkbox" name="with_db" value="1" <?= $dbDefault ? 'checked' : '' ?>> <span>Також повернути базу даних на <?= e(date('d.m.Y H:i', strtotime($b['createdAt']))) ?>.<br><span class="small muted">Вакансії, користувачі й відгуки, додані після цього часу, зникнуть. Журнал дій збережеться повністю.<?= !$dbDefault ? ' Для цієї копії базу повертати не обов’язково: оновлення її не змінювало.' : '' ?></span></span></label>
+          <label class="check"><input type="checkbox" name="with_db" value="1" <?= $dbDefault ? 'checked' : '' ?>> <span>Також повернути базу даних на <?= e($bkDate($b)) ?>.<br><span class="small muted">Вакансії, користувачі й відгуки, додані після цього часу, зникнуть. Журнал дій збережеться повністю.<?= !$dbDefault ? ' Для цієї копії базу повертати не обов’язково: оновлення її не змінювало.' : '' ?></span></span></label>
           <label class="check"><input type="checkbox" name="confirm" value="1" required> <span>Так, я розумію, повернути</span></label>
           <div><button class="btn bad">Повернути версію <?= e($b['version']) ?></button></div>
         </form>
-        <form method="post" action="<?= url('/admin/updates/delete') ?>" onsubmit="return confirm('Видалити цю резервну копію?')" style="margin-top:8px"><?= csrf_field() ?><input type="hidden" name="id" value="<?= e($b['id']) ?>"><button class="btn sm ghost">Видалити копію</button></form>
-      </details>
+      </div>
+      <div class="upd-act" id="<?= $pid ?>-i" hidden>
+        <div class="upd-bk-info small">
+          <dl>
+            <dt>Створено</dt><dd><?= e($bkDate($b)) ?>, <?= e(mb_strtolower($kinds[$b['kind']] ?? $b['kind'])) ?></dd>
+            <dt>Версія сайту</dt><dd><?= e($b['version']) ?><?= !empty($b['to']) ? ' (потім встановлено ' . e($b['to']) . ')' : '' ?></dd>
+            <dt>Файли сайту</dt><dd><?= plural((int) ($b['files'] ?? 0), 'файл', 'файли', 'файлів') ?></dd>
+            <dt>База даних</dt><dd><?= plural(is_array($b['tables'] ?? null) ? count($b['tables']) : (int) ($b['tables'] ?? 0), 'таблиця', 'таблиці', 'таблиць') ?></dd>
+            <dt>Розмір</dt><dd><?= e(Updater::humanSize((int) ($b['size'] ?? 0))) ?></dd>
+            <dt>Папка</dt><dd><code>storage/backups/<?= e($b['id']) ?></code></dd>
+          </dl>
+          <?php if ($canConfigure): ?>
+            <div class="row" style="gap:8px;flex-wrap:wrap"><a class="btn sm" href="<?= url('/admin/updates/download', ['id' => $b['id'], 'part' => 'files']) ?>">Завантажити файли (.zip)</a><a class="btn sm" href="<?= url('/admin/updates/download', ['id' => $b['id'], 'part' => 'db']) ?>">Завантажити базу (.sql)</a></div>
+            <p class="muted">У файлі бази є дані всіх користувачів. Зберігайте його в надійному місці й нікому не пересилайте.</p>
+          <?php endif ?>
+        </div>
+      </div>
+      <div class="upd-act" id="<?= $pid ?>-d" hidden>
+        <?php if ($blocker): ?><p class="small muted upd-bk-info"><?= e($blocker) ?></p><?php else: ?>
+        <form class="stack" method="post" action="<?= url('/admin/updates/delete') ?>"><?= csrf_field() ?>
+          <input type="hidden" name="id" value="<?= e($b['id']) ?>">
+          <?php if ($i === 0): ?>
+            <p class="small"><b>Це найновіша копія.</b> Якщо після останнього оновлення щось працює не так, саме вона дозволяє повернути сайт як було. Видаляйте її, лише якщо впевнені, що все гаразд.</p>
+            <label class="check"><input type="checkbox" name="confirm_latest" value="1" required> <span>Так, видалити найновішу копію</span></label>
+          <?php else: ?>
+            <p class="small">Копію версії <b><?= e($b['version']) ?></b> від <?= e($bkDate($b)) ?> буде видалено з хостингу назавжди. Звільниться <?= e(Updater::humanSize((int) ($b['size'] ?? 0))) ?>.</p>
+          <?php endif ?>
+          <div><button class="btn bad sm">Видалити копію</button></div>
+        </form>
+        <?php endif ?>
+      </div>
     </div>
-  <?php endforeach ?>
+<?php };
+?>
+<script>
+// Кнопки під копією: відкривають одну панель (повернути / що всередині / видалити), повторне натискання закриває.
+function ywBk(btn) {
+  var open = btn.getAttribute('aria-expanded') !== 'true';
+  btn.parentNode.querySelectorAll('button[aria-controls]').forEach(function (b) {
+    b.setAttribute('aria-expanded', 'false'); document.getElementById(b.getAttribute('aria-controls')).hidden = true;
+  });
+  btn.setAttribute('aria-expanded', open); document.getElementById(btn.getAttribute('aria-controls')).hidden = !open;
+}
+</script>
+<div class="card pad stack" id="backups"><div class="row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h3>Резервні копії і відкат</h3>
+  <?php if ($backups): ?><div class="small muted"><?= plural(count($backups), 'копія', 'копії', 'копій') ?>, разом <?= e(Updater::humanSize($bkTotal)) ?></div><?php endif ?></div>
+  <form method="post" action="<?= url('/admin/updates/backup') ?>" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Створюємо…'"><?= csrf_field() ?><button class="btn sm">Створити копію зараз</button></form></div>
+  <p class="small muted">Копія містить файли сайту і всю базу даних. Зберігаються останні <?= plural($keep, 'копія', 'копії', 'копій') ?> у папці <code>storage/backups</code> на хостингу, старіші видаляються автоматично. Файл конфігурації <code>config/…</code> не копіюється і не змінюється.</p>
+  <?php if (!$backups): ?><p class="muted">Копій ще немає. Вона з’явиться автоматично перед першим оновленням.</p><?php endif ?>
+  <?php foreach (array_slice($backups, 0, $bkShowFirst) as $i => $b) $bkRow($b, $i) ?>
+  <?php if (count($backups) > $bkShowFirst): $bkMore = 'Показати ще ' . plural(count($backups) - $bkShowFirst, 'копію', 'копії', 'копій'); ?>
+    <div id="bk-more" class="stack bk-more" hidden><?php foreach (array_slice($backups, $bkShowFirst) as $j => $b) $bkRow($b, $j + $bkShowFirst) ?></div>
+    <div><button type="button" class="btn sm" aria-controls="bk-more" aria-expanded="false" data-more="<?= e($bkMore) ?>" data-less="Згорнути"
+      onclick="var o=this.getAttribute('aria-expanded')!=='true';document.getElementById('bk-more').hidden=!o;this.setAttribute('aria-expanded',o);this.textContent=o?this.dataset.less:this.dataset.more"><?= e($bkMore) ?></button></div>
+  <?php endif ?>
+  <?php if ($backups): ?>
+  <div class="upd-clean">
+    <h4>Очищення</h4>
+    <?php if (count($backups) > 1): ?>
+    <form class="row" method="post" action="<?= url('/admin/updates/clean') ?>" onsubmit="return confirm(this.querySelector('button').textContent+'? Це не можна скасувати.')"><?= csrf_field() ?>
+      <label class="small" for="bk-clean">Видалити старі копії, залишити</label>
+      <select id="bk-clean" name="keep" class="input" style="width:auto" onchange="var b=this.form.querySelector('button');b.textContent=this.options[this.selectedIndex].dataset.label">
+        <?php $firstLabel = null; for ($k = 1; $k < count($backups) && $k <= 5; $k++): $gone = array_slice($backups, $k); $freed = array_sum(array_map(static fn ($b) => (int) ($b['size'] ?? 0), $gone));
+          $label = 'Видалити ' . plural(count($gone), 'стару копію', 'старі копії', 'старих копій') . ' (' . Updater::humanSize($freed) . ')'; $firstLabel ??= $label; ?>
+          <option value="<?= $k ?>" data-label="<?= e($label) ?>"><?= $k === 1 ? 'лише найновішу' : $k . ' найновіші' ?></option>
+        <?php endfor ?>
+      </select>
+      <button class="btn sm bad"><?= e($firstLabel) ?></button>
+    </form>
+    <?php endif ?>
+    <form class="row" method="post" action="<?= url('/admin/updates/keep') ?>"><?= csrf_field() ?>
+      <label class="small" for="bk-keep">Зберігати автоматично останні</label>
+      <select id="bk-keep" name="keep" class="input" style="width:auto"><?php foreach (Updater::KEEP_CHOICES as $k): ?><option value="<?= $k ?>" <?= $k === $keep ? 'selected' : '' ?>><?= plural($k, 'копію', 'копії', 'копій') ?></option><?php endforeach ?></select>
+      <button class="btn sm">Зберегти</button>
+    </form>
+    <p class="small muted">Нова копія з’являється перед кожним оновленням і відновленням. Коли їх стає більше, ніж вибрано, найстаріші видаляються самі.</p>
+  </div>
+  <?php endif ?>
 </div>
 
 <?php if ($history): ?>

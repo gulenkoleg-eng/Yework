@@ -143,6 +143,9 @@ $router->get('/admin/updates/finish', [AdminController::class, 'updatesFinish'],
 $router->post('/admin/updates/backup', [AdminController::class, 'updatesBackup'], ['system.update:run']);
 $router->post('/admin/updates/restore', [AdminController::class, 'updatesRestore'], ['system.update:run']);
 $router->post('/admin/updates/delete', [AdminController::class, 'updatesDelete'], ['system.update:run']);
+$router->post('/admin/updates/clean', [AdminController::class, 'updatesClean'], ['system.update:run']);
+$router->post('/admin/updates/keep', [AdminController::class, 'updatesKeep'], ['system.update:run']);
+$router->get('/admin/updates/download', [AdminController::class, 'updatesDownload'], ['settings.system:manage_settings']);
 $router->post('/admin/updates/settings', [AdminController::class, 'updatesSettings'], ['settings.system:manage_settings']);
 
 // Telegram-бот: прив'язка для персоналу, налаштування для адміністраторів, вебхук для Telegram
