@@ -181,14 +181,14 @@ final class SiteController
         return $r;
     }
 
-    /** Перехід з банера: рахуємо клік і ведемо на вакансії роботодавця. */
+    /** Перехід з банера: рахуємо клік і ведемо на обрану вакансію (або на всі вакансії роботодавця). */
     public function promoClick(Request $req): Response
     {
         $t = Ads::today();
-        $b = App::db()->one('SELECT b.id, b.employer_id, e.owner_id FROM {p}banners b JOIN {p}employers e ON e.id = b.employer_id WHERE b.id = ? AND ' . Ads::LIVE_SQL, [(int) $req->params['id'], $t, $t]);
+        $b = App::db()->one('SELECT b.id, b.employer_id, b.vacancy_id, e.owner_id FROM {p}banners b JOIN {p}employers e ON e.id = b.employer_id WHERE b.id = ? AND ' . Ads::LIVE_SQL, [(int) $req->params['id'], $t, $t]);
         if (!$b) return Response::redirect(url('/jobs'));
         Ads::trackClick($req, $b);
-        return Response::redirect(url('/jobs', ['employer' => $b['employer_id']]), 302);
+        return Response::redirect(Ads::targetUrl($b), 302);
     }
 
     public function about(Request $req): Response { return $this->page('about'); }

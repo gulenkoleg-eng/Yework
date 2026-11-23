@@ -33,7 +33,8 @@ $services = [
             <div style="min-width:0"><a href="<?= url('/cabinet/ads/' . $r['id']) ?>"><b><?= e($r['title']) ?></b></a>
               <div class="small muted"><?= e(Ads::PLACEMENTS[$r['placement']] ?? '') ?> · <?= e(date('d.m', strtotime($r['starts_on']))) ?>–<?= e(date('d.m.Y', strtotime($r['ends_on']))) ?> · <?= plural((int) $r['days'], 'день', 'дні', 'днів') ?></div>
               <?php if ($r['status'] === 'rejected' && $r['reject_reason']): ?><div class="small" style="color:var(--c-danger)">Причина: <?= e($r['reject_reason']) ?></div><?php endif ?></div>
-            <div class="row"><span class="tag <?= $sc ?>"><?= e($sl) ?></span><span class="tag"><?= icon('eye', 13) ?> <?= (int) $r['impressions'] ?></span><span class="tag"><?= icon('arrow', 13) ?> <?= (int) $r['clicks'] ?></span></div>
+            <div class="row"><span class="tag <?= $sc ?>"><?= e($sl) ?></span><span class="tag"><?= icon('eye', 13) ?> <?= (int) $r['impressions'] ?></span><span class="tag"><?= icon('arrow', 13) ?> <?= (int) $r['clicks'] ?></span>
+              <?php if (Ads::employerCanEdit($r)): ?><a class="btn sm" href="<?= url('/cabinet/ads/' . $r['id'] . '/edit') ?>">Редагувати</a><?php endif ?></div>
           </div>
         <?php endforeach ?>
       </section>
@@ -41,10 +42,10 @@ $services = [
 
     <form class="card pad stack" method="post" action="<?= url('/cabinet/ads') ?>" enctype="multipart/form-data" id="adForm"><?= csrf_field() ?>
       <div><h2 style="font-size:22px">Банер на сайті</h2>
-        <p class="muted">Оберіть шаблон і напишіть текст: оформлення, кольори й анімацію ми зробимо самі, у стилі сайту. Натискання на банер веде на ваші вакансії, а поки банер діє, <b>ваші вакансії стоять першими в пошуку</b>. У кабінеті видно, скільки людей побачили банер і скільки перейшли.</p></div>
-      <?php if (!$published): ?><div class="alert warn">У вас поки немає опублікованих вакансій. Банер веде саме на них, тож спершу <a href="<?= url('/cabinet/vacancies/new') ?>">розмістіть вакансію</a>.</div><?php endif ?>
+        <p class="muted">Оберіть шаблон і напишіть текст: оформлення, кольори й анімацію ми зробимо самі, у стилі сайту. Оберіть вакансію, на яку поведе кнопка банера, а поки банер діє, <b>ваші вакансії стоять першими в пошуку</b>. У кабінеті видно, скільки людей побачили банер і скільки перейшли.</p></div>
+      <?php if (!$published): ?><div class="alert warn">У вас поки немає опублікованих вакансій. Кнопка банера веде на вашу вакансію, тож спершу <a href="<?= url('/cabinet/vacancies/new') ?>">розмістіть вакансію</a>.</div><?php endif ?>
       <?php if (!$employer['logo']): ?><div class="alert info">Порада: <a href="<?= url('/cabinet/employer') ?>">додайте логотип</a>, і він з’явиться на банері. Банер з логотипом помічають значно частіше.</div><?php endif ?>
-      <?= App\Core\View::partial('partials/banner_maker', ['templates' => $templates, 'tplNow' => $tplNow, 'old' => $old, 'oldPerks' => $oldPerks, 'preview' => $preview, 'ctaDefault' => Ads::ctaOf(['vacancies' => $published])]) ?>
+      <?= App\Core\View::partial('partials/banner_maker', ['templates' => $templates, 'tplNow' => $tplNow, 'old' => $old, 'oldPerks' => $oldPerks, 'preview' => $preview, 'ctaDefault' => Ads::ctaOf(['vacancies' => $published]), 'targets' => $targets, 'targetNow' => $targetNow]) ?>
       <fieldset class="field<?= err_class('placement') ?>"><legend>Де показувати</legend>
         <div class="place-opts">
           <?php foreach (Ads::PLACEMENTS as $k => $l): $pd = $prices['banner_' . $k . '_day']; ?>

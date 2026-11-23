@@ -2,7 +2,7 @@
 [$sl, $sc] = Ads::statusLabel($b);
 $max = max([1, ...array_column($stats, 'impressions')]);
 $ctr = $total['impressions'] ? round($total['clicks'] * 100 / $total['impressions'], 1) : 0;
-$preview = ['id' => $b['id'], 'title' => $b['title'], 'body' => $b['body'], 'image' => $b['image'], 'employer' => $employer['name'], 'legal_form' => $employer['legal_form'], 'logo' => $employer['logo'],
+$preview = [...$b, 'href' => Ads::targetUrl($b), 'employer' => $employer['name'], 'legal_form' => $employer['legal_form'], 'logo' => $employer['logo'],
   'vacancies' => (int) App\Core\App::db()->value("SELECT COUNT(*) FROM {p}vacancies WHERE employer_id = ? AND status = 'published' AND deleted_at IS NULL", [$employer['id']])];
 ?>
 <div class="cab">
@@ -34,6 +34,15 @@ $preview = ['id' => $b['id'], 'title' => $b['title'], 'body' => $b['body'], 'ima
       <?php endif ?>
     </section>
 
+    <div class="card pad row" style="justify-content:space-between">
+      <div><b>Кнопка банера веде:</b>
+        <?php if ($target): ?>на вакансію <a href="<?= url('/jobs/' . $target['id']) ?>" target="_blank">«<?= e($target['title']) ?>»</a>
+        <?php else: ?><a href="<?= url('/jobs', ['employer' => $b['employer_id']]) ?>" target="_blank">на всі ваші вакансії</a>
+          <?php if (!empty($b['vacancy_id'])): ?><p class="small" style="color:var(--c-warning)">Вакансію, яку ви обрали, знято з публікації, тому банер веде на всі ваші вакансії. Оберіть іншу в редагуванні.</p><?php endif ?>
+        <?php endif ?></div>
+      <?php if (Ads::employerCanEdit($b)): ?><a class="btn" href="<?= url('/cabinet/ads/' . $b['id'] . '/edit') ?>">Редагувати банер</a><?php endif ?>
+    </div>
+
     <section class="stack" style="gap:10px"><h2 style="font-size:20px">Так банер виглядає на сайті</h2>
       <div class="bnrs one"><?= App\Core\View::partial('partials/promo', ['b' => $preview]) ?></div></section>
 
@@ -46,6 +55,9 @@ $preview = ['id' => $b['id'], 'title' => $b['title'], 'body' => $b['body'], 'ima
 
     <?php if (in_array($b['status'], ['pending', 'approved'], true) && $b['ends_on'] >= Ads::today()): ?>
       <form method="post" action="<?= url('/cabinet/ads/' . $b['id'] . '/cancel') ?>" onsubmit="return confirm('Зняти банер з показу? Повернути його не вийде, можна буде замовити новий.')"><?= csrf_field() ?><button class="btn ghost sm">Зняти банер з показу</button></form>
+    <?php endif ?>
+    <?php if (Ads::employerCanDelete($b)): ?>
+      <form method="post" action="<?= url('/cabinet/ads/' . $b['id'] . '/delete') ?>" onsubmit="return confirm('Видалити банер разом зі статистикою? Повернути його не вийде.')"><?= csrf_field() ?><button class="btn ghost sm" style="color:var(--c-danger)">Видалити банер</button></form>
     <?php endif ?>
   </div>
 </div>

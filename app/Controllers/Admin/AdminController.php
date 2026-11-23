@@ -113,6 +113,7 @@ final class AdminController
     {
         $status = in_array($req->query['status'] ?? 'pending', ['pending', 'approved', 'rejected', 'cancelled'], true) ? (string) ($req->query['status'] ?? 'pending') : 'pending';
         $rows = App::db()->all("SELECT b.*, e.name AS employer, e.legal_form, e.logo, e.is_verified, e.owner_id, u.display_name AS author,
+            (SELECT tv.title FROM {p}vacancies tv WHERE tv.id = b.vacancy_id AND tv.employer_id = b.employer_id AND tv.status = 'published' AND tv.deleted_at IS NULL) AS target_title,
             (SELECT COUNT(*) FROM {p}vacancies v WHERE v.employer_id = b.employer_id AND v.status = 'published' AND v.deleted_at IS NULL) AS vacancies,
             (SELECT COALESCE(SUM(impressions),0) FROM {p}banner_stats s WHERE s.banner_id = b.id) AS impressions,
             (SELECT COALESCE(SUM(clicks),0) FROM {p}banner_stats s WHERE s.banner_id = b.id) AS clicks
@@ -166,8 +167,9 @@ final class AdminController
     /** Адміністратор сам створює банер для роботодавця: він одразу схвалений і безкоштовний (0.5.12). */
     public function bannerNew(Request $req): Response
     {
-        return $this->render('banner_new', 'banners', ['title' => 'Новий банер', 'employers' => $this->bannerEmployers(), 'today' => Ads::today(),
-            'pick' => (int) ($req->query['employer'] ?? 0)]);
+        $employers = $this->bannerEmployers();
+        return $this->render('banner_new', 'banners', ['title' => 'Новий банер', 'employers' => $employers, 'today' => Ads::today(),
+            'pick' => (int) ($req->query['employer'] ?? 0), 'targets' => Ads::targetVacancies(array_column($employers, 'id'))]);
     }
 
     public function bannerCreate(Request $req): Response
@@ -179,6 +181,8 @@ final class AdminController
         $d = Ads::bannerInput($req, array_keys(Ads::TEMPLATES));
         $err = Ads::bannerErrors($d, true);
         if (!$emp) $err['employer_id'] = 'Оберіть роботодавця, на чиї вакансії вестиме банер';
+        [$d['vacancy_id'], $terr] = Ads::targetInput($req, (int) ($emp['id'] ?? 0));
+        if ($terr && $emp) $err['target'] = $terr;
         if ($err) throw new ValidationException($err);
         $d['ends_on'] = date('Y-m-d', strtotime($d['starts_on'] . ' +' . ($d['days'] - 1) . ' days'));
         $image = \App\Core\Media::store('banner', 'image', 'e' . $emp['id']);
@@ -188,6 +192,49 @@ final class AdminController
         Audit::log('ads.banner_created_by_admin', 'banner', $id, ['employer' => (int) $emp['id'], 'days' => $d['days'], 'placement' => $d['placement'], 'template' => $d['template']]);
         flash('ok', 'Банер створено й схвалено. Він показуватиметься з ' . date('d.m', strtotime($d['starts_on'])) . ' по ' . date('d.m', strtotime($d['ends_on'])) . '.');
         return Response::redirect(url('/admin/banners', ['status' => 'approved']));
+    }
+
+    private function bannerRow(int $id): array
+    {
+        $b = App::db()->one('SELECT b.*, e.name AS employer, e.legal_form, e.logo FROM {p}banners b JOIN {p}employers e ON e.id = b.employer_id WHERE b.id = ?', [$id]);
+        if (!$b) throw new HttpException(404, 'Банер не знайдено.');
+        return $b;
+    }
+
+    /** Адміністратор редагує будь-який банер (0.5.15): текст, вигляд, вакансію, дати. Статус банера не змінюється. */
+    public function bannerEdit(Request $req): Response
+    {
+        $b = $this->bannerRow((int) $req->params['id']);
+        if (!App::$old) App::$old = Ads::formValues($b);
+        return $this->render('banner_edit', 'banners', ['title' => 'Редагувати банер', 'b' => $b, 'targets' => Ads::targetVacancies([$b['employer_id']]),
+            'back' => $b['status'] === 'pending' ? null : $b['status']]);
+    }
+
+    public function bannerUpdate(Request $req): Response
+    {
+        $b = $this->bannerRow((int) $req->params['id']);
+        $d = Ads::bannerInput($req, array_keys(Ads::TEMPLATES));
+        $err = Ads::bannerErrors($d, true);
+        if ($d['starts_on'] === $b['starts_on']) unset($err['starts_on']); // банер, що вже йде, можна редагувати без зміни дати
+        [$d['vacancy_id'], $terr] = Ads::targetInput($req, (int) $b['employer_id']);
+        if ($terr) $err['target'] = $terr;
+        if ($err) throw new ValidationException($err);
+        $d['ends_on'] = date('Y-m-d', strtotime($d['starts_on'] . ' +' . ($d['days'] - 1) . ' days'));
+        $d['image'] = Ads::editImage($req, $b);
+        if ($d['template'] === 'photo' && !$d['image']) throw new ValidationException(['image' => 'Для шаблону «Фото» додайте картинку або оберіть інший шаблон']);
+        App::db()->update('banners', [...$d, 'updated_at' => Db::now()], 'id = ?', [$b['id']]);
+        Audit::log('ads.banner_edited_by_admin', 'banner', $b['id'], ['vacancy' => $d['vacancy_id'], 'starts_on' => $d['starts_on'], 'days' => $d['days']]);
+        flash('ok', 'Банер «' . $d['title'] . '» збережено.');
+        return Response::redirect(url('/admin/banners', ['status' => $b['status'] === 'pending' ? null : $b['status']]));
+    }
+
+    public function bannerDelete(Request $req): Response
+    {
+        $b = $this->bannerRow((int) $req->params['id']);
+        Ads::delete($b);
+        Audit::log('ads.banner_deleted_by_admin', 'banner', $b['id'], ['title' => $b['title'], 'employer' => (int) $b['employer_id'], 'status' => $b['status']]);
+        flash('ok', 'Банер «' . $b['title'] . '» видалено.');
+        return Response::redirect(url('/admin/banners', ['status' => $b['status'] === 'pending' ? null : $b['status']]));
     }
 
     /** Шаблони банерів: які доступні роботодавцям і який обрано за замовчуванням (0.5.12). */
