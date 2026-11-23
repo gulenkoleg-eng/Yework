@@ -22,19 +22,29 @@
   <?php endif ?>
 </form>
 
+<section class="card pad stack">
+  <h3>Зайнятість рекламних місць</h3>
+  <?= App\Core\View::partial('partials/ad_places', ['occupancy' => $occupancy]) ?>
+</section>
+
 <form class="card pad stack" method="post" action="<?= url('/admin/billing') ?>"><?= csrf_field() ?><input type="hidden" name="section" value="prices">
   <h3>Ціни</h3>
   <p class="small muted">Стартові ціни розраховані на невеликі громади: тиждень банера на головній коштує як оголошення в районній газеті (≈190 грн), місяць — ≈675 грн, дешевше за одну платну вакансію на великих сайтах. Публікація вакансій лишається безкоштовною завжди.</p>
   <fieldset <?= $canEdit ? '' : 'disabled' ?> class="stack" style="border:0;padding:0;margin:0">
     <div class="gridp">
-      <?php foreach (['banner_home_day', 'banner_jobs_day', 'banner_both_day'] as $key): ?><?= input_field($key, $L[$key], ['value' => $prices[$key], 'inputmode' => 'numeric']) ?><?php endforeach ?>
+      <?php foreach (['banner_home_day', 'banner_jobs_day', 'banner_both_day', 'banner_side_day'] as $key): ?><?= input_field($key, $L[$key], ['value' => $prices[$key], 'inputmode' => 'numeric', 'hint' => $key === 'banner_side_day' ? 'Менший банер у колонці праворуч, тому дешевший' : null]) ?><?php endforeach ?>
     </div>
     <div class="gridp">
       <?= input_field('discount_week', $L['discount_week'], ['value' => $prices['discount_week'], 'inputmode' => 'numeric']) ?>
       <?= input_field('discount_month', $L['discount_month'], ['value' => $prices['discount_month'], 'inputmode' => 'numeric']) ?>
-      <?= input_field('slots', 'Банерів одночасно в одному місці', ['value' => $slots, 'inputmode' => 'numeric', 'hint' => 'Від 1 до 10. Коли місця зайняті, на ці дні замовити не можна']) ?>
     </div>
-    <p class="small"><b>Приклад:</b> банер на головній на 7 днів — <?= money(Ads::bannerPrice('home', 7)) ?> грн, на 30 днів — <?= money(Ads::bannerPrice('home', 30)) ?> грн; в обох місцях на 30 днів — <?= money(Ads::bannerPrice('both', 30)) ?> грн.</p>
+    <h3 style="margin-top:6px">Скільки банерів одночасно</h3>
+    <p class="small muted">Коли всі місця на якісь дні зайняті, роботодавець не зможе замовити банер на ці дні. У формі замовлення він бачить, до якої дати місце зайняте і з якого дня звільниться.</p>
+    <div class="gridp">
+      <?= input_field('slots', 'Банерів по центру', ['value' => $slots, 'inputmode' => 'numeric', 'hint' => 'Від 1 до 10. На головній у блоці «Шукають працівників» і над списком вакансій. Рекомендуємо 1']) ?>
+      <?= input_field('slots_side', 'Банерів збоку на головній', ['value' => $sideSlots, 'inputmode' => 'numeric', 'hint' => 'Від 1 до ' . Ads::MAX_SIDE_SLOTS . '. Колонка праворуч на комп’ютері, на телефоні вони нижче. Рекомендуємо 4']) ?>
+    </div>
+    <p class="small"><b>Приклад:</b> банер на головній на 7 днів — <?= money(Ads::bannerPrice('home', 7)) ?> грн, на 30 днів — <?= money(Ads::bannerPrice('home', 30)) ?> грн; збоку на 7 днів — <?= money(Ads::bannerPrice('side', 7)) ?> грн, на 30 днів — <?= money(Ads::bannerPrice('side', 30)) ?> грн; в обох місцях по центру на 30 днів — <?= money(Ads::bannerPrice('both', 30)) ?> грн.</p>
     <h3 style="margin-top:6px">Послуги для вакансій <span class="tag muted">скоро</span></h3>
     <div class="gridp">
       <?php foreach (['vacancy_bump', 'vacancy_highlight', 'vacancy_urgent'] as $key): ?><?= input_field($key, $L[$key], ['value' => $prices[$key], 'inputmode' => 'numeric']) ?><?php endforeach ?>

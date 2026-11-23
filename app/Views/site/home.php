@@ -1,4 +1,9 @@
-<?php $site = App\Core\App::setting('site.name', 'YEWORK'); ?>
+<?php $site = App\Core\App::setting('site.name', 'YEWORK');
+$side ??= [];
+// Бокові банери (0.5.19): на широкому екрані — колонка праворуч; на вужчому й на телефоні — блок нижче, під «Трьома напрямками».
+$sideBlock = static fn (string $cls, string $h) => '<aside class="' . $cls . '" aria-label="Реклама роботодавців"><div class="side-bnrs-h"><span>' . $h . '</span></div><div class="side-bnrs-list">'
+  . implode('', array_map(static fn ($b) => App\Core\View::partial('partials/promo', ['b' => $b, 'side' => true]), $side)) . '</div><a class="side-bnrs-more" href="' . url('/cabinet/ads') . '">Розмістити свій банер →</a></aside>'; ?>
+<div class="home<?= $side ? ' has-side' : '' ?>"><div class="home-main">
 <section class="hero">
   <h1>Робота поруч з домом. <b>Є робота!</b></h1>
   <p class="lead">Вакансії, підробіток і послуги в Миронівці, Богуславі та Кагарлику. Без посередників і зайвих кроків.</p>
@@ -27,6 +32,7 @@
   <a class="card dir" href="<?= url('/jobs', ['employment' => 'one_time']) ?>"><span class="ic"><?= icon('bolt', 22) ?></span><h3>Підробіток</h3><p>Разова робота на день чи тиждень: допомога на городі, переїзд, сезонні роботи.</p><span class="small muted">Окремий розділ з’явиться найближчим часом</span></a>
   <a class="card dir" href="<?= url('/services') ?>"><span class="ic"><?= icon('tool', 22) ?></span><h3>Послуги</h3><p>Майстри поруч: кондиціонери, відеонагляд, ремонт, сантехніка, електрика. Ціни, фото робіт і відгуки.</p><span class="small"><?= ($mc = App\Core\Services::liveCount()) ? '<b>' . $mc . '</b> ' . e(mb_substr(plural($mc, 'майстер', 'майстри', 'майстрів'), mb_strlen((string) $mc) + 1)) : 'Додайте себе першим →' ?></span></a>
 </section>
+<?php if ($side) echo $sideBlock('side-bnrs side-inline', 'Також шукають працівників') ?>
 
 <div class="sec-h"><h2>Категорії</h2><a href="<?= url('/jobs') ?>">Усі вакансії →</a></div>
 <section class="cats">
@@ -39,3 +45,4 @@
 <?php else: ?>
   <div class="card empty"><h3>Тут з’являться перші вакансії</h3><p class="muted">Ви роботодавець? Розмістіть вакансію безкоштовно, і її побачать люди з вашої громади.</p><a class="btn pri" href="<?= url('/cabinet/vacancies/new') ?>"><?= icon('plus') ?>Розмістити вакансію</a></div>
 <?php endif ?>
+</div><?php if ($side) echo $sideBlock('side-bnrs side-col', 'Також шукають') ?></div>

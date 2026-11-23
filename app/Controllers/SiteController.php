@@ -39,8 +39,9 @@ final class SiteController
         [$settlements, $categories] = self::reference();
         $latest = App::db()->all(self::LIST_SQL . " WHERE v.status = 'published' AND v.deleted_at IS NULL ORDER BY v.published_at DESC LIMIT 6");
         $promos = Ads::forPlacement('home', Ads::slots());
-        Ads::trackImpressions($req, $promos);
-        return new Response(view('site/home', ['stats' => Stats::public(), 'settlements' => $settlements, 'categories' => $categories, 'latest' => $latest, 'promos' => $promos]));
+        $side = Ads::forPlacement('side', Ads::sideSlots()); // менші банери в колонці праворуч (0.5.19)
+        Ads::trackImpressions($req, [...$promos, ...$side]);
+        return new Response(view('site/home', ['stats' => Stats::public(), 'settlements' => $settlements, 'categories' => $categories, 'latest' => $latest, 'promos' => $promos, 'side' => $side]));
     }
 
     public function jobs(Request $req): Response

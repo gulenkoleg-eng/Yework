@@ -28,10 +28,13 @@ $gone = !empty($b['vacancy_id']) && !in_array((int) $b['vacancy_id'], array_map(
           <div><b><?= e(Ads::PLACEMENTS[$b['placement']] ?? '') ?></b> · <?= e(date('d.m.Y', strtotime($b['starts_on']))) ?>–<?= e(date('d.m.Y', strtotime($b['ends_on']))) ?> (<?= plural((int) $b['days'], 'день', 'дні', 'днів') ?>)</div>
           <span class="hint"><?= $b['paid_at'] ? 'Банер оплачено, тому дати й місце показу вже не змінити.' : 'Банер уже показується, тому дати й місце показу не змінити. Щоб показати його в інші дні, замовте новий банер.' ?></span></div>
       <?php else: ?>
+        <div class="field"><span class="lbl">Коли місця вільні</span>
+          <?= App\Core\View::partial('partials/ad_places', ['occupancy' => $occupancy]) ?>
+          <span class="hint">Ваш банер тут не враховано, тож видно, куди його можна перенести.</span></div>
         <fieldset class="field<?= err_class('placement') ?>"><legend>Де показувати</legend>
           <div class="place-opts">
             <?php foreach (Ads::PLACEMENTS as $k => $l): ?>
-              <label class="place-opt"><input type="radio" name="placement" value="<?= $k ?>" <?= ($old['placement'] ?? $b['placement']) === $k ? 'checked' : '' ?>><span><b><?= e($l) ?></b><?php if ($paid): ?><small><?= money($prices['banner_' . $k . '_day']) ?> грн/день</small><?php endif ?></span></label>
+              <label class="place-opt"><input type="radio" name="placement" value="<?= $k ?>" <?= ($old['placement'] ?? $b['placement']) === $k ? 'checked' : '' ?>><span><b><?= e($l) ?></b><small><?= e(Ads::PLACEMENT_HINTS[$k]) ?></small><?php if ($paid): ?><small><?= money($prices['banner_' . $k . '_day']) ?> грн/день</small><?php endif ?><em class="place-free" data-for="<?= $k ?>"></em></span></label>
             <?php endforeach ?>
           </div><?= field_error('placement') ?>
         </fieldset>
@@ -39,6 +42,7 @@ $gone = !empty($b['vacancy_id']) && !in_array((int) $b['vacancy_id'], array_map(
           <?= input_field('starts_on', 'Початок показу', ['type' => 'date', 'required' => true]) ?>
           <?= input_field('days', 'Скільки днів', ['type' => 'select', 'options' => $days]) ?>
         </div>
+        <?= App\Core\View::partial('partials/ad_free', ['occupancy' => $occupancy]) ?>
       <?php endif ?>
       <div class="row"><button class="btn pri">Зберегти зміни</button><a class="btn ghost" href="<?= url('/cabinet/ads/' . $b['id']) ?>">Скасувати</a></div>
     </form>

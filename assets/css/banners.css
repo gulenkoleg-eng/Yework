@@ -89,6 +89,71 @@ a.bnr.t-photo:hover .bnr-photo{transform:scale(1.06)}
 .bnrs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:14px}
 .bnrs.one{grid-template-columns:minmax(0,600px)}
 
+/* ---------- Бокові банери на головній (0.5.19) ----------
+   ≥1280 px: колонка праворуч від основного вмісту (сторінка розширюється вправо, ліворуч лишається вирівняною з меню).
+   Вужче й на телефоні: блок «Також шукають» під «Трьома напрямками»; на телефоні — стрічка, яку гортають пальцем. */
+.side-bnrs-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c-muted)}
+.side-bnrs-h span{white-space:nowrap}
+.side-bnrs-more{display:inline-block;margin-top:10px;font-size:13px;font-weight:600}
+.side-bnrs-list{display:flex;flex-direction:column;gap:12px}
+.side-col{display:none}
+.side-inline{margin-top:26px}
+.side-inline .side-bnrs-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:12px}
+@media (max-width:699.98px){
+  .side-inline .side-bnrs-list{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:min(78%,280px);overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;padding:4px 2px 8px;margin:-4px -2px 0;scrollbar-width:thin}
+  .side-inline .bnr{scroll-snap-align:start}
+}
+@media (min-width:1280px){
+  .wrap:has(>.home.has-side){width:auto;max-width:calc(var(--wrap) + 250px);margin-left:max(16px,(100% - var(--wrap))/2);margin-right:16px}
+  .home.has-side{display:grid;grid-template-columns:minmax(0,1fr) 230px;column-gap:20px;align-items:start}
+  .home-main{min-width:0}
+  .side-col{display:block}
+  .side-inline{display:none}
+}
+
+/* Менший боковий банер */
+.bnr.side{gap:6px;padding:14px 16px;border-radius:var(--r-card)}
+.bnr.side .bnr-top{flex-wrap:wrap;gap:8px}
+.bnr.side .bnr-top .elogo{width:34px;height:34px;border-radius:8px}
+.bnr.side .bnr-emp{min-width:110px}
+.bnr.side .bnr-emp b{font-size:13.5px}
+.bnr.side .bnr-emp small{font-size:10px}
+.bnr.side .bnr-badge{font-size:11px;padding:3px 8px}
+.bnr.side h3{font-size:17px;margin-top:0}
+.bnr.side p{font-size:13.5px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.bnr.side .bnr-perks{display:none}
+.bnr.side .bnr-foot{padding-top:4px}
+.bnr.side .bnr-foot{flex-wrap:nowrap}
+.bnr.side .bnr-cta{min-height:36px;padding:0 12px;gap:6px;font-size:13px;max-width:100%;white-space:nowrap}
+.bnr.side .bnr-cta>span{overflow:hidden;text-overflow:ellipsis}
+.bnr.side .bnr-cta svg{flex:none}
+.bnr.side .bnr-img{margin:-14px -16px 2px;width:calc(100% + 32px);aspect-ratio:2/1}
+.bnr.side.t-classic{border-left-width:5px}
+.bnr.side.t-classic .bnr-img{margin-left:-16px}
+.bnr.side.t-urgent{padding-top:20px}
+.bnr.side.t-urgent .bnr-img{margin-top:-13px}
+.bnr.side.t-urgent .bnr-deco::after{font-size:130px;bottom:-26px}
+.bnr.side.t-photo{min-height:220px}
+.ny .bnr.side:not(.t-photo)::after{font-size:14px;right:10px;bottom:6px}
+
+/* Зайнятість місць у формі замовлення */
+.ad-places{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:10px}
+.ad-place{display:flex;flex-direction:column;gap:8px;align-items:flex-start;padding:12px;border:1.5px solid var(--c-border);border-radius:var(--r-btn);background:var(--c-card)}
+.ad-place-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;width:100%}
+.ad-place .tag{white-space:normal}
+.ad-place-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;width:100%;font-size:13.5px}
+.ad-place-list li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 8px}
+.ad-place-list span{font-weight:700;font-variant-numeric:tabular-nums}
+.ad-place-list small{color:var(--c-muted);font-size:12.5px}
+.place-opt em.place-free{font-style:normal;font-size:12.5px;font-weight:700;margin-top:2px}
+.place-opt em.place-free:empty{display:none}
+.place-free.ok{color:var(--c-success)}
+.place-free.warn{color:color-mix(in srgb,var(--c-warning) 85%,var(--c-text))}
+.ad-free{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 14px;border-radius:var(--r-btn);font-size:14px;font-weight:600}
+.ad-free.ok{background:color-mix(in srgb,var(--c-success) 10%,var(--c-card));color:var(--c-success)}
+.ad-free.warn{background:color-mix(in srgb,var(--c-warning) 12%,var(--c-card));color:color-mix(in srgb,var(--c-warning) 80%,var(--c-text))}
+.ad-free[hidden]{display:none}
+
 /* Новорічна тема: маленька сніжинка в куті банера */
 .ny .bnr:not(.t-photo)::after{content:"❄";position:absolute;right:12px;bottom:8px;font-size:18px;opacity:.35;color:var(--bn-head);z-index:1;pointer-events:none}
 
