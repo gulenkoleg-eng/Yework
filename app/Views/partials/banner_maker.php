@@ -1,6 +1,9 @@
 <?php /* Конструктор банера: шаблон, текст і живий перегляд (кабінет роботодавця й адмінка).
-  $templates — доступні шаблони; $tplNow — обраний; $old/$oldPerks — введене раніше; $preview — дані для перегляду; $ctaDefault — текст кнопки за замовчуванням. */
-use App\Core\Ads; ?>
+  $templates — доступні шаблони; $tplNow — обраний; $old/$oldPerks — введене раніше; $preview — дані для перегляду; $ctaDefault — текст кнопки за замовчуванням.
+  $targets — опубліковані вакансії [id, employer_id, title], на які може вести кнопка (0.5.15); $targetNow — обране ('all' або id); $curImage — уже завантажена картинка (редагування). */
+use App\Core\Ads;
+$targets ??= [];
+$targetNow = (string) ($old['target'] ?? ($targetNow ?? '')); ?>
 <div class="bnr-maker">
   <div class="stack">
     <fieldset class="field<?= err_class('template') ?>"><legend class="lbl">Шаблон</legend>
@@ -18,11 +21,19 @@ use App\Core\Ads; ?>
       </div><span class="hint">З’являться на банері кольоровими чипами. Можна залишити порожніми.</span></div>
     <div class="grid2">
       <div class="field"><label for="f_badge">Позначка</label><input id="f_badge" class="input" name="badge" maxlength="24" list="adBadges" placeholder="Без позначки" value="<?= e($old['badge'] ?? '') ?>"><span class="hint">Наприклад, «Терміново» чи «Новий набір».</span></div>
-      <div class="field"><label for="f_cta">Текст кнопки</label><input id="f_cta" class="input" name="cta" maxlength="32" list="adCtas" placeholder="<?= e($ctaDefault) ?>" value="<?= e($old['cta'] ?? '') ?>"><span class="hint">Якщо залишити порожнім, кнопка покаже кількість вакансій.</span></div>
+      <div class="field"><label for="f_cta">Текст кнопки</label><input id="f_cta" class="input" name="cta" maxlength="32" list="adCtas" data-all="<?= e($ctaDefault) ?>" placeholder="<?= e(ctype_digit($targetNow) ? 'Дивитися вакансію' : $ctaDefault) ?>" value="<?= e($old['cta'] ?? '') ?>"><span class="hint">Якщо залишити порожнім, кнопка покаже кількість вакансій.</span></div>
     </div>
+    <div class="field<?= err_class('target') ?>"><label for="f_target">Куди веде кнопка банера</label>
+      <select id="f_target" name="target" class="input" required>
+        <option value=""<?= $targetNow === '' ? ' selected' : '' ?> disabled>Оберіть вакансію…</option>
+        <?php foreach ($targets as $v): ?><option value="<?= (int) $v['id'] ?>" data-emp="<?= (int) $v['employer_id'] ?>"<?= $targetNow === (string) $v['id'] ? ' selected' : '' ?>><?= e($v['title']) ?></option><?php endforeach ?>
+        <option value="all"<?= $targetNow === 'all' ? ' selected' : '' ?>>Усі вакансії компанії</option>
+      </select>
+      <span class="hint" id="f_target_hint">Людина, яка натисне на банер, одразу потрапить на цю вакансію. Якщо вакансію згодом знімуть з публікації, банер поведе на всі вакансії компанії.</span><?= field_error('target') ?></div>
     <datalist id="adBadges"><?php foreach (Ads::BADGES as $x): ?><option value="<?= e($x) ?>"><?php endforeach ?></datalist>
     <datalist id="adCtas"><?php foreach (Ads::CTAS as $x): ?><option value="<?= e($x) ?>"><?php endforeach ?></datalist>
-    <div class="field<?= err_class('image') ?>"><label for="f_image">Картинка <span class="muted" id="adImgReq">(необов’язково)</span></label><input id="f_image" type="file" name="image" accept="image/png,image/jpeg,image/webp"><span class="hint">Фото підприємства чи команди, до 3 МБ. Для шаблону «Фото» картинка обов’язкова, вона стане фоном усього банера.</span><?= field_error('image') ?></div>
+    <div class="field<?= err_class('image') ?>"><label for="f_image">Картинка <span class="muted" id="adImgReq">(необов’язково)</span></label><input id="f_image" type="file" name="image" accept="image/png,image/jpeg,image/webp"><span class="hint">Фото підприємства чи команди, до 3 МБ. Для шаблону «Фото» картинка обов’язкова, вона стане фоном усього банера.<?= !empty($curImage) ? ' Нова картинка замінить поточну.' : '' ?></span><?= field_error('image') ?>
+      <?php if (!empty($curImage)): ?><label class="row small" style="gap:8px;margin-top:6px"><input type="checkbox" name="drop_image" value="1"> Прибрати поточну картинку</label><?php endif ?></div>
   </div>
   <div class="bnr-live">
     <div class="bnr-live-h"><span class="dot"></span>Так банер виглядатиме на сайті</div>

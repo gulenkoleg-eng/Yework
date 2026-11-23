@@ -124,8 +124,97 @@ final class Ads
     {
         $c = trim((string) ($b['cta'] ?? ''));
         if ($c !== '' && $c !== 'Дивитися вакансії') return $c;
+        if (!empty($b['vacancy_id'])) return 'Дивитися вакансію';
         $n = (int) ($b['vacancies'] ?? 0);
         return $n > 0 ? 'Дивитися ' . plural($n, 'вакансію', 'вакансії', 'вакансій') : 'Дивитися вакансії';
+    }
+
+    /* ---------- куди веде кнопка (0.5.15) ---------- */
+
+    /** Опубліковані вакансії роботодавців, на які може вести банер: [id, employer_id, title]. */
+    public static function targetVacancies(array $employerIds): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $employerIds))));
+        if (!$ids) return [];
+        return App::db()->all("SELECT id, employer_id, title FROM {p}vacancies WHERE status = 'published' AND deleted_at IS NULL AND employer_id IN ("
+            . implode(',', $ids) . ') ORDER BY published_at DESC, id DESC LIMIT 1000');
+    }
+
+    /**
+     * Вибір «Куди веде кнопка» з форми: 'all' — усі вакансії роботодавця, число — одна його опублікована вакансія.
+     * Повертає [vacancy_id|null, помилка|null]. Порожній вибір — помилка: роботодавець має сам вказати, куди веде банер.
+     */
+    public static function targetInput(Request $req, int $employerId): array
+    {
+        $t = $req->str('target', 20);
+        if ($t === 'all') return [null, null];
+        if ($t === '' || !ctype_digit($t)) return [null, 'Оберіть вакансію, на яку веде кнопка банера'];
+        $ok = $employerId > 0 && App::db()->value("SELECT id FROM {p}vacancies WHERE id = ? AND employer_id = ? AND status = 'published' AND deleted_at IS NULL", [(int) $t, $employerId]);
+        return $ok ? [(int) $t, null] : [null, 'Ця вакансія не опублікована або належить іншому роботодавцю. Оберіть іншу'];
+    }
+
+    /** Вакансія банера, якщо вона досі опублікована і належить тому ж роботодавцю. */
+    public static function targetVacancy(array $b): ?array
+    {
+        if (empty($b['vacancy_id'])) return null;
+        try {
+            return App::db()->one("SELECT id, title FROM {p}vacancies WHERE id = ? AND employer_id = ? AND status = 'published' AND deleted_at IS NULL", [(int) $b['vacancy_id'], (int) $b['employer_id']]);
+        } catch (\PDOException) {
+            return null;
+        }
+    }
+
+    /** Адреса, куди веде банер: його вакансія, а якщо її зняли чи вакансію не обрано — усі вакансії роботодавця. */
+    public static function targetUrl(array $b): string
+    {
+        $v = self::targetVacancy($b);
+        return $v ? url('/jobs/' . $v['id']) : url('/jobs', ['employer' => (int) $b['employer_id']]);
+    }
+
+    /* ---------- редагування й видалення (0.5.15) ---------- */
+
+    /** Роботодавець може редагувати банер, поки той не завершився і не скасований. */
+    public static function employerCanEdit(array $b): bool
+    {
+        return in_array($b['status'], ['pending', 'approved', 'rejected'], true) && $b['ends_on'] >= self::today();
+    }
+
+    /** Дати й місце показу вже не змінити: банер оплачено або він уже показується (адміністратор може завжди). */
+    public static function datesLocked(array $b): bool
+    {
+        return !empty($b['paid_at']) || ($b['status'] === 'approved' && $b['starts_on'] <= self::today());
+    }
+
+    /** Роботодавець не видаляє оплачений банер: він потрібен для обліку оплат. */
+    public static function employerCanDelete(array $b): bool
+    {
+        return !((int) $b['price'] > 0 && !empty($b['paid_at']));
+    }
+
+    /** Значення форми редагування з наявного банера. */
+    public static function formValues(array $b): array
+    {
+        return ['title' => $b['title'], 'body' => $b['body'], 'badge' => (string) $b['badge'], 'cta' => (string) $b['cta'], 'perks' => self::perks($b),
+            'template' => $b['template'] ?? 'classic', 'placement' => $b['placement'], 'starts_on' => $b['starts_on'], 'days' => (int) $b['days'],
+            'target' => empty($b['vacancy_id']) ? 'all' : (string) (int) $b['vacancy_id']];
+    }
+
+    /** Нова картинка з форми редагування (або прибрати стару). Повертає ім’я файлу; стару картинку видаляє, якщо її замінили. */
+    public static function editImage(Request $req, array $b): ?string
+    {
+        $new = Media::store('banner', 'image', 'e' . $b['employer_id']);
+        if ($new) { Media::delete('banner', $b['image']); return $new; }
+        if ($req->input('drop_image')) { Media::delete('banner', $b['image']); return null; }
+        return $b['image'] ?: null;
+    }
+
+    /** Видаляє банер разом зі статистикою і картинкою. */
+    public static function delete(array $b): void
+    {
+        $db = App::db();
+        $db->run('DELETE FROM {p}banner_stats WHERE banner_id = ?', [$b['id']]);
+        $db->run('DELETE FROM {p}banners WHERE id = ?', [$b['id']]);
+        Media::delete('banner', $b['image'] ?? null);
     }
 
     /** Поля банера з форми (кабінет і адмінка). $allowed — шаблони, які можна обрати. */

@@ -14,7 +14,7 @@ $preview = ['title' => ($old['title'] ?? '') ?: 'Шукаємо водія ка�
 $days = [1 => '1 день', 3 => '3 дні', 7 => '7 днів', 14 => '14 днів', 30 => '30 днів', 60 => '60 днів', 90 => '90 днів'];
 ?>
 <div class="adm-h"><h1>Новий банер</h1><span class="spacer"></span><a class="btn sm" href="<?= url('/admin/banners') ?>">← Усі банери</a></div>
-<p class="muted small">Банер від адміністрації одразу схвалений і безкоштовний. Він веде на вакансії обраного роботодавця, а поки діє, вакансії цього роботодавця стоять першими в пошуку. Ліміт місць для адміністратора не діє.</p>
+<p class="muted small">Банер від адміністрації одразу схвалений і безкоштовний. Кнопка веде на обрану вакансію роботодавця (або на всі його вакансії), а поки діє, вакансії цього роботодавця стоять першими в пошуку. Ліміт місць для адміністратора не діє.</p>
 <?= form_alert() ?>
 <?php if (!$employers): ?>
   <div class="card empty"><h3>Ще немає жодного роботодавця</h3><p class="muted">Банер веде на вакансії роботодавця, тож спершу має з’явитися хоча б один профіль роботодавця.</p></div>
@@ -26,8 +26,8 @@ $days = [1 => '1 день', 3 => '3 дні', 7 => '7 днів', 14 => '14 дні
         <option value="<?= (int) $em['id'] ?>" data-name="<?= e($en) ?>" data-ini="<?= e(initials($em['name'])) ?>" data-logo="<?= e($em['logo'] ? App\Core\Media::url('logo', $em['logo']) : '') ?>"
           data-cta="<?= e(Ads::ctaOf(['vacancies' => (int) $em['vacancies']])) ?>"<?= $cur && (int) $cur['id'] === (int) $em['id'] ? ' selected' : '' ?>><?= e($en) ?> · <?= plural((int) $em['vacancies'], 'вакансія', 'вакансії', 'вакансій') ?></option>
       <?php endforeach ?>
-    </select><span class="hint">Натискання на банер відкриє вакансії цього роботодавця.</span><?= field_error('employer_id') ?></div>
-  <?= App\Core\View::partial('partials/banner_maker', ['templates' => $templates, 'tplNow' => $tplNow, 'old' => $old, 'oldPerks' => $oldPerks, 'preview' => $preview, 'ctaDefault' => Ads::ctaOf(['vacancies' => (int) ($cur['vacancies'] ?? 0)])]) ?>
+    </select><span class="hint">Нижче оберіть, на яку з його вакансій веде кнопка банера.</span><?= field_error('employer_id') ?></div>
+  <?= App\Core\View::partial('partials/banner_maker', ['templates' => $templates, 'tplNow' => $tplNow, 'old' => $old, 'oldPerks' => $oldPerks, 'preview' => $preview, 'ctaDefault' => Ads::ctaOf(['vacancies' => (int) ($cur['vacancies'] ?? 0)]), 'targets' => $targets, 'targetNow' => '']) ?>
   <fieldset class="field<?= err_class('placement') ?>"><legend>Де показувати</legend>
     <div class="place-opts">
       <?php foreach (Ads::PLACEMENTS as $k => $l): ?>

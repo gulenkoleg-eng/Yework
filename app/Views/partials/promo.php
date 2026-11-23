@@ -12,7 +12,7 @@ $sample = !empty($sample); // зразок шаблону в адмінці — 
 $tag = $live || $sample ? 'div' : 'a';
 $hide = fn (bool $empty) => $empty ? ' hidden' : '';
 ?>
-<<?= $tag ?> class="bnr t-<?= e($t) ?><?= !empty($wide) ? ' wide' : '' ?>"<?= $live ? ' id="bnrLive" aria-label="Попередній перегляд банера"' : ($sample ? '' : ' href="' . url('/go/' . $b['id']) . '" rel="nofollow"') ?>>
+<<?= $tag ?> class="bnr t-<?= e($t) ?><?= !empty($wide) ? ' wide' : '' ?>"<?= $live ? ' id="bnrLive" aria-label="Попередній перегляд банера"' : ($sample ? '' : ' href="' . e($b['href'] ?? url('/go/' . $b['id'])) . '" rel="nofollow"') ?>>
   <?php if (($img && $t === 'photo') || $live): ?><img class="bnr-photo" src="<?= e($img) ?>" alt="" loading="lazy" decoding="async"<?= $hide(!$img) ?>><?php endif ?>
   <span class="bnr-deco" aria-hidden="true"></span>
   <?php if (($img && $t !== 'photo') || $live): ?><img class="bnr-img" src="<?= e($img) ?>" alt="" loading="lazy" decoding="async"<?= $hide(!$img || $t === 'photo') ?>><?php endif ?>

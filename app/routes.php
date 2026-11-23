@@ -95,6 +95,9 @@ $router->get('/cabinet/ads', [AdsController::class, 'index'], []);
 $router->post('/cabinet/ads', [AdsController::class, 'order'], []);
 $router->get('/cabinet/ads/{id}', [AdsController::class, 'view'], []);
 $router->post('/cabinet/ads/{id}/cancel', [AdsController::class, 'cancel'], []);
+$router->get('/cabinet/ads/{id}/edit', [AdsController::class, 'edit'], []);
+$router->post('/cabinet/ads/{id}/edit', [AdsController::class, 'update'], []);
+$router->post('/cabinet/ads/{id}/delete', [AdsController::class, 'delete'], []);
 $router->get('/cabinet/ads/{id}/invoice', [AdsController::class, 'invoice'], []);
 
 // Адмін-панель (права перевіряються і тут, і в контролері)
@@ -117,6 +120,9 @@ $router->get('/admin/banners/new', [AdminController::class, 'bannerNew'], ['ads.
 $router->post('/admin/banners/new', [AdminController::class, 'bannerCreate'], ['ads.banner:moderate']);
 $router->get('/admin/banners/templates', [AdminController::class, 'bannerTemplates'], ['ads.banner:moderate']);
 $router->post('/admin/banners/templates', [AdminController::class, 'bannerTemplatesSave'], ['ads.banner:moderate']);
+$router->get('/admin/banners/{id}/edit', [AdminController::class, 'bannerEdit'], ['ads.banner:moderate']);
+$router->post('/admin/banners/{id}/edit', [AdminController::class, 'bannerUpdate'], ['ads.banner:moderate']);
+$router->post('/admin/banners/{id}/delete', [AdminController::class, 'bannerDelete'], ['ads.banner:moderate']);
 $router->post('/admin/banners/{id}', [AdminController::class, 'bannerModerate'], ['ads.banner:moderate']);
 $router->get('/admin/billing', [AdminController::class, 'billing'], ['billing.plan:view']);
 $router->post('/admin/billing', [AdminController::class, 'billingSave'], ['billing.plan:view']);
