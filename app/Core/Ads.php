@@ -128,6 +128,40 @@ final class Ads
         return $n > 0 ? 'Дивитися ' . plural($n, 'вакансію', 'вакансії', 'вакансій') : 'Дивитися вакансії';
     }
 
+    /** Поля банера з форми (кабінет і адмінка). $allowed — шаблони, які можна обрати. */
+    public static function bannerInput(Request $req, array $allowed): array
+    {
+        $d = [
+            'title' => $req->str('title', 80), 'body' => $req->str('body', 300),
+            'placement' => array_key_exists($req->str('placement', 8), self::PLACEMENTS) ? $req->str('placement', 8) : '',
+            'starts_on' => $req->str('starts_on', 10), 'days' => (int) $req->input('days', 0),
+            'template' => $req->str('template', 12), 'badge' => $req->str('badge', 24) ?: null, 'cta' => $req->str('cta', 32) ?: null,
+        ];
+        if (!in_array($d['template'], $allowed, true)) $d['template'] = in_array(self::templateSettings()['default'], $allowed, true) ? self::templateSettings()['default'] : $allowed[0];
+        $perks = [];
+        foreach ((array) ($req->post['perks'] ?? []) as $pk) {
+            $pk = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $pk) ?? '', 0, 24));
+            if ($pk !== '' && count($perks) < self::MAX_PERKS) $perks[] = $pk;
+        }
+        $d['perks'] = $perks ? json_encode($perks, JSON_UNESCAPED_UNICODE) : null;
+        return $d;
+    }
+
+    /** Перевірка полів банера. Адміністратор може ставити банер на будь-яку дату в межах 90 днів. */
+    public static function bannerErrors(array $d, bool $admin = false): array
+    {
+        $err = [];
+        $today = self::today();
+        if (mb_strlen($d['title']) < 3) $err['title'] = 'Напишіть заголовок, наприклад «Шукаємо водія категорії C»';
+        if (mb_strlen($d['body']) < 10) $err['body'] = 'Коротко опишіть, кого шукаєте';
+        if ($d['placement'] === '') $err['placement'] = 'Оберіть місце показу';
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $d['starts_on']) || !strtotime($d['starts_on'])) $err['starts_on'] = 'Оберіть дату початку';
+        elseif ($d['starts_on'] < $today) $err['starts_on'] = 'Дата початку не може бути в минулому';
+        elseif ($d['starts_on'] > date('Y-m-d', strtotime($admin ? '+90 days' : '+60 days'))) $err['starts_on'] = 'Замовити можна не раніше ніж за ' . ($admin ? 90 : 60) . ' днів';
+        if ($d['days'] < 1 || $d['days'] > self::MAX_DAYS) $err['days'] = 'Від 1 до ' . self::MAX_DAYS . ' днів';
+        return $err;
+    }
+
     public static function today(): string
     {
         return date('Y-m-d'); // часовий пояс сайту — Київ

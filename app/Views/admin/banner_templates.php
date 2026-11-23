@@ -13,8 +13,9 @@ $demo = [
 ?>
 <div class="adm-h"><h1>Шаблони банерів</h1><span class="spacer"></span>
   <div class="seg"><?php foreach ($tabs as $k => $l): ?><a href="<?= url('/admin/banners', ['status' => $k === 'pending' ? null : $k]) ?>"><?= $l ?></a><?php endforeach ?><a class="on" href="<?= url('/admin/banners/templates') ?>">Шаблони</a></div>
+  <a class="btn pri sm" href="<?= url('/admin/banners/new') ?>">+ Створити банер</a>
 </div>
-<p class="muted small">Роботодавець у кабінеті обирає один із ввімкнених шаблонів і пише лише текст. Вимкнений шаблон зникне з вибору, але банери, які вже замовили в ньому, покажуться до кінця свого терміну. Шаблон «за замовчуванням» буде обраний у формі одразу.</p>
+<p class="muted small">Тут усі шаблони, які є на сайті, у живому вигляді. Роботодавець у кабінеті обирає один із ввімкнених шаблонів і пише лише текст. Вимкнений шаблон зникне з вибору, але банери, які вже замовили в ньому, покажуться до кінця свого терміну. Шаблон «за замовчуванням» буде обраний у формі одразу.</p>
 <?= form_alert() ?>
 <form method="post" action="<?= url('/admin/banners/templates') ?>" class="stack"><?= csrf_field() ?>
   <div class="tpl-adm">
@@ -29,6 +30,7 @@ $demo = [
           <label class="check"><input type="checkbox" name="on[]" value="<?= e($k) ?>" <?= $isOn ? 'checked' : '' ?>> Доступний роботодавцям</label>
           <label class="check"><input type="radio" name="default" value="<?= e($k) ?>" <?= $set['default'] === $k ? 'checked' : '' ?>> За замовчуванням</label>
         </div>
+        <a class="btn sm" href="<?= url('/admin/banners/new', ['template' => $k]) ?>">Створити банер у цьому шаблоні</a>
       </div>
     <?php endforeach ?>
   </div>

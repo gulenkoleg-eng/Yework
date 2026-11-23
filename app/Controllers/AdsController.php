@@ -47,31 +47,9 @@ final class AdsController
         if (!$employer) return Response::redirect(url('/cabinet/employer'));
         if ($employer['status'] !== 'active') throw new HttpException(403, 'Профіль роботодавця заблоковано.');
 
-        $d = [
-            'title' => $req->str('title', 80), 'body' => $req->str('body', 300),
-            'placement' => array_key_exists($req->str('placement', 8), Ads::PLACEMENTS) ? $req->str('placement', 8) : '',
-            'starts_on' => $req->str('starts_on', 10), 'days' => (int) $req->input('days', 0),
-        ];
-        $tpls = Ads::availableTemplates();
-        $d['template'] = $req->str('template', 12);
-        if (!isset($tpls[$d['template']])) $d['template'] = Ads::templateSettings()['default'];
-        $d['badge'] = $req->str('badge', 24) ?: null;
-        $d['cta'] = $req->str('cta', 32) ?: null;
-        $perks = [];
-        foreach ((array) ($req->post['perks'] ?? []) as $pk) {
-            $pk = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $pk) ?? '', 0, 24));
-            if ($pk !== '' && count($perks) < Ads::MAX_PERKS) $perks[] = $pk;
-        }
-        $d['perks'] = $perks ? json_encode($perks, JSON_UNESCAPED_UNICODE) : null;
-        $err = [];
+        $d = Ads::bannerInput($req, array_keys(Ads::availableTemplates()));
         $today = Ads::today();
-        if (mb_strlen($d['title']) < 3) $err['title'] = 'Напишіть заголовок, наприклад «Шукаємо водія категорії C»';
-        if (mb_strlen($d['body']) < 10) $err['body'] = 'Коротко опишіть, кого шукаєте';
-        if ($d['placement'] === '') $err['placement'] = 'Оберіть місце показу';
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $d['starts_on']) || !strtotime($d['starts_on'])) $err['starts_on'] = 'Оберіть дату початку';
-        elseif ($d['starts_on'] < $today) $err['starts_on'] = 'Дата початку не може бути в минулому';
-        elseif ($d['starts_on'] > date('Y-m-d', strtotime('+60 days'))) $err['starts_on'] = 'Замовити можна не раніше ніж за 60 днів';
-        if ($d['days'] < 1 || $d['days'] > Ads::MAX_DAYS) $err['days'] = 'Від 1 до ' . Ads::MAX_DAYS . ' днів';
+        $err = Ads::bannerErrors($d);
         if ($err) throw new ValidationException($err);
 
         $d['ends_on'] = date('Y-m-d', strtotime($d['starts_on'] . ' +' . ($d['days'] - 1) . ' days'));

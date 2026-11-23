@@ -112,6 +112,8 @@ $router->post('/admin/reviews/{id}', [ServicesAdminController::class, 'review'],
 $router->get('/admin/service-categories', [ServicesAdminController::class, 'categories'], ['services.listing:update']);
 $router->post('/admin/service-categories', [ServicesAdminController::class, 'categoriesSave'], ['services.listing:update']);
 $router->get('/admin/banners', [AdminController::class, 'banners'], ['ads.banner:moderate']);
+$router->get('/admin/banners/new', [AdminController::class, 'bannerNew'], ['ads.banner:moderate']);
+$router->post('/admin/banners/new', [AdminController::class, 'bannerCreate'], ['ads.banner:moderate']);
 $router->get('/admin/banners/templates', [AdminController::class, 'bannerTemplates'], ['ads.banner:moderate']);
 $router->post('/admin/banners/templates', [AdminController::class, 'bannerTemplatesSave'], ['ads.banner:moderate']);
 $router->post('/admin/banners/{id}', [AdminController::class, 'bannerModerate'], ['ads.banner:moderate']);
