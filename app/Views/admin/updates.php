@@ -35,6 +35,7 @@ $fmtDate = static fn (?string $d) => $d ? (strlen($d) === 10 ? date('d.m.Y', str
   <div class="card pad stack">
     <h3>Не вдалося перевірити оновлення</h3>
     <p><?= e($info['error']) ?></p>
+    <?php if ($canConfigure && !$cfg['tokenEnc']): ?><p><a class="btn sm pri" href="#github-token">Додати токен GitHub</a> <span class="small muted">Із токеном перевірки не обмежуються, налаштування займе 5 хвилин.</span></p><?php endif ?>
     <p class="small muted">Сайт працює як і раніше. Перевірка лише читає репозиторій на GitHub.</p>
   </div>
 <?php elseif ($hasNew && $target): ?>
@@ -216,20 +217,20 @@ function ywBk(btn) {
 <?php endif ?>
 
 <?php if ($canConfigure): ?>
-<details class="card pad upd-cfg" <?= $info['error'] && !$cfg['tokenEnc'] ? 'open' : '' ?>><summary><h3 style="display:inline">Підключення до GitHub</h3></summary>
+<details class="card pad upd-cfg" id="github-token" <?= $info['error'] && !$cfg['tokenEnc'] ? 'open' : '' ?>><summary><h3 style="display:inline">Підключення до GitHub</h3> <span class="small muted"><?= $cfg['tokenEnc'] ? 'токен додано' : 'без токена' ?></span></summary>
   <form class="stack" method="post" action="<?= url('/admin/updates/settings') ?>" style="margin-top:14px"><?= csrf_field() ?>
     <div class="grid2"><?= input_field('repo', 'Репозиторій', ['value' => $cfg['repo'], 'hint' => 'власник/назва']) ?><?= input_field('branch', 'Гілка', ['value' => $cfg['branch'], 'hint' => 'Використовується, якщо в репозиторії немає релізів']) ?></div>
     <?= input_field('token', 'Токен GitHub (лише для читання)', ['type' => 'password', 'autocomplete' => 'off', 'placeholder' => 'github_pat_…',
-      'hint' => $cfg['tokenEnc'] ? 'Збережено: ' . $cfg['tokenHint'] . '. Залиште порожнім, щоб не змінювати.' : 'Потрібен лише для закритого (приватного) репозиторію. Для відкритого можна не вказувати. Зберігається зашифрованим.']) ?>
+      'hint' => $cfg['tokenEnc'] ? 'Збережено: ' . $cfg['tokenHint'] . '. Залиште порожнім, щоб не змінювати.' : 'Обов’язковий для закритого (приватного) репозиторію. Для відкритого необов’язковий, але без нього GitHub дозволяє лише 60 перевірок на годину на весь сервер хостингу. Зберігається зашифрованим.']) ?>
     <?php if ($cfg['tokenEnc']): ?><label class="check"><input type="checkbox" name="clear_token" value="1"> Видалити збережений токен</label><?php endif ?>
     <div><button class="btn pri">Зберегти і перевірити</button></div>
   </form>
   <div class="upd-md small" style="margin-top:16px">
-    <h4>Як отримати токен, якщо репозиторій закритий (5 хвилин)</h4>
+    <h4>Як отримати токен (5 хвилин)</h4>
     <ol>
       <li>Увійдіть на <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com → Settings → Developer settings → Fine-grained tokens → Generate new token</a>.</li>
       <li><b>Token name</b>: <code>yework-site</code>. <b>Expiration</b>: 1 рік (або скільки хочете; коли закінчиться, тут з’явиться підказка).</li>
-      <li><b>Repository access</b>: «Only select repositories» і виберіть <code><?= e($cfg['repo']) ?></code>.</li>
+      <li><b>Repository access</b>: «Only select repositories» і виберіть <code><?= e($cfg['repo']) ?></code>. Якщо репозиторій відкритий і належить не вам, достатньо «Public repositories».</li>
       <li><b>Permissions → Repository permissions → Contents</b>: «Read-only». Більше нічого не вмикайте.</li>
       <li>Натисніть <b>Generate token</b>, скопіюйте його і вставте в поле вище. Більше ніде його не зберігайте й нікому не надсилайте.</li>
     </ol>

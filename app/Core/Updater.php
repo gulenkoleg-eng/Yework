@@ -32,6 +32,8 @@ final class Updater
     private const RETRY_WAITS = [0, 3, 8, 15];
     /** Код винятку: файли вже почали замінюватися, і сайт повернуто з резервної копії. */
     public const ERR_RESTORED = 2;
+    /** Код винятку: GitHub обмежив кількість запитів (ліміт API). */
+    public const ERR_RATE_LIMIT = 429;
     /** Файли й папки сайту, які входять у резервну копію файлів. */
     private const SKIP_TOP = ['config', 'storage', '.git', '.github', 'node_modules', 'dist'];
 
@@ -158,7 +160,7 @@ final class Updater
         $r = self::http(self::api() . $path);
         if ($r['status'] === 200) return json_decode($r['body'], true);
         if ($r['status'] === 404) return null;
-        throw new RuntimeException(self::explainStatus($r['status'], $r['body']));
+        throw new RuntimeException(self::explainStatus($r['status'], $r['body']), self::isRateLimit($r['status'], $r['body']) ? self::ERR_RATE_LIMIT : 0);
     }
 
     private static function apiRaw(string $path): ?string
@@ -166,14 +168,21 @@ final class Updater
         $r = self::http(self::api() . $path, 'application/vnd.github.raw+json');
         if ($r['status'] === 200) return $r['body'];
         if ($r['status'] === 404) return null;
-        throw new RuntimeException(self::explainStatus($r['status'], $r['body']));
+        throw new RuntimeException(self::explainStatus($r['status'], $r['body']), self::isRateLimit($r['status'], $r['body']) ? self::ERR_RATE_LIMIT : 0);
+    }
+
+    private static function isRateLimit(int $status, string $body): bool
+    {
+        return $status === 429 || ($status === 403 && stripos($body, 'rate limit') !== false);
     }
 
     private static function explainStatus(int $status, string $body): string
     {
         return match (true) {
             $status === 401 => 'GitHub не прийняв токен: він недійсний або закінчився термін дії. Створіть новий токен і збережіть його в блоці «Підключення до GitHub».',
-            $status === 403 && str_contains($body, 'rate limit') => 'GitHub тимчасово обмежив кількість перевірок. Спробуйте за годину або додайте токен.',
+            self::isRateLimit($status, $body) => self::token()
+                ? 'GitHub тимчасово обмежив кількість перевірок для цього токена. Спробуйте за годину.'
+                : 'GitHub тимчасово обмежив кількість перевірок: без токена він дозволяє лише 60 на годину з одного сервера, а на хостингу їх ділять усі сайти. Додайте токен GitHub у блоці «Підключення до GitHub» нижче (5 хвилин), і обмеження зникне.',
             $status === 403 => 'Токен не має доступу до репозиторію. Перевірте, що в ньому вибрано репозиторій і право «Contents: Read-only».',
             default => 'GitHub відповів помилкою ' . $status . '. Спробуйте пізніше.',
         };
@@ -192,35 +201,61 @@ final class Updater
         }
         $cfg = self::config();
         $repo = $cfg['repo'];
-        $res = ['checkedAt' => time(), 'current' => YW_VERSION, 'mode' => 'releases', 'latest' => null, 'versions' => [], 'error' => null];
+        $token = self::token();
+        $res = ['checkedAt' => time(), 'current' => YW_VERSION, 'mode' => 'releases', 'latest' => null, 'versions' => [], 'error' => null, 'rateLimited' => false];
         try {
-            $releases = self::apiJson('/repos/' . $repo . '/releases?per_page=30');
-            if ($releases === null) throw new RuntimeException(self::token()
-                ? 'Репозиторій ' . $repo . ' не знайдено, або токен не має до нього доступу.'
-                : 'Репозиторій ' . $repo . ' закритий (приватний). Додайте токен GitHub у блоці «Підключення до GitHub» нижче.');
+            // Без токена GitHub дозволяє лише 60 запитів до API на годину з одного сервера (а на спільному хостингу
+            // їх ділять усі сайти). Тому без токена API питаємо лише про релізи й не частіше ніж раз на 6 годин,
+            // а версію, список змін і архів беремо з raw.githubusercontent.com і codeload.github.com, які цей ліміт не рахують.
+            $releases = [];
+            if ($token || self::releasesDue()) {
+                try {
+                    $releases = self::apiJson('/repos/' . $repo . '/releases?per_page=30');
+                } catch (RuntimeException $e) {
+                    if ($token || $e->getCode() !== self::ERR_RATE_LIMIT) throw $e;
+                    $releases = []; // ліміт API вичерпано — працюємо з гілкою без API
+                }
+                if ($releases === null) throw new RuntimeException($token
+                    ? 'Репозиторій ' . $repo . ' не знайдено, або токен не має до нього доступу.'
+                    : 'Репозиторій ' . $repo . ' не знайдено або він закритий (приватний). Перевірте назву або додайте токен GitHub у блоці «Підключення до GitHub» нижче.');
+                if (!$token) @file_put_contents(self::releasesCachePath(), json_encode(['checkedAt' => time(), 'count' => count((array) $releases), 'repo' => $repo]), LOCK_EX);
+            }
             foreach ((array) $releases as $r) {
                 if (!empty($r['draft']) || !empty($r['prerelease'])) continue;
                 $v = self::normVersion((string) ($r['tag_name'] ?? ''));
                 if ($v === null) continue;
-                $res['versions'][] = ['version' => $v, 'title' => (string) ($r['name'] ?: $r['tag_name']), 'date' => $r['published_at'] ?? null,
-                    'notes' => (string) ($r['body'] ?? ''), 'zip' => '/repos/' . $repo . '/zipball/' . rawurlencode((string) $r['tag_name']),
+                $tag = (string) $r['tag_name'];
+                $res['versions'][] = ['version' => $v, 'title' => (string) ($r['name'] ?: $tag), 'date' => $r['published_at'] ?? null,
+                    'notes' => (string) ($r['body'] ?? ''),
+                    'zip' => $token ? self::api() . '/repos/' . $repo . '/zipball/' . rawurlencode($tag) : self::codeload() . '/' . $repo . '/zip/refs/tags/' . self::refPath($tag),
                     'url' => self::safeGithubUrl((string) ($r['html_url'] ?? '')), 'prs' => self::refsIn((string) ($r['name'] ?? ''))['prs'], 'commits' => []];
             }
             if (!$res['versions']) {
                 // Релізів немає — беремо гілку.
                 $res['mode'] = 'branch';
-                $commit = self::apiJson('/repos/' . $repo . '/commits/' . rawurlencode($cfg['branch']));
-                if (!$commit || empty($commit['sha'])) throw new RuntimeException('У репозиторії немає гілки «' . $cfg['branch'] . '».');
-                $sha = (string) $commit['sha'];
-                $boot = (string) self::apiRaw('/repos/' . $repo . '/contents/app/bootstrap.php?ref=' . $sha);
+                $date = null;
+                if ($token) {
+                    $commit = self::apiJson('/repos/' . $repo . '/commits/' . rawurlencode($cfg['branch']));
+                    if (!$commit || empty($commit['sha'])) throw new RuntimeException('У репозиторії немає гілки «' . $cfg['branch'] . '».');
+                    $sha = (string) $commit['sha'];
+                    $date = $commit['commit']['committer']['date'] ?? null;
+                    $boot = (string) self::apiRaw('/repos/' . $repo . '/contents/app/bootstrap.php?ref=' . $sha);
+                    $changelog = (string) self::apiRaw('/repos/' . $repo . '/contents/CHANGELOG.md?ref=' . $sha);
+                    $zip = self::api() . '/repos/' . $repo . '/zipball/' . $sha;
+                } else {
+                    $base = self::rawBase() . '/' . $repo . '/' . self::refPath($cfg['branch']);
+                    $boot = self::rawFile($base . '/app/bootstrap.php');
+                    if ($boot === null) throw new RuntimeException('Не вдалося прочитати гілку «' . $cfg['branch'] . '» репозиторію ' . $repo . '. Перевірте назву гілки або, якщо репозиторій закритий, додайте токен GitHub у блоці «Підключення до GitHub» нижче.');
+                    $changelog = (string) self::rawFile($base . '/CHANGELOG.md');
+                    $zip = self::codeload() . '/' . $repo . '/zip/refs/heads/' . self::refPath($cfg['branch']);
+                }
                 $latest = preg_match("/YW_VERSION\s*=\s*'([^']+)'/", $boot, $m) ? self::normVersion($m[1]) : null;
                 if ($latest === null) throw new RuntimeException('Не вдалося визначити версію в гілці «' . $cfg['branch'] . '».');
-                $changelog = (string) self::apiRaw('/repos/' . $repo . '/contents/CHANGELOG.md?ref=' . $sha);
                 $sections = self::parseChangelog($changelog);
                 if (!isset($sections[$latest])) $sections = [$latest => ['title' => $latest, 'date' => null, 'notes' => '', 'prs' => [], 'commits' => []]] + $sections;
                 foreach ($sections as $v => $s) {
-                    $res['versions'][] = ['version' => $v, 'title' => $s['title'], 'date' => $s['date'] ?? ($v === $latest ? ($commit['commit']['committer']['date'] ?? null) : null),
-                        'notes' => $s['notes'], 'zip' => $v === $latest ? '/repos/' . $repo . '/zipball/' . $sha : '',
+                    $res['versions'][] = ['version' => $v, 'title' => $s['title'], 'date' => $s['date'] ?? ($v === $latest ? $date : null),
+                        'notes' => $s['notes'], 'zip' => $v === $latest ? $zip : '',
                         'url' => null, 'prs' => $s['prs'], 'commits' => $s['commits']];
                 }
             }
@@ -228,9 +263,45 @@ final class Updater
             $res['latest'] = $res['versions'][0]['version'] ?? null;
         } catch (Throwable $e) {
             $res['error'] = $e->getMessage();
+            $res['rateLimited'] = $e->getCode() === self::ERR_RATE_LIMIT;
         }
         @file_put_contents(self::cachePath(), json_encode($res, JSON_UNESCAPED_UNICODE), LOCK_EX);
         return $res;
+    }
+
+    private static function releasesCachePath(): string { return YW_ROOT . '/storage/cache/updates-releases.json'; }
+
+    /** Чи пора знову спитати GitHub API про релізи (без токена — раз на 6 годин, якщо релізів не було). */
+    private static function releasesDue(): bool
+    {
+        $c = @json_decode((string) @file_get_contents(self::releasesCachePath()), true);
+        if (!is_array($c) || ($c['repo'] ?? '') !== self::config()['repo']) return true;
+        return (int) ($c['count'] ?? 0) > 0 || (int) ($c['checkedAt'] ?? 0) < time() - 6 * 3600;
+    }
+
+    private static function rawBase(): string
+    {
+        return rtrim((string) (getenv('YW_UPDATES_RAW') ?: 'https://raw.githubusercontent.com'), '/');
+    }
+
+    private static function codeload(): string
+    {
+        return rtrim((string) (getenv('YW_UPDATES_CODELOAD') ?: 'https://codeload.github.com'), '/');
+    }
+
+    /** Назва гілки чи тегу для адреси: кожна частина окремо, «/» лишається. */
+    private static function refPath(string $ref): string
+    {
+        return implode('/', array_map('rawurlencode', explode('/', $ref)));
+    }
+
+    /** Файл з raw.githubusercontent.com (без ліміту API). Параметр у кінці — щоб не отримати застарілу копію з кешу. */
+    private static function rawFile(string $url): ?string
+    {
+        $r = self::http($url . '?t=' . time(), 'text/plain');
+        if ($r['status'] === 200) return $r['body'];
+        if ($r['status'] === 404) return null;
+        throw new RuntimeException('GitHub відповів помилкою ' . $r['status'] . ' під час перевірки оновлень. Спробуйте за кілька хвилин.');
     }
 
     /** Остання перевірка з кешу без звернення до GitHub (для значка в меню). */
@@ -411,13 +482,17 @@ final class Updater
     {
         self::cleanWork();
         $info = self::check(true);
-        if ($info['error']) throw new RetryableUpdateError($info['error']);
+        if ($info['error']) {
+            if (!empty($info['rateLimited'])) throw new RuntimeException($info['error']); // повтор лише витратить ще запити
+            throw new RetryableUpdateError($info['error']);
+        }
         $target = null;
         foreach ($info['versions'] as $v) if ($v['version'] === $version && $v['zip'] !== '') $target = $v;
         if (!$target) throw new RetryableUpdateError('Версію ' . $version . ' не знайдено на GitHub (найновіша там зараз ' . ($info['latest'] ?? 'невідома') . '). Зачекайте хвилину й натисніть «Перевірити оновлення».');
         $zip = self::dir('work') . '/package.zip';
-        $r = self::http(self::api() . $target['zip'], 'application/vnd.github+json', $zip);
-        if (in_array($r['status'], [401, 403], true)) throw new RuntimeException(self::explainStatus($r['status'], $r['body']));
+        $url = str_starts_with($target['zip'], 'http') ? $target['zip'] : self::api() . $target['zip'];
+        $r = self::http($url, 'application/vnd.github+json', $zip);
+        if (in_array($r['status'], [401, 403, 429], true)) throw new RuntimeException(self::explainStatus($r['status'], $r['body']));
         if ($r['status'] >= 400 || !is_file($zip)) throw new RetryableUpdateError('Не вдалося завантажити архів версії ' . $version . ': ' . self::explainStatus($r['status'], $r['body']));
         if (filesize($zip) > self::MAX_ZIP) throw new RuntimeException('Архів оновлення завеликий.');
         try {
