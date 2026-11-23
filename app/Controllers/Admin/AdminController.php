@@ -627,7 +627,7 @@ final class AdminController
         $ids = array_values(array_unique(array_filter(array_column($backups, 'by'))));
         if ($ids) foreach (App::db()->all('SELECT id, display_name FROM {p}users WHERE id IN (' . implode(',', array_map('intval', $ids)) . ')') as $u) $users[(int) $u['id']] = $u['display_name'];
         $history = App::db()->all("SELECT a.*, u.display_name FROM {p}audit_log a LEFT JOIN {p}users u ON u.id = a.actor_id
-            WHERE a.action IN ('system.updated','system.update_failed','system.restored','system.upgraded') ORDER BY a.id DESC LIMIT 10");
+            WHERE a.action IN ('" . implode("','", Audit::UPDATE_ACTIONS) . "') ORDER BY a.id DESC LIMIT 10");
         return $this->render('updates', 'updates', ['title' => 'Оновлення', 'info' => $info, 'version' => YW_VERSION, 'local' => $local,
             'backups' => $backups, 'users' => $users, 'history' => $history, 'problems' => Updater::serverProblems(),
             'cfg' => Updater::config(), 'canConfigure' => App::auth()->can('settings.system:manage_settings'), 'pending' => Updater::pending(),
@@ -650,7 +650,10 @@ final class AdminController
             Updater::install($version, App::auth()->id());
         } catch (\Throwable $e) {
             error_log('[YEWORK] update failed: ' . $e->getMessage());
-            Audit::log('system.update_failed', 'version', $version, ['from' => YW_VERSION, 'to' => $version, 'error' => mb_substr($e->getMessage(), 0, 500)]);
+            // Файли вже почали замінюватися й сайт повернуто з копії — «не вдалося»; інакше сайт навіть не змінювався.
+            $restored = $e->getCode() === Updater::ERR_RESTORED;
+            Audit::log($restored ? 'system.update_failed' : 'system.update_aborted', 'version', $version,
+                ['from' => YW_VERSION, 'to' => $version, 'stage' => $restored ? 'files' : 'download', 'error' => mb_substr($e->getMessage(), 0, 500)]);
             flash('bad', 'Оновлення не встановлено: ' . $e->getMessage());
             return Response::redirect(url('/admin/updates'));
         }
@@ -667,7 +670,9 @@ final class AdminController
                 . ($r['migrations'] ? ' Оновлено структуру бази (' . count($r['migrations']) . ').' : '')
                 . ' Якщо щось працює не так, внизу є кнопка «Повернути цю копію».');
         } else {
-            flash('bad', 'Оновлення до ' . $r['to'] . ' не вдалося на кроці оновлення бази (' . $r['error'] . '). Сайт автоматично повернуто до версії ' . $r['from'] . ', нічого не втрачено.');
+            flash('bad', 'Оновлення до ' . $r['to'] . ' не вдалося на кроці оновлення бази (' . $r['error'] . '). '
+                . (empty($r['restoreError']) ? 'Сайт автоматично повернуто до версії ' . $r['from'] . ', нічого не втрачено.'
+                    : 'Автоматично повернути попередню версію не вдалося (' . $r['restoreError'] . '). Відновіть останню резервну копію внизу сторінки.'));
         }
         return Response::redirect(url('/admin/updates'));
     }

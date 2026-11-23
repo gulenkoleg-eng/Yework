@@ -28,6 +28,10 @@ final class Updater
     public const KEEP_CHOICES = [2, 3, 4, 5, 6, 8, 10, 15, 20];
     private const MAX_ZIP = 60 * 1024 * 1024;
     private const CACHE_TTL = 3600;
+    /** Паузи (с) між спробами завантажити оновлення з GitHub. */
+    private const RETRY_WAITS = [0, 3, 8, 15];
+    /** Код винятку: файли вже почали замінюватися, і сайт повернуто з резервної копії. */
+    public const ERR_RESTORED = 2;
     /** Файли й папки сайту, які входять у резервну копію файлів. */
     private const SKIP_TOP = ['config', 'storage', '.git', '.github', 'node_modules', 'dist'];
 
@@ -362,23 +366,24 @@ final class Updater
     public static function install(string $version, ?int $actorId): array
     {
         if ($p = self::serverProblems()) throw new RuntimeException(implode(' ', $p));
-        $info = self::check(true);
-        if ($info['error']) throw new RuntimeException($info['error']);
-        $target = null;
-        foreach ($info['versions'] as $v) if ($v['version'] === $version && $v['zip'] !== '') $target = $v;
-        if (!$target) throw new RuntimeException('Версію ' . $version . ' не знайдено на GitHub. Натисніть «Перевірити оновлення».');
         if (version_compare($version, YW_VERSION, '<=')) throw new RuntimeException('Версія ' . $version . ' не новіша за встановлену (' . YW_VERSION . '). Щоб повернутися назад, скористайтеся резервною копією.');
 
-        return self::locked(function () use ($target, $version, $actorId) {
+        return self::locked(function () use ($version, $actorId) {
             self::prepareRuntime();
-            self::cleanWork();
-            $zip = self::dir('work') . '/package.zip';
-            $r = self::http(self::api() . $target['zip'], 'application/vnd.github+json', $zip);
-            if ($r['status'] >= 400 || !is_file($zip)) throw new RuntimeException(self::explainStatus($r['status'], $r['body']));
-            if (filesize($zip) > self::MAX_ZIP) throw new RuntimeException('Архів оновлення завеликий.');
-            $src = self::extract($zip, self::dir('work') . '/pkg');
-            $pkgVersion = self::packageVersion($src);
-            if ($pkgVersion !== $version) throw new RuntimeException('В архіві версія ' . ($pkgVersion ?? 'невідома') . ', а очікувалась ' . $version . '. Оновлення скасовано, сайт не змінено.');
+            // Одразу після злиття PR GitHub кілька секунд може віддавати ще стару гілку, 404 на архів
+            // або архів попередньої версії. Тому завантаження пробуємо кілька разів з паузою (з 0.5.19.1).
+            $src = null;
+            $err = '';
+            foreach (self::RETRY_WAITS as $wait) {
+                if ($wait) sleep($wait);
+                try {
+                    $src = self::download($version);
+                    break;
+                } catch (RetryableUpdateError $e) {
+                    $err = $e->getMessage();
+                }
+            }
+            if ($src === null) throw new RuntimeException($err . ' Сайт не змінено.');
 
             $backup = self::createBackup('update', 'Перед оновленням до ' . $version, $actorId);
             self::maintenance(true, 'update');
@@ -389,13 +394,40 @@ final class Updater
                 // Файли могли скопіюватися частково — повертаємо як було.
                 try { self::restoreFiles($backup); } catch (Throwable) {}
                 self::maintenance(false);
-                throw new RuntimeException('Не вдалося скопіювати файли (' . $e->getMessage() . '). Сайт повернуто до попереднього стану.');
+                throw new RuntimeException('Не вдалося скопіювати файли (' . $e->getMessage() . '). Сайт повернуто до попереднього стану.', self::ERR_RESTORED);
             }
             file_put_contents(self::pendingPath(), json_encode(['backup' => $backup, 'from' => YW_VERSION, 'to' => $version, 'by' => $actorId, 'at' => time()]), LOCK_EX);
             self::cleanWork();
             if (function_exists('opcache_reset')) @opcache_reset();
             return ['backup' => $backup, 'to' => $version];
         });
+    }
+
+    /**
+     * Знайти версію на GitHub, завантажити й розпакувати архів. Повертає папку з файлами нової версії.
+     * Тимчасові збої GitHub (щойно злитий PR, 404/5xx, архів зі старою версією) — RetryableUpdateError.
+     */
+    private static function download(string $version): string
+    {
+        self::cleanWork();
+        $info = self::check(true);
+        if ($info['error']) throw new RetryableUpdateError($info['error']);
+        $target = null;
+        foreach ($info['versions'] as $v) if ($v['version'] === $version && $v['zip'] !== '') $target = $v;
+        if (!$target) throw new RetryableUpdateError('Версію ' . $version . ' не знайдено на GitHub (найновіша там зараз ' . ($info['latest'] ?? 'невідома') . '). Зачекайте хвилину й натисніть «Перевірити оновлення».');
+        $zip = self::dir('work') . '/package.zip';
+        $r = self::http(self::api() . $target['zip'], 'application/vnd.github+json', $zip);
+        if (in_array($r['status'], [401, 403], true)) throw new RuntimeException(self::explainStatus($r['status'], $r['body']));
+        if ($r['status'] >= 400 || !is_file($zip)) throw new RetryableUpdateError('Не вдалося завантажити архів версії ' . $version . ': ' . self::explainStatus($r['status'], $r['body']));
+        if (filesize($zip) > self::MAX_ZIP) throw new RuntimeException('Архів оновлення завеликий.');
+        try {
+            $src = self::extract($zip, self::dir('work') . '/pkg');
+        } catch (RuntimeException $e) {
+            throw new RetryableUpdateError($e->getMessage());
+        }
+        $pkgVersion = self::packageVersion($src);
+        if ($pkgVersion !== $version) throw new RetryableUpdateError('В архіві з GitHub версія ' . ($pkgVersion ?? 'невідома') . ', а очікувалась ' . $version . '.');
+        return $src;
     }
 
     public static function pending(): ?array
@@ -425,12 +457,19 @@ final class Updater
                 Telegram::afterVersionChange();
                 return ['ok' => true, 'from' => $p['from'], 'to' => $p['to'], 'migrations' => $applied, 'warnings' => $warnings];
             } catch (Throwable $e) {
-                error_log('[YEWORK] update finish failed: ' . $e->getMessage());
+                error_log('[YEWORK] update finish failed: ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
                 @unlink(self::pendingPath());
-                self::doRestore($p['backup'], true, $actorId, false);
+                $restoreError = null;
+                try {
+                    self::doRestore($p['backup'], true, $actorId, false);
+                } catch (Throwable $re) {
+                    $restoreError = $re->getMessage();
+                    error_log('[YEWORK] update rollback failed: ' . $restoreError);
+                }
                 self::maintenance(false);
-                Audit::log('system.update_failed', 'version', $p['to'], ['from' => $p['from'], 'to' => $p['to'], 'error' => mb_substr($e->getMessage(), 0, 500)], $actorId);
-                return ['ok' => false, 'from' => $p['from'], 'to' => $p['to'], 'error' => $e->getMessage()];
+                Audit::log('system.update_failed', 'version', $p['to'], ['from' => $p['from'], 'to' => $p['to'], 'stage' => 'db', 'error' => mb_substr('Оновлення бази: ' . $e->getMessage(), 0, 500),
+                    'where' => str_replace(YW_ROOT . '/', '', $e->getFile()) . ':' . $e->getLine()] + ($restoreError ? ['restoreError' => mb_substr($restoreError, 0, 300)] : []), $actorId);
+                return ['ok' => false, 'from' => $p['from'], 'to' => $p['to'], 'error' => $e->getMessage(), 'restoreError' => $restoreError];
             }
         });
     }
@@ -911,4 +950,9 @@ final class Updater
     {
         return $b >= 1048576 ? number_format($b / 1048576, 1, ',', ' ') . ' МБ' : max(1, (int) round($b / 1024)) . ' КБ';
     }
+}
+
+/** Тимчасовий збій під час завантаження оновлення з GitHub: варто спробувати ще раз. */
+final class RetryableUpdateError extends RuntimeException
+{
 }

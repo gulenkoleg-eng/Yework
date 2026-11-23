@@ -55,7 +55,21 @@ final class Audit
         'services.order_cancel' => 'Клієнт скасував замовлення', 'services.order_done' => 'Замовлення виконано',
         'services.review_saved' => 'Відгук про майстра', 'services.review_hidden' => 'Відгук приховано', 'services.review_shown' => 'Відгук повернуто',
         'services.category_added' => 'Додано категорію послуг', 'services.categories_updated' => 'Змінено категорії послуг', 'services.limits_updated' => 'Змінено ліміти портфоліо',
+        'system.update_aborted' => 'Оновлення не встановлено (сайт не змінено)',
+        'jobs.employer_logo' => 'Роботодавець змінив логотип', 'jobs.employer_logo_removed' => 'Роботодавець видалив логотип',
+        'ads.banner_ordered' => 'Замовлено банер', 'ads.banner_edited' => 'Роботодавець змінив банер', 'ads.banner_deleted' => 'Роботодавець видалив банер',
+        'ads.banner_cancelled' => 'Роботодавець скасував банер', 'ads.banner_paid' => 'Банер позначено оплаченим',
+        'ads.banner_approved' => 'Банер схвалено', 'ads.banner_rejected' => 'Банер відхилено',
+        'ads.banner_created_by_admin' => 'Адміністрація створила банер', 'ads.banner_edited_by_admin' => 'Адміністрація змінила банер',
+        'ads.banner_deleted_by_admin' => 'Адміністрація видалила банер', 'ads.templates_updated' => 'Змінено шаблони банерів',
+        'ads.slots_updated' => 'Змінено кількість банерів одночасно', 'billing.prices_updated' => 'Змінено ціни',
+        'billing.monetization_enabled' => 'Увімкнено монетизацію', 'billing.monetization_disabled' => 'Вимкнено монетизацію',
+        'resume.hidden' => 'Резюме приховано', 'resume.shown' => 'Резюме знову показується',
+        'demo.added' => 'Додано приклади', 'demo.removed' => 'Видалено приклади',
     ];
+
+    /** Дії, пов’язані з оновленням сайту: у журналах ведуть на сторінку «Оновлення». */
+    public const UPDATE_ACTIONS = ['system.updated', 'system.update_failed', 'system.update_aborted', 'system.restored', 'system.upgraded'];
 
     public static function label(string $action): string
     {
