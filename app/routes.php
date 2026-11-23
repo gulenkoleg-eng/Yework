@@ -9,6 +9,7 @@ use App\Controllers\ServicesController;
 use App\Controllers\Admin\ServicesAdminController;
 use App\Controllers\SiteController;
 use App\Controllers\Admin\AdminController;
+use App\Controllers\Admin\ListingEditController;
 use App\Controllers\Admin\ResumeModerationController;
 use App\Controllers\Admin\TelegramAdminController;
 use App\Controllers\TelegramController;
@@ -67,6 +68,7 @@ $router->post('/cabinet/vacancies/{id}/archive', [CabinetController::class, 'vac
 $router->get('/cabinet/vacancies/{id}/restore', [CabinetController::class, 'vacancyView'], []);
 $router->post('/cabinet/vacancies/{id}/restore', [CabinetController::class, 'vacancyRestore'], []);
 $router->get('/cabinet/applications', [CabinetController::class, 'applications'], []);
+$router->post('/cabinet/notices/{id}', [CabinetController::class, 'noticeRead'], []);
 $router->get('/cabinet/resume', [ResumeController::class, 'form'], []);
 $router->post('/cabinet/resume', [ResumeController::class, 'save'], []);
 $router->get('/cabinet/resume/pdf', [ResumeController::class, 'myPdf'], []);
@@ -98,6 +100,9 @@ $router->get('/cabinet/ads/{id}/invoice', [AdsController::class, 'invoice'], [])
 $router->get('/admin', [AdminController::class, 'dashboard'], []);
 $router->get('/admin/moderation', [AdminController::class, 'moderation'], ['jobs.listing:moderate']);
 $router->post('/admin/moderation/{id}', [AdminController::class, 'moderate'], ['jobs.listing:moderate']);
+// Адміністрація виправляє чужу вакансію (0.5.3), власник отримує сповіщення
+$router->get('/admin/vacancies/{id}/edit', [ListingEditController::class, 'vacancyForm'], ['jobs.listing:update']);
+$router->post('/admin/vacancies/{id}/edit', [ListingEditController::class, 'vacancySave'], ['jobs.listing:update']);
 $router->get('/admin/resumes', [ResumeModerationController::class, 'index'], ['jobs.listing:moderate']);
 $router->post('/admin/resumes/{id}', [ResumeModerationController::class, 'decide'], ['jobs.listing:moderate']);
 $router->get('/admin/masters', [ServicesAdminController::class, 'index'], ['services.listing:moderate']);
@@ -114,6 +119,7 @@ $router->get('/admin/users/{id}', [AdminController::class, 'user'], ['identity.u
 $router->post('/admin/users/{id}/status', [AdminController::class, 'userStatus'], ['identity.user:update']);
 $router->post('/admin/users/{id}/roles', [AdminController::class, 'userRoles'], ['access.role:manage_settings']);
 $router->get('/admin/roles', [AdminController::class, 'roles'], ['access.role:view']);
+$router->post('/admin/roles/{id}', [AdminController::class, 'rolePermissions'], ['access.role:manage_settings']);
 $router->get('/admin/audit', [AdminController::class, 'audit'], ['audit.log:view']);
 $router->get('/admin/themes', [AdminController::class, 'themes'], ['theming.theme:view']);
 $router->post('/admin/themes', [AdminController::class, 'themePublish'], ['theming.theme:publish']);

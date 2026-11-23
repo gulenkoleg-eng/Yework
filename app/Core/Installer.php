@@ -144,7 +144,9 @@ final class Installer
             $db->run('INSERT INTO {p}roles (slug, name, description, is_system) VALUES (?,?,?,1) ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description), is_system = 1', [$r['slug'], $r['name'], $r['description']]);
             if ($r['permissions'] === '*') continue;
             $id = (int) $db->value('SELECT id FROM {p}roles WHERE slug = ?', [$r['slug']]);
-            foreach ($r['permissions'] as $code) $db->run('INSERT IGNORE INTO {p}role_permissions (role_id, permission_code) VALUES (?, ?)', [$id, $code]);
+            // Права, які головний адміністратор вимкнув у ролі вручну (0.5.3), не повертаємо.
+            try { $removed = array_column($db->all('SELECT permission_code FROM {p}role_permission_removed WHERE role_id = ?', [$id]), 'permission_code'); } catch (\PDOException) { $removed = []; }
+            foreach ($r['permissions'] as $code) if (!in_array($code, $removed, true)) $db->run('INSERT IGNORE INTO {p}role_permissions (role_id, permission_code) VALUES (?, ?)', [$id, $code]);
         }
     }
 

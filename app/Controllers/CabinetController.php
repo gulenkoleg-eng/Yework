@@ -9,6 +9,7 @@ use App\Core\Crypto;
 use App\Core\Db;
 use App\Core\HttpException;
 use App\Core\Media;
+use App\Core\Notices;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Stats;
@@ -47,6 +48,7 @@ final class CabinetController
             'employer' => $this->employer((int) $me['id']),
             'resume' => \App\Core\Resumes::ofUser((int) $me['id']),
             'master' => (static function (int $uid) { try { return \App\Core\Services::ofUser($uid); } catch (\PDOException) { return null; } })((int) $me['id']),
+            'notices' => Notices::unread((int) $me['id']),
         ]);
     }
 
@@ -169,15 +171,10 @@ final class CabinetController
             'premoderation' => (bool) (App::setting('moderation.premoderation', ['jobs' => true])['jobs'] ?? true)]);
     }
 
-    public function vacancySave(Request $req): Response
+    /** Поля вакансії з форми з перевіркою. Спільне для роботодавця й адміністрації (0.5.3). */
+    public static function vacancyInput(Request $req, ?array $cur, bool $withPeriod = true): array
     {
-        $me = $this->me();
         $db = App::db();
-        $employer = $this->employer((int) $me['id']);
-        if (!$employer) return Response::redirect(url('/cabinet/employer', ['next' => 'vacancy']));
-        if ($employer['status'] !== 'active') throw new HttpException(403, 'Профіль роботодавця заблоковано.');
-        $cur = isset($req->params['id']) ? $this->ownVacancy((int) $req->params['id']) : null;
-
         $num = static fn ($v) => ($v = preg_replace('/\D/', '', (string) $v)) === '' ? null : min((int) $v, 10_000_000);
         $d = [
             'title' => $req->str('title', 120), 'category_id' => (int) $req->input('category_id'), 'settlement_id' => (int) $req->input('settlement_id'),
@@ -196,12 +193,25 @@ final class CabinetController
         if (mb_strlen($d['description']) < 30) $err['description'] = 'Опишіть роботу детальніше (від 30 символів)';
         $phone = $req->str('contact_phone', 20);
         if ($phone !== '') { $d['contact_phone'] = Crypto::normalizePhone($phone); if (!$d['contact_phone']) $err['contact_phone'] = 'Формат: 067 123 45 67'; }
-        try {
+        if ($withPeriod) try {
             [$d['show_from'], $d['show_to']] = Vacancies::period($req, $cur['show_from'] ?? null);
         } catch (ValidationException $e) {
             $err += $e->errors;
         }
         if ($err) throw new ValidationException($err);
+        return $d;
+    }
+
+    public function vacancySave(Request $req): Response
+    {
+        $me = $this->me();
+        $db = App::db();
+        $employer = $this->employer((int) $me['id']);
+        if (!$employer) return Response::redirect(url('/cabinet/employer', ['next' => 'vacancy']));
+        if ($employer['status'] !== 'active') throw new HttpException(403, 'Профіль роботодавця заблоковано.');
+        $cur = isset($req->params['id']) ? $this->ownVacancy((int) $req->params['id']) : null;
+
+        $d = self::vacancyInput($req, $cur);
 
         $submit = ($req->post['action'] ?? '') === 'submit';
         if ($cur) {
@@ -241,7 +251,7 @@ final class CabinetController
         $apps = $db->all('SELECT a.*, u.display_name, u.phone_enc, u.email_enc FROM {p}applications a JOIN {p}users u ON u.id = a.user_id WHERE a.vacancy_id = ? ORDER BY a.id DESC', [$v['id']]);
         foreach ($apps as &$a) { $a['phone'] = Crypto::decrypt($a['phone_enc']); $a['email'] = Crypto::decrypt($a['email_enc']); unset($a['phone_enc'], $a['email_enc']); }
         $db->run("UPDATE {p}applications SET status = 'viewed' WHERE vacancy_id = ? AND status = 'new'", [$v['id']]);
-        return $this->page('vacancy_view', 'vacancies', ['title' => $v['title'], 'v' => $v, 'apps' => $apps]);
+        return $this->page('vacancy_view', 'vacancies', ['title' => $v['title'], 'v' => $v, 'apps' => $apps, 'notices' => Notices::unread((int) $this->me()['id'], 'vacancy', (int) $v['id'])]);
     }
 
     public function vacancyArchive(Request $req): Response
@@ -270,6 +280,14 @@ final class CabinetController
             ? 'Вакансію поновлено. Вона з’явиться на сайті ' . date('d.m', strtotime($from)) . ' і буде до ' . date('d.m', strtotime($to)) . ' включно.'
             : 'Вакансію поновлено. Її показуватимуть до ' . date('d.m.Y', strtotime($to)) . ' включно.');
         return Response::redirect(url('/cabinet/vacancies/' . $v['id']));
+    }
+
+    /** «Зрозуміло» під сповіщенням: більше його не показуємо. */
+    public function noticeRead(Request $req): Response
+    {
+        Notices::markRead((int) $this->me()['id'], (int) $req->params['id']);
+        $back = (string) $req->input('back', '/cabinet');
+        return Response::redirect(url(preg_match('#^/cabinet(/[a-z0-9/]*)?$#', $back) ? $back : '/cabinet'));
     }
 
     public function applications(Request $req): Response

@@ -3,6 +3,7 @@
   <?= App\Core\View::partial('partials/cab_nav', compact('tab', 'counts', 'me')) ?>
   <div class="stack">
     <div class="row"><h1 style="font-size:26px"><?= e($v['title']) ?></h1><span class="tag <?= $VS[$v['status']][1] ?>"><?= $VS[$v['status']][0] ?></span></div>
+    <?= App\Core\View::partial('partials/notices', ['notices' => $notices ?? [], 'back' => '/cabinet/vacancies/' . $v['id']]) ?>
     <?php if ($v['status'] === 'rejected'): ?><div class="alert bad">Модератор відхилив вакансію: <?= e($v['reject_reason']) ?>. Виправте її та надішліть ще раз.</div><?php endif ?>
     <?php if ($v['status'] === 'pending'): ?><div class="alert info">Вакансія на перевірці. Ми повідомимо, щойно її опублікують.</div><?php endif ?>
     <div class="row">
