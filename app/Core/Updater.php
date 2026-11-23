@@ -244,7 +244,7 @@ final class Updater
                     $zip = self::api() . '/repos/' . $repo . '/zipball/' . $sha;
                 } else {
                     // Точний коміт гілки (без ліміту API й без кешу), щоб raw і архів не віддали стару копію
-                    // з кешу CDN (raw.githubusercontent.com кешує файли гілки до 5 хвилин). З 0.5.21.1.
+                    // з кешу CDN (raw.githubusercontent.com кешує файли гілки до 5 хвилин). З 0.5.21.3.
                     $sha = self::branchSha($repo, $cfg['branch']);
                     $base = self::rawBase() . '/' . $repo . '/' . ($sha ?? self::refPath($cfg['branch']));
                     $boot = self::rawFile($base . '/app/bootstrap.php');
@@ -514,7 +514,7 @@ final class Updater
         $target = null;
         foreach ($info['versions'] as $v) if ($v['version'] === $version && $v['zip'] !== '') $target = $v;
         // Поки адмін дивився на сторінку, могла вийти ще новіша версія: у режимі гілки архів є лише в найновішої,
-        // тож встановлюємо її (з 0.5.21.1).
+        // тож встановлюємо її (з 0.5.21.3).
         if (!$target && $info['latest'] && version_compare($info['latest'], $version, '>')) {
             foreach ($info['versions'] as $v) if ($v['version'] === $info['latest'] && $v['zip'] !== '') $target = $v;
         }
