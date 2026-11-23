@@ -69,6 +69,7 @@ $router->post('/cabinet/vacancies/{id}/archive', [CabinetController::class, 'vac
 // GET потрібен, щоб при помилці в датах сторінка вакансії показалася знову з підсвіченими полями.
 $router->get('/cabinet/vacancies/{id}/restore', [CabinetController::class, 'vacancyView'], []);
 $router->post('/cabinet/vacancies/{id}/restore', [CabinetController::class, 'vacancyRestore'], []);
+$router->get('/cabinet/reward', [CabinetController::class, 'reward'], []);
 $router->get('/cabinet/applications', [CabinetController::class, 'applications'], []);
 $router->post('/cabinet/notices/{id}', [CabinetController::class, 'noticeRead'], []);
 $router->get('/cabinet/resume', [ResumeController::class, 'form'], []);
@@ -137,6 +138,8 @@ $router->get('/admin/users/{id}', [AdminController::class, 'user'], ['identity.u
 $router->get('/admin/users/{id}/edit', [PeopleController::class, 'editForm'], ['identity.user:update']);
 $router->post('/admin/users/{id}/edit', [PeopleController::class, 'editSave'], ['identity.user:update']);
 $router->post('/admin/users/{id}/status', [AdminController::class, 'userStatus'], ['identity.user:update']);
+$router->post('/admin/users/{id}/rewards', [PeopleController::class, 'rewardAdd'], ['identity.user:view']);
+$router->post('/admin/users/{id}/rewards/{rid}/delete', [PeopleController::class, 'rewardDelete'], ['identity.user:view']);
 $router->post('/admin/users/{id}/roles', [AdminController::class, 'userRoles'], ['access.role:manage_settings']);
 $router->get('/admin/roles', [AdminController::class, 'roles'], ['access.role:view']);
 $router->post('/admin/roles/{id}', [AdminController::class, 'rolePermissions'], ['access.role:manage_settings']);

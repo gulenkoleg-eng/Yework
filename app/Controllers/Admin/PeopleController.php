@@ -114,7 +114,8 @@ final class PeopleController
         $rows = $db->all('SELECT u.id, u.login, u.display_name, u.status, u.owner_flag, u.phone_hash, u.email_hash, u.created_at, u.last_login_at,
             (SELECT GROUP_CONCAT(r.name ORDER BY r.id SEPARATOR ", ") FROM {p}user_roles ur JOIN {p}roles r ON r.id = ur.role_id WHERE ur.user_id = u.id) AS roles
             FROM {p}users u WHERE ' . implode(' AND ', $w) . ' ORDER BY u.owner_flag DESC, u.id', $p);
-        return $this->render('team', 'team', ['title' => 'Команда', 'rows' => $rows, 'q' => $q]);
+        return $this->render('team', 'team', ['title' => 'Команда', 'rows' => $rows, 'q' => $q,
+            'rewards' => App::auth()->user()['is_owner'] ? \App\Core\Rewards::thisMonth() : null]);
     }
 
     /* ---------------- виправлення картки клієнта ---------------- */
@@ -262,5 +263,47 @@ final class PeopleController
         Services::notifyUser($uid, "Адміністрація оновила ваш профіль — $site",
             "$head.\n\n$body\n\nПереглянути кабінет: $link\n\nЯкщо щось не так, просто виправте це в кабінеті.\n\n— $site",
             "$site: адміністрація оновила ваш профіль. " . $what, 'admin_edit');
+    }
+
+    /* ---------------- винагорода членам команди (0.5.21) ---------------- */
+
+    /** Записи винагороди веде лише головний адміністратор і лише для членів команди (не для себе). */
+    private function rewardTarget(int $id): array
+    {
+        $me = App::auth()->user();
+        if (!$me['is_owner']) throw new HttpException(403, 'Винагороду може додавати й видаляти лише головний адміністратор.');
+        $u = App::db()->one('SELECT * FROM {p}users WHERE id = ? AND deleted_at IS NULL', [$id]);
+        if (!$u) throw new HttpException(404, 'Користувача не знайдено.');
+        if ((int) $u['owner_flag'] === 1 || !App::auth()->rolesOf($id)) throw new HttpException(400, 'Винагорода є лише в членів команди.');
+        return $u;
+    }
+
+    public function rewardAdd(Request $req): Response
+    {
+        $id = (int) $req->params['id'];
+        $this->rewardTarget($id);
+        $back = url('/admin/users/' . $id) . '#reward';
+        $date = $req->str('paid_on', 10);
+        $raw = str_replace([' ', "\u{00A0}", ','], ['', '', '.'], $req->str('amount', 20));
+        $comment = $req->str('comment', 300);
+        $d = \DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+        if (!$d || $d->format('Y-m-d') !== $date || $date < '2000-01-01' || $date > date('Y-m-d', strtotime('+1 year'))) { flash('bad', 'Вкажіть правильну дату.'); return Response::redirect($back); }
+        if (!preg_match('/^\d{1,9}(\.\d{1,2})?$/', $raw) || (float) $raw <= 0) { flash('bad', 'Вкажіть суму в гривнях, більшу за нуль (наприклад, 1500 або 1500,50).'); return Response::redirect($back); }
+        $rid = App::db()->insert('team_rewards', ['user_id' => $id, 'paid_on' => $date, 'amount' => $raw, 'comment' => $comment !== '' ? $comment : null, 'created_by' => App::auth()->id()]);
+        Audit::log('team.reward_added', 'user', $id, ['reward_id' => $rid, 'paid_on' => $date, 'amount' => $raw]);
+        flash('ok', 'Додано винагороду ' . \App\Core\Rewards::uah($raw) . ' за ' . $d->format('d.m.Y') . '.');
+        return Response::redirect($back);
+    }
+
+    public function rewardDelete(Request $req): Response
+    {
+        $id = (int) $req->params['id'];
+        $this->rewardTarget($id);
+        $r = App::db()->one('SELECT * FROM {p}team_rewards WHERE id = ? AND user_id = ?', [(int) $req->params['rid'], $id]);
+        if (!$r) throw new HttpException(404, 'Запис не знайдено.');
+        App::db()->run('DELETE FROM {p}team_rewards WHERE id = ?', [(int) $r['id']]);
+        Audit::log('team.reward_deleted', 'user', $id, ['reward_id' => (int) $r['id'], 'paid_on' => $r['paid_on'], 'amount' => $r['amount']]);
+        flash('ok', 'Запис ' . \App\Core\Rewards::uah($r['amount']) . ' за ' . date('d.m.Y', strtotime((string) $r['paid_on'])) . ' видалено.');
+        return Response::redirect(url('/admin/users/' . $id) . '#reward');
     }
 }

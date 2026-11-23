@@ -32,6 +32,20 @@
     <?php endif ?>
   </div>
 </div>
+<?php if ($rewards !== null): ?>
+<div class="card pad stack" id="reward">
+  <div class="row" style="justify-content:space-between;align-items:baseline"><h3>Винагорода</h3><?php if ($rewards): ?><span class="muted small">Усього: <b><?= e(App\Core\Rewards::uah(App\Core\Rewards::total($rewards))) ?></b></span><?php endif ?></div>
+  <p class="small muted" style="margin-top:-6px">Суми, які ви виплачуєте за роботу в проєкті. Додавати й видаляти записи можете лише ви. <?= e($u['display_name']) ?> бачить свої записи в кабінеті, у вкладці «Винагорода», інші члени команди їх не бачать.</p>
+  <form method="post" action="<?= url('/admin/users/' . $u['id'] . '/rewards') ?>" class="rw-form"><?= csrf_field() ?>
+    <label><span class="small muted">Дата</span><input class="input" type="date" name="paid_on" value="<?= e(date('Y-m-d')) ?>" required></label>
+    <label><span class="small muted">Сума, грн</span><input class="input" name="amount" inputmode="decimal" placeholder="1500" required pattern="[0-9 ]+([.,][0-9]{1,2})?"></label>
+    <label class="rw-cm"><span class="small muted">Коментар (необов’язково)</span><input class="input" name="comment" maxlength="300" placeholder="За що: модерація за жовтень, премія…"></label>
+    <button class="btn pri">Додати</button>
+  </form>
+  <?php if ($rewards): ?><?= App\Core\View::partial('partials/reward_months', ['months' => $rewards, 'deleteBase' => '/admin/users/' . $u['id'] . '/rewards']) ?>
+  <?php else: ?><p class="muted small">Записів ще немає.</p><?php endif ?>
+</div>
+<?php endif ?>
 <div class="card"><div class="pad" style="padding-bottom:0"><h3>Історія</h3></div><div class="tbl-wrap"><table class="tbl"><tbody>
 <?php foreach ($audit as $r): ?><tr><td class="muted small" style="white-space:nowrap"><?= e(local_date($r['created_at'])) ?></td><td><?= e(App\Core\Audit::label($r['action'])) ?></td><td class="small muted mono"><?= e($r['ip']) ?></td></tr><?php endforeach ?>
 <?php if (!$audit): ?><tr><td class="muted">Подій немає.</td></tr><?php endif ?></tbody></table></div></div>
