@@ -10,6 +10,7 @@ use App\Controllers\Admin\ServicesAdminController;
 use App\Controllers\SiteController;
 use App\Controllers\Admin\AdminController;
 use App\Controllers\Admin\ListingEditController;
+use App\Controllers\Admin\PeopleController;
 use App\Controllers\Admin\ResumeModerationController;
 use App\Controllers\Admin\TelegramAdminController;
 use App\Controllers\TelegramController;
@@ -126,8 +127,13 @@ $router->post('/admin/banners/{id}/delete', [AdminController::class, 'bannerDele
 $router->post('/admin/banners/{id}', [AdminController::class, 'bannerModerate'], ['ads.banner:moderate']);
 $router->get('/admin/billing', [AdminController::class, 'billing'], ['billing.plan:view']);
 $router->post('/admin/billing', [AdminController::class, 'billingSave'], ['billing.plan:view']);
-$router->get('/admin/users', [AdminController::class, 'users'], ['identity.user:view']);
+// Люди (0.5.16): клієнти окремо від команди; адміністратор виправляє картку клієнта (ім’я, профіль роботодавця, логотип, фото майстра)
+$router->get('/admin/clients', [PeopleController::class, 'clients'], ['identity.user:view']);
+$router->get('/admin/team', [PeopleController::class, 'team'], ['identity.user:view']);
+$router->get('/admin/users', [PeopleController::class, 'legacy'], ['identity.user:view']);
 $router->get('/admin/users/{id}', [AdminController::class, 'user'], ['identity.user:view']);
+$router->get('/admin/users/{id}/edit', [PeopleController::class, 'editForm'], ['identity.user:update']);
+$router->post('/admin/users/{id}/edit', [PeopleController::class, 'editSave'], ['identity.user:update']);
 $router->post('/admin/users/{id}/status', [AdminController::class, 'userStatus'], ['identity.user:update']);
 $router->post('/admin/users/{id}/roles', [AdminController::class, 'userRoles'], ['access.role:manage_settings']);
 $router->get('/admin/roles', [AdminController::class, 'roles'], ['access.role:view']);
