@@ -408,6 +408,13 @@ final class AdminController
             'pendingMigrations' => $this->pendingMigrations()]);
     }
 
+    /** Повернення на «Налаштування» з відкритим блоком, який щойно зберегли (і позначкою «Збережено»). */
+    private function settingsUrl(string $block): string
+    {
+        $block = preg_replace('/[^a-z]/', '', $block);
+        return url('/admin/settings', ['saved' => $block]) . ($block !== '' ? '#set-' . $block : '');
+    }
+
     private function pendingMigrations(): array
     {
         $done = array_column(App::db()->all('SELECT name FROM {p}schema_migrations'), 'name');
@@ -424,6 +431,7 @@ final class AdminController
             App::setSetting('site.name', $name, $me);
             App::setSetting('site.slogan', $req->str('slogan', 80), $me);
             App::setSetting('site.url', rtrim($req->str('url', 200), '/'), $me);
+        } elseif ($section === 'moderation') {
             App::setSetting('moderation.premoderation', ['jobs' => !empty($req->post['pre_jobs']), 'gigs' => true, 'services' => !empty($req->post['pre_services'])], $me);
         } elseif ($section === 'logo') {
             App::setSetting('employers.logo', ['hint' => !empty($req->post['hint']), 'hintText' => $req->str('hintText', 300) ?: logo_settings()['hintText'],
@@ -433,12 +441,12 @@ final class AdminController
                 \App\Core\Favicon::reset($me);
                 Audit::log('settings.updated', 'settings', 'site.favicon', ['reset' => true]);
                 flash('ok', 'Повернуто стандартну іконку сайту.');
-                return Response::redirect(url('/admin/settings'));
+                return Response::redirect($this->settingsUrl('favicon'));
             }
             if (!\App\Core\Favicon::store('icon', $me)) throw new ValidationException(['icon' => 'Оберіть картинку']);
             Audit::log('settings.updated', 'settings', 'site.favicon');
             flash('ok', 'Іконку сайту оновлено. Якщо у вкладці ще стара, оновіть сторінку (Ctrl+F5): браузери запам’ятовують іконки.');
-            return Response::redirect(url('/admin/settings'));
+            return Response::redirect($this->settingsUrl('favicon'));
         } elseif ($section === 'email') {
             $driver = $req->str('driver', 10);
             $prev = (array) App::setting('messaging.email', []);
@@ -455,12 +463,12 @@ final class AdminController
                 $r = Messaging::send('email', $t, 'Якщо ви бачите цей лист, пошта на сайті налаштована правильно.', 'test', 'Тестовий лист');
                 flash($r['ok'] ? 'ok' : 'bad', $r['ok'] ? "Тестовий лист надіслано на $t." : 'Лист не надіслано. Перевірте налаштування (деталі — у розділі «Повідомлення»).');
                 Audit::log('settings.updated', 'settings', 'messaging.email', ['driver' => $v['driver']]);
-                return Response::redirect(url('/admin/settings'));
+                return Response::redirect($this->settingsUrl('email'));
             }
         }
         Audit::log('settings.updated', 'settings', $section);
         flash('ok', 'Налаштування збережено.');
-        return Response::redirect(url('/admin/settings'));
+        return Response::redirect($this->settingsUrl($section));
     }
 
     public function pages(Request $req): Response
@@ -511,7 +519,7 @@ final class AdminController
         $w = Installer::upgrade(App::db());
         Audit::log('system.upgraded', null, null, ['warnings' => $w]);
         flash('ok', 'Базу даних оновлено.' . ($w ? ' Попередження: ' . implode('; ', $w) : ''));
-        return Response::redirect(url('/admin/settings'));
+        return Response::redirect($this->settingsUrl('db'));
     }
 
     // ---------- Оновлення сайту ----------
