@@ -14,7 +14,14 @@
       <div class="small muted" style="text-align:right"><?= $adminMade ? 'Створив адміністратор' : 'Замовив' ?>: <a href="<?= url('/admin/users/' . $b['created_by']) ?>"><?= e($b['author']) ?></a><br><?= e(ago($b['created_at'])) ?></div>
     </div>
     <div class="row small"><b><?= e(Ads::PLACEMENTS[$b['placement']] ?? '') ?></b> · <?= e(date('d.m.Y', strtotime($b['starts_on']))) ?>–<?= e(date('d.m.Y', strtotime($b['ends_on']))) ?> (<?= plural((int) $b['days'], 'день', 'дні', 'днів') ?>) · <?= (int) $b['price'] ? money((int) $b['price']) . ' грн' . ($b['paid_at'] ? ' · оплачено' : ' · <b style="color:var(--c-warning)">не оплачено</b>') : 'безкоштовно' ?><?php if ($b['status'] !== 'pending'): ?> · покази <?= (int) $b['impressions'] ?>, переходи <?= (int) $b['clicks'] ?><?php endif ?></div>
-    <div class="bnrs one"><?= App\Core\View::partial('partials/promo', ['b' => $b]) ?></div>
+    <div class="row small"><span>Кнопка веде:</span>
+      <?php if ($b['target_title'] !== null): ?><a href="<?= url('/jobs/' . $b['vacancy_id']) ?>" target="_blank">вакансія «<?= e($b['target_title']) ?>»</a>
+      <?php else: ?><a href="<?= url('/jobs', ['employer' => $b['employer_id']]) ?>" target="_blank">усі вакансії компанії</a><?php if ($b['vacancy_id']): ?> <span style="color:var(--c-warning)">(обрану вакансію знято з публікації)</span><?php elseif (in_array($b['status'], ['pending', 'approved'], true)): ?> <span class="muted">· вакансію не обрано</span><?php endif ?><?php endif ?>
+      <span class="spacer"></span>
+      <a class="btn sm" href="<?= url('/admin/banners/' . $b['id'] . '/edit') ?>">Редагувати</a>
+      <form method="post" action="<?= url('/admin/banners/' . $b['id'] . '/delete') ?>" onsubmit="return confirm('Видалити банер назавжди разом зі статистикою? Повернути його не вийде.')"><?= csrf_field() ?><button class="btn ghost sm" style="color:var(--c-danger)">Видалити</button></form>
+    </div>
+    <div class="bnrs one"><?= App\Core\View::partial('partials/promo', ['b' => [...$b, 'href' => $b['target_title'] !== null ? url('/jobs/' . $b['vacancy_id']) : url('/jobs', ['employer' => $b['employer_id']])]]) ?></div>
     <?php if ($b['status'] === 'rejected'): ?><div class="alert bad">Причина: <?= e($b['reject_reason']) ?></div><?php endif ?>
     <div class="row">
       <?php if ($own && in_array($b['status'], ['pending', 'approved'], true)): ?><div class="alert info">Це ваш банер — його має перевірити інший модератор.</div>
