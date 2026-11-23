@@ -376,5 +376,68 @@
    "danger": "#F87171",
    "info": "#60A5FA"
   }
+ },
+ {
+  "id": "new-year",
+  "name": "Новорічна",
+  "desc": "Хвоя, святковий червоний і золото. Світлий режим — сніжний ранок, темний — зимова ніч",
+  "defaultMode": "light",
+  "base": {
+   "font": "Manrope",
+   "headingFont": "Playfair Display",
+   "size": 16,
+   "scale": 1.24,
+   "weight": 700,
+   "lineHeight": 1.5,
+   "density": "normal",
+   "radiusBtn": 12,
+   "radiusCard": 16,
+   "shadow": "medium",
+   "borderW": 1,
+   "input": "outline",
+   "tabs": "pills",
+   "msg": "tinted",
+   "homeLayout": "tiles"
+  },
+  "light": {
+   "primary": "#C62828",
+   "secondary": "#FBE9E7",
+   "bgPage": "#F2F6F9",
+   "bgCard": "#FFFFFF",
+   "text": "#14211B",
+   "muted": "#526159",
+   "link": "#0E6A3D",
+   "button": "#C62828",
+   "buttonText": "#FFFFFF",
+   "menu": "#0F3B2C",
+   "menuText": "#FFFFFF",
+   "heading": "#0B2A1F",
+   "border": "#DCE6E2",
+   "message": "#FDF3E1",
+   "success": "#157F3B",
+   "warning": "#A15C00",
+   "danger": "#B71C1C",
+   "info": "#1F6FB2"
+  },
+  "dark": {
+   "primary": "#F2C14E",
+   "secondary": "#1B2A47",
+   "bgPage": "#0A1324",
+   "bgCard": "#111D35",
+   "text": "#E6ECF6",
+   "muted": "#9FB0C9",
+   "link": "#F2C14E",
+   "button": "#D33A3A",
+   "buttonText": "#FFFFFF",
+   "menu": "#0D1A31",
+   "menuText": "#F3F6FB",
+   "heading": "#FFFFFF",
+   "border": "#22335A",
+   "message": "#1A2744",
+   "success": "#4ADE80",
+   "warning": "#FBBF24",
+   "danger": "#F87171",
+   "info": "#60A5FA"
+  }
  }
 ]

@@ -22,7 +22,12 @@ final class Theme
     {
         static $t = null;
         if ($t) return $t;
-        $row = App::db()->one('SELECT tv.id, tv.tokens, t.slug, t.name, t.default_mode FROM {p}theme_publications p JOIN {p}theme_versions tv ON tv.id = p.theme_version_id JOIN {p}themes t ON t.id = tv.theme_id WHERE p.active_flag = 1');
+        $row = null;
+        // На свята (0.5.4) замість опублікованої теми можна показувати «Новорічну». Публікації не змінюються.
+        if (Festive::themeOverride()) {
+            $row = App::db()->one('SELECT tv.id, tv.tokens, t.slug, t.name, t.default_mode FROM {p}themes t JOIN {p}theme_versions tv ON tv.theme_id = t.id WHERE t.slug = ? AND t.deleted_at IS NULL ORDER BY tv.version DESC LIMIT 1', [Festive::THEME_SLUG]);
+        }
+        $row ??= App::db()->one('SELECT tv.id, tv.tokens, t.slug, t.name, t.default_mode FROM {p}theme_publications p JOIN {p}theme_versions tv ON tv.id = p.theme_version_id JOIN {p}themes t ON t.id = tv.theme_id WHERE p.active_flag = 1');
         if (!$row) {
             $all = json_decode((string) file_get_contents(YW_ROOT . '/database/seed/themes.json'), true);
             $x = $all[0];

@@ -1,0 +1,62 @@
+/* YEWORK — новорічне оформлення (0.5.4). Підключається лише коли свято увімкнене в адмінці (Теми оформлення).
+   Класи на <html>: ny, ny-has-garland, ny-has-logo, ny-has-snow. Нічого тут не перехоплює кліки (pointer-events:none). */
+
+/* ---------- гірлянда під шапкою ---------- */
+.ny-garland{position:absolute;left:0;right:0;top:100%;height:30px;pointer-events:none;overflow:hidden}
+.ny-garland::before{content:"";position:absolute;left:0;right:0;top:-1px;height:16px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='46' height='16'%3E%3Cpath d='M0 1.5Q23 17 46 1.5' fill='none' stroke='%23283a30' stroke-width='1.6'/%3E%3C/svg%3E") 0 0/46px 16px repeat-x}
+.ny-garland i{--c:#ff4d4d;position:absolute;top:7px;left:calc(var(--i) * 46px + 18px);width:10px;height:14px;border-radius:50% 50% 50% 50%/40% 40% 60% 60%;
+  background:radial-gradient(circle at 35% 30%,#fff 0 12%,var(--c) 45%);color:var(--c);
+  box-shadow:0 0 6px 2px currentColor,0 0 16px 4px color-mix(in srgb,currentColor 45%,transparent);
+  transform-origin:50% -3px;
+  animation:ny-twinkle 2.6s ease-in-out infinite,ny-sway 5s ease-in-out infinite;animation-delay:calc(var(--i) * -.18s),calc(var(--i) * -.7s)}
+.ny-garland i::before{content:"";position:absolute;left:2.5px;top:-3px;width:5px;height:4px;border-radius:1px;background:#3b4a40}
+.ny-garland i:nth-child(5n+2){--c:#ffd54a}
+.ny-garland i:nth-child(5n+3){--c:#3ee07a}
+.ny-garland i:nth-child(5n+4){--c:#4cc3ff}
+.ny-garland i:nth-child(5n+5){--c:#ff6fd8}
+@keyframes ny-twinkle{
+  0%,100%{opacity:1;filter:brightness(1.15) saturate(1.2)}
+  45%{opacity:1}
+  60%{opacity:.28;box-shadow:0 0 2px 0 currentColor;filter:brightness(.8)}
+  75%{opacity:.9}
+}
+@keyframes ny-sway{0%,100%{rotate:-6deg}50%{rotate:6deg}}
+
+/* ---------- логотип: шапочка, світіння, відблиск ---------- */
+.ny-has-logo .hdr .logo i{position:relative;animation:ny-glow 3.2s ease-in-out infinite}
+.ny-has-logo .hdr .logo i::before{content:"";position:absolute;right:-7px;top:-16px;width:28px;height:24px;transform:rotate(14deg);pointer-events:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 26'%3E%3Cpath d='M3 20C5 10 11 3 19 3c4 0 6 4 7 9l-3 1c-1-3-2-5-4-5-4 0-7 6-8 12z' fill='%23d62f2f'/%3E%3Cpath d='M5 20c3-9 8-14 14-14 2 0 3 1 4 3' fill='none' stroke='%23ff6b6b' stroke-width='1.2' opacity='.7'/%3E%3Crect x='1' y='18' width='17' height='6' rx='3' fill='%23fff'/%3E%3Ccircle cx='25.5' cy='14' r='3.4' fill='%23fff'/%3E%3C/svg%3E") center/contain no-repeat;
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
+.ny-has-logo .hdr .logo i::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.85) 50%,transparent 62%) 0 0/250% 100% no-repeat;
+  animation:ny-shine 4.5s ease-in-out infinite}
+@keyframes ny-glow{
+  0%,100%{box-shadow:0 0 0 0 rgba(255,214,74,0),0 0 10px 1px rgba(255,214,74,.35)}
+  50%{box-shadow:0 0 0 3px rgba(255,214,74,.18),0 0 22px 6px rgba(255,214,74,.6)}
+}
+@keyframes ny-shine{0%,60%{background-position:130% 0}100%{background-position:-60% 0}}
+
+/* ---------- замети над низом сторінки ---------- */
+.ny .ftr{position:relative}
+.ny .ftr{position:relative;border-top-color:transparent}
+.ny .ftr::before{content:"";position:absolute;left:0;right:0;bottom:calc(100% - 2px);height:24px;pointer-events:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='24' preserveAspectRatio='none'%3E%3Cpath d='M0 24V14C30 6 60 6 90 12S150 20 180 12 250 2 280 10 310 16 320 14V24z' fill='%23fff'/%3E%3Cpath d='M0 14C30 6 60 6 90 12S150 20 180 12 250 2 280 10 310 16 320 14' fill='none' stroke='%23b9cfe2' stroke-width='1.2'/%3E%3C/svg%3E") 0 100%/320px 24px repeat-x;
+  filter:drop-shadow(0 -2px 3px rgba(80,120,160,.12))}
+.ny[data-mode=dark] .ftr::before{filter:brightness(.92) drop-shadow(0 -2px 6px rgba(160,200,255,.18))}
+
+/* ---------- сніг ---------- */
+.ny-canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:40}
+.hdr-act .ny-snow-btn{width:40px;padding:0;position:relative}
+.hdr-act .ny-snow-btn[aria-pressed=false] svg{opacity:.45}
+.hdr-act .ny-snow-btn[aria-pressed=false]::after{content:"";position:absolute;width:22px;height:2px;background:currentColor;transform:rotate(-45deg);border-radius:2px;opacity:.7}
+.nav .ny-snow-nav{display:none;border:0;background:none;text-align:left;cursor:pointer;color:var(--c-menu-ink);font-weight:600;font-size:15px;padding:8px 12px;opacity:.85}
+@media (max-width:600px){.hdr-act .ny-snow-btn{display:none}.nav .ny-snow-nav{display:block}}
+
+/* Хто попросив систему зменшити рух — без анімації: гірлянда просто світиться, снігу немає. */
+@media (prefers-reduced-motion:reduce){
+  .ny-garland i,.ny-has-logo .hdr .logo i,.ny-has-logo .hdr .logo i::after{animation:none}
+  .ny-has-logo .hdr .logo i::after{display:none}
+  .ny-canvas,.hdr-act .ny-snow-btn,.nav .ny-snow-nav{display:none}
+}
+@media print{.ny-garland,.ny-canvas,.ny-snow-btn{display:none}.ny .ftr::before,.ny-has-logo .hdr .logo i::before{display:none}}

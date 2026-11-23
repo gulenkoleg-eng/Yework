@@ -34,7 +34,7 @@ final class Audit
         'jobs.vacancy_submitted' => 'Вакансію подано на модерацію', 'jobs.vacancy_published' => 'Вакансію опубліковано',
         'jobs.vacancy_approved' => 'Вакансію схвалено', 'jobs.vacancy_rejected' => 'Вакансію відхилено', 'jobs.vacancy_archived' => 'Вакансію перенесено в архів', 'jobs.vacancy_restored' => 'Вакансію поновлено з архіву',
         'jobs.vacancy_admin_edited' => 'Адміністрація виправила вакансію', 'access.role_permissions' => 'Змінено права ролі',
-        'theming.theme_published' => 'Опубліковано тему', 'settings.updated' => 'Змінено налаштування', 'system.upgraded' => 'Оновлено базу даних',
+        'theming.theme_published' => 'Опубліковано тему', 'theming.festive_updated' => 'Змінено новорічне оформлення', 'settings.updated' => 'Змінено налаштування', 'system.upgraded' => 'Оновлено базу даних',
         'system.updated' => 'Сайт оновлено', 'system.update_failed' => 'Оновлення не вдалося (повернуто як було)',
         'system.restored' => 'Відновлено з резервної копії', 'system.backup_created' => 'Створено резервну копію',
         'system.backup_deleted' => 'Видалено резервну копію', 'system.update_settings' => 'Змінено підключення до GitHub',

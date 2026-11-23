@@ -14,7 +14,7 @@ final class Installer
     /** Ім'я файлу конфігурації: латиниця, цифри, крапка, дефіс, підкреслення; закінчується на .php */
     public const CONFIG_FILE_RE = '/^[a-z0-9][a-z0-9._-]{0,58}\.php$/';
     public const PASSWORD_MIN = 12;
-    public const THEMES = ['modern-light', 'modern-dark', 'corporate-blue', 'emerald', 'premium', 'soft-ui'];
+    public const THEMES = ['modern-light', 'modern-dark', 'corporate-blue', 'emerald', 'premium', 'soft-ui', 'new-year'];
 
     public static function setupKeyPath(): string { return App::configDir() . '/setup-key.php'; }
 
@@ -200,21 +200,31 @@ final class Installer
         }
     }
 
-    /** 6 стандартних тем; обрана стає активною. */
+    /** Стандартні теми; обрана стає активною. */
     public static function seedThemes(Db $db, string $activeSlug, ?int $actorId): void
     {
+        $activeVersion = self::seedMissingThemes($db, $actorId)[$activeSlug] ?? null;
+        if (!$activeVersion) throw new \RuntimeException('Невідома тема: ' . $activeSlug);
+        $db->run('UPDATE {p}theme_publications SET active_flag = NULL WHERE active_flag = 1');
+        $db->insert('theme_publications', ['theme_version_id' => $activeVersion, 'published_by' => $actorId, 'active_flag' => 1]);
+    }
+
+    /**
+     * Додає стандартні теми, яких ще немає в базі (напр. «Новорічна» з 0.5.4). Активну тему не змінює.
+     * @return array<string,int> slug → id версії 1
+     */
+    public static function seedMissingThemes(Db $db, ?int $actorId = null): array
+    {
         $themes = json_decode((string) file_get_contents(YW_ROOT . '/database/seed/themes.json'), true);
-        $activeVersion = null;
+        $out = [];
         foreach ($themes as $t) {
             $id = (int) $db->value('SELECT id FROM {p}themes WHERE slug = ?', [$t['id']]);
             if (!$id) $id = $db->insert('themes', ['slug' => $t['id'], 'name' => $t['name'], 'description' => $t['desc'], 'is_system' => 1, 'default_mode' => $t['defaultMode'], 'created_by' => $actorId]);
             $vid = (int) $db->value('SELECT id FROM {p}theme_versions WHERE theme_id = ? AND version = 1', [$id]);
             if (!$vid) $vid = $db->insert('theme_versions', ['theme_id' => $id, 'version' => 1, 'tokens' => json_encode(['base' => $t['base'], 'light' => $t['light'], 'dark' => $t['dark']], JSON_UNESCAPED_UNICODE), 'comment' => 'Стандартна тема', 'created_by' => $actorId]);
-            if ($t['id'] === $activeSlug) $activeVersion = $vid;
+            $out[$t['id']] = $vid;
         }
-        if (!$activeVersion) throw new \RuntimeException('Невідома тема: ' . $activeSlug);
-        $db->run('UPDATE {p}theme_publications SET active_flag = NULL WHERE active_flag = 1');
-        $db->insert('theme_publications', ['theme_version_id' => $activeVersion, 'published_by' => $actorId, 'active_flag' => 1]);
+        return $out;
     }
 
     /**
@@ -256,7 +266,7 @@ final class Installer
             }
             $steps[] = 'Головний адміністратор';
             self::seedThemes($db, $in['site']['theme'], $owner);
-            $steps[] = '6 тем оформлення';
+            $steps[] = '7 тем оформлення';
             $settings = [
                 'site.name' => $in['site']['name'], 'site.slogan' => $in['site']['slogan'], 'site.url' => rtrim($in['site']['url'], '/'),
                 'site.launch_communities' => ['Миронівська', 'Богуславська', 'Кагарлицька'],
@@ -317,6 +327,7 @@ final class Installer
         self::syncPermissions($db);
         self::seedJobCategories($db);
         self::seedServiceCategories($db);
+        self::seedMissingThemes($db);
         return $w;
     }
 }

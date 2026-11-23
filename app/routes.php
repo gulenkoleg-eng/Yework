@@ -123,6 +123,7 @@ $router->post('/admin/roles/{id}', [AdminController::class, 'rolePermissions'], 
 $router->get('/admin/audit', [AdminController::class, 'audit'], ['audit.log:view']);
 $router->get('/admin/themes', [AdminController::class, 'themes'], ['theming.theme:view']);
 $router->post('/admin/themes', [AdminController::class, 'themePublish'], ['theming.theme:publish']);
+$router->post('/admin/themes/festive', [AdminController::class, 'themeFestive'], ['theming.theme:publish']);
 $router->get('/admin/settings', [AdminController::class, 'settings'], ['settings.system:manage_settings']);
 $router->post('/admin/settings', [AdminController::class, 'settingsSave'], ['settings.system:manage_settings']);
 $router->get('/admin/pages', [AdminController::class, 'pages'], ['content.page:update']);
