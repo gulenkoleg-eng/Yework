@@ -11,6 +11,7 @@ use App\Core\HttpException;
 use App\Core\Media;
 use App\Core\Request;
 use App\Core\Response;
+use App\Core\Sale;
 use App\Core\ValidationException;
 use App\Core\View;
 
@@ -38,7 +39,7 @@ final class AdsController
         $targets = $employer ? Ads::targetVacancies([$employer['id']]) : [];
         return $this->cab()->page('ads', 'ads', ['title' => 'Реклама і послуги', 'employer' => $employer, 'rows' => $rows, 'published' => $published,
             'paid' => Ads::monetizationOn(), 'prices' => Ads::prices(), 'today' => Ads::today(), 'templates' => Ads::availableTemplates(), 'tplDefault' => Ads::templateSettings()['default'],
-            'targets' => $targets, 'targetNow' => count($targets) === 1 ? (string) $targets[0]['id'] : '', 'occupancy' => Ads::occupancy()]);
+            'targets' => $targets, 'targetNow' => count($targets) === 1 ? (string) $targets[0]['id'] : '', 'occupancy' => Ads::occupancy(), 'sale' => Sale::activeFor((int) $me['id'])]);
     }
 
     public function order(Request $req): Response
@@ -64,10 +65,12 @@ final class AdsController
         }
         $image = Media::store('banner', 'image', 'e' . $employer['id']);
         if ($d['template'] === 'photo' && !$image) throw new ValidationException(['image' => 'Для шаблону «Фото» додайте картинку або оберіть інший шаблон']);
-        $price = Ads::monetizationOn() ? Ads::bannerPrice($d['placement'], $d['days']) : 0;
+        $full = Ads::monetizationOn() ? Ads::bannerPrice($d['placement'], $d['days']) : 0;
+        [$price, $sale] = Sale::bannerPrice($full, (int) $me['id']); // святкова знижка (0.5.26)
         $id = $db->insert('banners', [...$d, 'employer_id' => $employer['id'], 'created_by' => $me['id'], 'image' => $image, 'price' => $price, 'status' => 'pending']);
-        Audit::log('ads.banner_ordered', 'banner', $id, ['days' => $d['days'], 'placement' => $d['placement'], 'price' => $price]);
-        flash('ok', 'Банер надіслано на перевірку. Після схвалення він з’явиться на сайті в обрані дні.' . ($price ? ' Вартість: ' . money($price) . ' грн.' : ''));
+        if ($sale) Sale::remember($id, $sale, $full);
+        Audit::log('ads.banner_ordered', 'banner', $id, ['days' => $d['days'], 'placement' => $d['placement'], 'price' => $price] + ($sale ? ['sale' => $sale['percent']] : []));
+        flash('ok', 'Банер надіслано на перевірку. Після схвалення він з’явиться на сайті в обрані дні.' . ($price ? ' Вартість: ' . money($price) . ' грн' . ($sale ? ' зі знижкою «' . $sale['name'] . '» −' . $sale['percent'] . '%' : '') . '.' : ''));
         return Response::redirect(url('/cabinet/ads/' . $id));
     }
 
@@ -77,7 +80,7 @@ final class AdsController
         $employer = $this->cab()->employer((int) $this->me()['id']);
         $stats = in_array($b['status'], ['approved', 'cancelled'], true) ? Ads::stats($b) : [];
         $total = ['impressions' => array_sum(array_column($stats, 'impressions')), 'clicks' => array_sum(array_column($stats, 'clicks'))];
-        return $this->cab()->page('ad_view', 'ads', ['title' => $b['title'], 'b' => $b, 'target' => Ads::targetVacancy($b), 'employer' => $employer, 'stats' => $stats, 'total' => $total, 'paid' => Ads::monetizationOn()]);
+        return $this->cab()->page('ad_view', 'ads', ['title' => $b['title'], 'b' => $b, 'target' => Ads::targetVacancy($b), 'employer' => $employer, 'stats' => $stats, 'total' => $total, 'paid' => Ads::monetizationOn(), 'saleUse' => Sale::bannerUse((int) $b['id'])]);
     }
 
     /** Редагування свого банера (0.5.15). Змінений текст чи вигляд схваленого банера знову йде на перевірку; зміна вакансії — ні. */
@@ -113,7 +116,11 @@ final class AdsController
         }
         $d['image'] = Ads::editImage($req, $b);
         if ($d['template'] === 'photo' && !$d['image']) throw new ValidationException(['image' => 'Для шаблону «Фото» додайте картинку або оберіть інший шаблон']);
-        if (!$locked) $d['price'] = Ads::monetizationOn() ? Ads::bannerPrice($d['placement'], $d['days']) : 0;
+        if (!$locked) {
+            $full = Ads::monetizationOn() ? Ads::bannerPrice($d['placement'], $d['days']) : 0;
+            [$d['price'], $sale] = Sale::bannerPrice($full, (int) $this->me()['id'], (int) $b['id']);
+            Sale::remember((int) $b['id'], $sale, $full);
+        }
 
         // Що змінилося, крім вакансії? Схвалений банер зі зміненим текстом чи виглядом знову перевіряє модератор.
         $content = ['title', 'body', 'badge', 'perks', 'cta', 'template', 'image', 'placement', 'starts_on', 'days'];
@@ -154,6 +161,6 @@ final class AdsController
         if (!Ads::monetizationOn() || (int) $b['price'] === 0) throw new HttpException(404, 'Поки сайт розвивається, реклама безкоштовна — рахунок не потрібен.');
         $employer = App::db()->one('SELECT * FROM {p}employers WHERE id = ?', [$b['employer_id']]);
         $seller = (array) App::setting('billing.requisites', []);
-        return new Response(View::render('cabinet/invoice', ['b' => $b, 'employer' => $employer, 'seller' => $seller, 'title' => 'Рахунок № Б-' . $b['id']], 'bare'));
+        return new Response(View::render('cabinet/invoice', ['b' => $b, 'employer' => $employer, 'seller' => $seller, 'saleUse' => Sale::bannerUse((int) $b['id']), 'title' => 'Рахунок № Б-' . $b['id']], 'bare'));
     }
 }

@@ -64,6 +64,7 @@ final class Audit
         'ads.banner_created_by_admin' => 'Адміністрація створила банер', 'ads.banner_edited_by_admin' => 'Адміністрація змінила банер',
         'ads.banner_deleted_by_admin' => 'Адміністрація видалила банер', 'ads.templates_updated' => 'Змінено шаблони банерів',
         'ads.slots_updated' => 'Змінено кількість банерів одночасно', 'billing.prices_updated' => 'Змінено ціни',
+        'billing.sale_updated' => 'Змінено святкову акцію', 'billing.sale_caught' => 'Упіймано святкову знижку',
         'billing.monetization_enabled' => 'Увімкнено монетизацію', 'billing.monetization_disabled' => 'Вимкнено монетизацію',
         'resume.hidden' => 'Резюме приховано', 'resume.shown' => 'Резюме знову показується',
         'demo.added' => 'Додано приклади', 'demo.removed' => 'Видалено приклади',

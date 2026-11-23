@@ -207,6 +207,13 @@ final class SiteController
         return Response::json(['ok' => true]);
     }
 
+    /** Натискання на святкову заставку (0.5.26): хто встиг — отримує знижку. */
+    public function saleCatch(Request $req): Response
+    {
+        $r = \App\Core\Sale::catch(App::auth()->user());
+        return Response::json($r, $r['ok'] ? 200 : 409);
+    }
+
     public function about(Request $req): Response { return $this->page('about'); }
     public function rules(Request $req): Response { return $this->page('rules'); }
     public function contacts(Request $req): Response { return $this->page('contacts'); }

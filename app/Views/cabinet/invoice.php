@@ -9,7 +9,7 @@
     <dt>Платник</dt><dd><?= e($en) ?><?= $employer['edrpou'] ? ', код ' . e($employer['edrpou']) : '' ?></dd>
   </dl>
   <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Послуга</th><th>Кількість</th><th>Сума, грн</th></tr></thead><tbody>
-    <tr><td>Розміщення рекламного банера «<?= e($b['title']) ?>» на сайті <?= e(App\Core\App::setting('site.name', 'YEWORK')) ?>, <?= e(date('d.m.Y', strtotime($b['starts_on']))) ?>–<?= e(date('d.m.Y', strtotime($b['ends_on']))) ?></td><td><?= plural((int) $b['days'], 'день', 'дні', 'днів') ?></td><td><b><?= money((int) $b['price']) ?></b></td></tr>
+    <tr><td>Розміщення рекламного банера «<?= e($b['title']) ?>» на сайті <?= e(App\Core\App::setting('site.name', 'YEWORK')) ?>, <?= e(date('d.m.Y', strtotime($b['starts_on']))) ?>–<?= e(date('d.m.Y', strtotime($b['ends_on']))) ?><?php if (!empty($saleUse)): ?><br><small>Зі святковою знижкою «<?= e($saleUse['name']) ?>» −<?= (int) $saleUse['percent'] ?>% (без знижки <?= money((int) $saleUse['full_price']) ?> грн)</small><?php endif ?></td><td><?= plural((int) $b['days'], 'день', 'дні', 'днів') ?></td><td><b><?= money((int) $b['price']) ?></b></td></tr>
   </tbody></table></div>
   <p>Призначення платежу: <b>Оплата за рахунком № Б-<?= (int) $b['id'] ?>, без ПДВ</b></p>
   <?php if (!empty($s['note'])): ?><p class="small muted"><?= e($s['note']) ?></p><?php endif ?>
