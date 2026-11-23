@@ -272,16 +272,18 @@ a.stat.go:active{transform:scale(.98)}
 
 /* ================= АДМІНКА ================= */
 .adm{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh;flex:1}
-.adm-side{background:var(--c-panel);color:var(--c-panel-ink);padding:22px 14px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.adm-side{background:var(--c-panel);color:var(--c-panel-ink);padding:16px 12px;display:flex;flex-direction:column;gap:12px;position:sticky;top:0;height:100vh;overflow-y:auto}
 .adm-side .logo{color:#fff;padding:0 8px}
 .adm-side .logo small{color:var(--c-brand)}
-.adm-nav{display:flex;flex-direction:column;gap:2px}
-.adm-nav .t{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:#6B7382;padding:12px 10px 4px;font-weight:700}
-.adm-nav a{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:8px;color:#C5CBD6;text-decoration:none;font-size:14.5px;font-weight:500}
+/* 0.5.17: компактне меню — менші відступи пунктів і заголовків розділів, явна висота рядка (не залежить від теми) */
+.adm-nav{display:flex;flex-direction:column;gap:1px;line-height:1.3}
+.adm-nav .t{font-size:11px;line-height:1.2;text-transform:uppercase;letter-spacing:.08em;color:#6B7382;padding:12px 10px 4px;font-weight:700}
+.adm-nav .t:first-child{padding-top:2px}
+.adm-nav a{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;border-radius:7px;color:#C5CBD6;text-decoration:none;font-size:14px;font-weight:500}
 .adm-nav a:hover{background:#1A1E26;color:#fff}
 .adm-nav a.on{background:#1F2430;color:#fff;font-weight:600}
 .adm-nav a em{font-style:normal;background:var(--c-brand);color:var(--c-brand-ink);border-radius:999px;font-size:12px;font-weight:800;padding:1px 8px}
-.adm-side-f{margin-top:auto;font-size:12.5px;color:#6B7382;padding:0 10px;display:flex;flex-direction:column;gap:8px}
+.adm-side-f{margin-top:auto;font-size:12.5px;line-height:1.4;color:#6B7382;padding:8px 10px 0;display:flex;flex-direction:column;gap:6px}
 .adm-side-f a{color:#C5CBD6}
 .adm-main{padding:28px 32px 48px;display:flex;flex-direction:column;gap:20px;min-width:0;background:#F5F6F8;color:#1A1D23;--c-bg:#F5F6F8;--c-card:#fff;--c-text:#1A1D23;--c-muted:#5B6270;--c-border:#E3E6EB;--c-heading:#0F1115;--c-link:#2F49D1;--c-secondary:#E8ECFF;--c-button:#3D5AFE;--c-button-ink:#fff;--c-primary:#3D5AFE;--c-message:#EEF1FF;--c-success:#157F3B;--c-warning:#A15C00;--c-danger:#C62828;--r-btn:9px;--r-card:12px;--font-head:Inter,system-ui,sans-serif;--fw-head:700;--shadow:0 1px 2px rgba(16,24,40,.05);--bw:1px;font-family:Inter,system-ui,sans-serif;font-size:15px}
 .adm-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -294,6 +296,7 @@ a.stat.go:active{transform:scale(.98)}
   .adm-top{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--c-panel);color:#fff}
   .adm-top .logo{color:#fff}
   .adm-main{padding:18px 16px 40px}
+  .adm-nav a{padding:8px 10px}
 }
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
 .kpi{padding:16px 18px;display:flex;flex-direction:column;gap:4px;text-decoration:none;color:inherit}
