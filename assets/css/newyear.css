@@ -51,12 +51,26 @@
 .hdr-act .ny-snow-btn[aria-pressed=false] svg{opacity:.45}
 .hdr-act .ny-snow-btn[aria-pressed=false]::after{content:"";position:absolute;width:22px;height:2px;background:currentColor;transform:rotate(-45deg);border-radius:2px;opacity:.7}
 .nav .ny-snow-nav{display:none;border:0;background:none;text-align:left;cursor:pointer;color:var(--c-menu-ink);font-weight:600;font-size:15px;padding:8px 12px;opacity:.85}
-@media (max-width:600px){.hdr-act .ny-snow-btn{display:none}.nav .ny-snow-nav{display:block}}
+/* Телефон (0.5.13): кнопка ❄ лишається в шапці, тому шапку трохи стискаємо. У меню вона дублюється лише на дуже вузьких екранах. */
+@media (max-width:600px){
+  .ny .hdr .wrap{gap:10px}
+  .ny .hdr-act{gap:4px}
+  .ny .hdr-act .mode-btn,.ny .hdr-act .menu-btn,.hdr-act .ny-snow-btn{width:36px}
+  .ny .hdr-act .btn.sm{padding:0 10px}
+  .ny .hdr .logo{gap:8px;font-size:16px}
+}
+@media (max-width:380px){
+  .ny .hdr .wrap{gap:8px}
+  .ny .hdr-act{gap:2px}
+  .ny .hdr-act .mode-btn,.ny .hdr-act .menu-btn,.hdr-act .ny-snow-btn{width:32px}
+  .ny .hdr-act .btn.sm{padding:0 9px;font-size:13.5px}
+  .ny .hdr .logo{font-size:15px}
+}
+@media (max-width:345px){.hdr-act .ny-snow-btn{display:none}.nav .ny-snow-nav{display:block}}
 
-/* Хто попросив систему зменшити рух — без анімації: гірлянда просто світиться, снігу немає. */
+/* Хто попросив систему зменшити рух — без анімації: гірлянда просто світиться, сніг вимкнено, але його можна ввімкнути кнопкою ❄. */
 @media (prefers-reduced-motion:reduce){
   .ny-garland i,.ny-has-logo .hdr .logo i,.ny-has-logo .hdr .logo i::after{animation:none}
   .ny-has-logo .hdr .logo i::after{display:none}
-  .ny-canvas,.hdr-act .ny-snow-btn,.nav .ny-snow-nav{display:none}
 }
 @media print{.ny-garland,.ny-canvas,.ny-snow-btn{display:none}.ny .ftr::before,.ny-has-logo .hdr .logo i::before{display:none}}
