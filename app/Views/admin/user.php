@@ -1,12 +1,13 @@
 <?php $a = App\Core\App::auth(); $isSelf = (int) $u['id'] === (int) $me['id']; $isOwner = (int) $u['owner_flag'] === 1; $has = array_column($roles, 'slug'); ?>
-<div class="adm-h"><a href="<?= url('/admin/users') ?>" class="btn sm ghost">←</a><h1><?= e($u['display_name']) ?></h1><span class="tag <?= $u['status'] === 'active' ? 'ok' : 'bad' ?>"><?= $u['status'] === 'active' ? 'Активний' : 'Заблокований' ?></span><?php if ($isOwner): ?><span class="tag">Головний адміністратор</span><?php endif ?></div>
+<div class="adm-h"><a href="<?= url($isStaff ? '/admin/team' : '/admin/clients') ?>" class="btn sm ghost" title="<?= $isStaff ? 'До команди' : 'До клієнтів' ?>">←</a><h1><?= e($u['display_name']) ?></h1><span class="tag <?= $u['status'] === 'active' ? 'ok' : 'bad' ?>"><?= $u['status'] === 'active' ? 'Активний' : 'Заблокований' ?></span><?php if ($isOwner): ?><span class="tag">Головний адміністратор</span><?php elseif ($isStaff): ?><span class="tag">Команда</span><?php else: ?><span class="tag muted">Клієнт</span><?php endif ?><?php if ($canEdit): ?><a class="btn sm pri" style="margin-left:auto" href="<?= url('/admin/users/' . $u['id'] . '/edit') ?>">Редагувати картку</a><?php endif ?></div>
 <div class="grid2" style="align-items:start">
   <div class="card pad stack">
     <h3>Дані</h3>
     <dl class="kv"><dt>Логін</dt><dd class="mono"><?= e($u['login']) ?></dd><dt>Телефон</dt><dd><?= e($phone ? ($masked ? $phone : phone_pretty($phone)) : '—') ?></dd><dt>Email</dt><dd><?= e($email ?? '—') ?></dd>
       <dt>Реєстрація</dt><dd><?= e(local_date($u['created_at'])) ?></dd><dt>Останній вхід</dt><dd><?= e($u['last_login_at'] ? local_date($u['last_login_at']) : '—') ?></dd>
       <dt>Вакансій / відгуків</dt><dd><?= $stats['vacancies'] ?> / <?= $stats['applications'] ?></dd>
-      <dt>Роботодавець</dt><dd><?= $employers ? e(implode(', ', array_map(fn ($x) => $x['name'] . ($x['is_verified'] ? ' ✓' : ''), $employers))) : '—' ?></dd></dl>
+      <dt>Роботодавець</dt><dd><?php if ($employers): foreach ($employers as $x): ?><div class="row" style="gap:8px;flex-wrap:nowrap"><?= $x['logo'] ? employer_logo($x['logo'], $x['name'], 40) : '<span class="elogo ph" title="Логотипу немає">' . e(initials($x['name'])) . '</span>' ?><span><?= e(employer_name($x['legal_form'], $x['name'])) ?><?= $x['is_verified'] ? ' ✓' : '' ?></span></div><?php endforeach; else: ?>—<?php endif ?></dd>
+      <?php if ($master): ?><dt>Майстер</dt><dd><div class="row" style="gap:8px;flex-wrap:nowrap"><?= $master['photo'] ? '<img class="elogo" src="' . e(App\Core\Media::url('master', $master['photo'])) . '" alt="" width="40" height="40">' : '<span class="elogo ph">' . e(initials($master['name'])) . '</span>' ?><a href="<?= url('/services/' . $master['id']) ?>"><?= e($master['name']) ?></a></div></dd><?php endif ?></dl>
     <?php if ($masked): ?><p class="small muted">Контакти приховано: потрібне право «Перегляд телефонів і email».</p><?php endif ?>
     <?php if (!$isSelf && !$isOwner && $a->can('identity.user:update')): ?>
       <form method="post" action="<?= url('/admin/users/' . $u['id'] . '/status') ?>" class="row"><?= csrf_field() ?>

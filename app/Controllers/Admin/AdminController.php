@@ -268,29 +268,6 @@ final class AdminController
 
     /* ---------------- користувачі ---------------- */
 
-    public function users(Request $req): Response
-    {
-        $db = App::db();
-        $q = mb_substr(trim((string) ($req->query['q'] ?? '')), 0, 100);
-        $filter = (string) ($req->query['filter'] ?? '');
-        $w = ['u.deleted_at IS NULL'];
-        $p = [];
-        if ($q !== '') {
-            $c = Crypto::parseContact($q);
-            if ($c) { $w[] = ($c['kind'] === 'phone' ? 'u.phone_hash' : 'u.email_hash') . ' = ?'; $p[] = Crypto::hmac($c['value']); }
-            else { $w[] = '(u.display_name LIKE ? OR u.login LIKE ?)'; $like = '%' . addcslashes($q, '%_\\') . '%'; array_push($p, $like, $like); }
-        }
-        if ($filter === 'blocked') $w[] = "u.status = 'blocked'";
-        if ($filter === 'staff') $w[] = '(u.owner_flag = 1 OR EXISTS (SELECT 1 FROM {p}user_roles ur WHERE ur.user_id = u.id))';
-        $where = ' WHERE ' . implode(' AND ', $w);
-        $total = (int) $db->value('SELECT COUNT(*) FROM {p}users u' . $where, $p);
-        $page = max(1, (int) ($req->query['page'] ?? 1));
-        $rows = $db->all('SELECT u.id, u.login, u.display_name, u.status, u.owner_flag, u.phone_hash, u.email_hash, u.created_at, u.last_login_at,
-            (SELECT GROUP_CONCAT(r.name SEPARATOR ", ") FROM {p}user_roles ur JOIN {p}roles r ON r.id = ur.role_id WHERE ur.user_id = u.id) AS roles
-            FROM {p}users u' . $where . ' ORDER BY u.id DESC LIMIT 30 OFFSET ' . (($page - 1) * 30), $p);
-        return $this->render('users', 'users', ['title' => 'Користувачі', 'rows' => $rows, 'total' => $total, 'page' => $page, 'q' => $q, 'filter' => $filter]);
-    }
-
     public function user(Request $req): Response
     {
         $db = App::db();
@@ -303,10 +280,14 @@ final class AdminController
         $roles = App::auth()->rolesOf($id);
         $allRoles = $db->all("SELECT slug, name, description FROM {p}roles WHERE deleted_at IS NULL AND slug <> 'owner' ORDER BY id");
         $audit = $db->all("SELECT * FROM {p}audit_log WHERE actor_id = ? OR (entity_type = 'user' AND entity_id = ?) ORDER BY id DESC LIMIT 20", [$id, (string) $id]);
-        $employers = $db->all('SELECT id, name, is_verified FROM {p}employers WHERE owner_id = ?', [$id]);
+        $employers = $db->all('SELECT id, name, legal_form, logo, is_verified FROM {p}employers WHERE owner_id = ? AND deleted_at IS NULL', [$id]);
+        try { $master = \App\Core\Services::ofUser($id); } catch (\PDOException) { $master = null; }
+        $isStaff = (int) $u['owner_flag'] === 1 || (bool) $roles;
+        $me = App::auth()->user();
+        $canEdit = App::auth()->can('identity.user:update') && $u['deleted_at'] === null && (!$isStaff || $me['is_owner'] || $id === (int) $me['id']);
         $stats = ['vacancies' => (int) $db->value('SELECT COUNT(*) FROM {p}vacancies WHERE author_id = ?', [$id]), 'applications' => (int) $db->value('SELECT COUNT(*) FROM {p}applications WHERE user_id = ?', [$id])];
-        return $this->render('user', 'users', ['title' => $u['display_name'], 'u' => $u, 'phone' => $full ? $phone : mask_contact($phone), 'email' => $full ? $email : mask_contact($email), 'masked' => !$full,
-            'roles' => $roles, 'allRoles' => $allRoles, 'audit' => $audit, 'employers' => $employers, 'stats' => $stats, 'me' => App::auth()->user()]);
+        return $this->render('user', $isStaff ? 'team' : 'clients', ['title' => $u['display_name'], 'u' => $u, 'phone' => $full ? $phone : mask_contact($phone), 'email' => $full ? $email : mask_contact($email), 'masked' => !$full,
+            'roles' => $roles, 'allRoles' => $allRoles, 'audit' => $audit, 'employers' => $employers, 'master' => $master, 'stats' => $stats, 'me' => $me, 'isStaff' => $isStaff, 'canEdit' => $canEdit]);
     }
 
     public function userStatus(Request $req): Response
