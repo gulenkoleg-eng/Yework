@@ -1,3 +1,4 @@
+<a class="small back-link" href="<?= url('/') ?>">← На головну</a>
 <div class="row" style="margin-bottom:16px"><h1 style="font-size:30px">Роботодавці</h1><span class="muted"><?= plural(count($items), 'шукає працівників', 'шукають працівників', 'шукають працівників') ?></span></div>
 <?php if ($items): ?>
 <div class="emps">
