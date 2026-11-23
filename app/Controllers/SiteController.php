@@ -56,6 +56,7 @@ final class SiteController
             'noexp' => ($req->query['noexp'] ?? '') === '1',
             'sort' => ($req->query['sort'] ?? '') === 'salary' ? 'salary' : 'new',
             'employer' => max(0, (int) ($req->query['employer'] ?? 0)),
+            'today' => ($req->query['today'] ?? '') === '1',
         ];
         $where = ["v.status = 'published'", 'v.deleted_at IS NULL'];
         $p = [];
@@ -66,6 +67,7 @@ final class SiteController
         if ($f['salary']) { $where[] = '(COALESCE(v.salary_to, v.salary_from) >= ?)'; $p[] = $f['salary']; }
         if ($f['noexp']) $where[] = 'v.no_experience = 1';
         if ($f['employer']) { $where[] = 'v.employer_id = ?'; $p[] = $f['employer']; }
+        if ($f['today']) { $where[] = 'v.published_at >= ?'; $p[] = \App\Core\Stats::kyivDayStartUtc(); } // «нових вакансій сьогодні» з головної
         $w = ' WHERE ' . implode(' AND ', $where);
         $total = (int) $db->value('SELECT COUNT(*) FROM {p}vacancies v JOIN {p}employers e ON e.id = v.employer_id JOIN {p}job_categories c ON c.id = v.category_id' . $w, $p);
         $page = max(1, min((int) ($req->query['page'] ?? 1), max(1, (int) ceil($total / self::PAGE))));
@@ -87,6 +89,18 @@ final class SiteController
         }
         return new Response(view('site/jobs', ['f' => $f, 'items' => $items, 'total' => $total, 'page' => $page, 'settlements' => $settlements, 'categories' => $categories,
             'employer' => $employer, 'employerPromo' => $employerPromo, 'promos' => $promos, 'title' => $employer ? 'Вакансії: ' . employer_name($employer['legal_form'], $employer['name']) : 'Вакансії']));
+    }
+
+    /** Роботодавці, які зараз шукають працівників (сюди веде картка статистики на головній). */
+    public function employers(Request $req): Response
+    {
+        $items = App::db()->all("SELECT e.id, e.name, e.legal_form, e.logo, e.is_verified, COUNT(*) AS cnt, MAX(v.published_at) AS last_at,
+            (SELECT s.name FROM {p}settlements s WHERE s.id = e.settlement_id) AS settlement
+            FROM {p}vacancies v JOIN {p}employers e ON e.id = v.employer_id
+            WHERE v.status = 'published' AND v.deleted_at IS NULL
+            GROUP BY e.id, e.name, e.legal_form, e.logo, e.is_verified, e.settlement_id
+            ORDER BY cnt DESC, last_at DESC LIMIT 300");
+        return new Response(view('site/employers', ['items' => $items, 'title' => 'Роботодавці']));
     }
 
     public function vacancy(Request $req): Response
