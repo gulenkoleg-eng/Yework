@@ -603,13 +603,52 @@ final class AdminController
     {
         $id = $req->str('id', 80);
         try {
-            Updater::deleteBackup($id);
-            Audit::log('system.backup_deleted', 'backup', $id);
-            flash('ok', 'Копію видалено.');
+            $b = Updater::deleteBackup($id, ($req->post['confirm_latest'] ?? '') === '1');
+            Audit::log('system.backup_deleted', 'backup', $id, ['version' => $b['version'] ?? null, 'size' => $b['size'] ?? null]);
+            flash('ok', 'Копію версії ' . ($b['version'] ?? '?') . ' видалено, звільнено ' . Updater::humanSize((int) ($b['size'] ?? 0)) . '.');
         } catch (\Throwable $e) {
             flash('bad', $e->getMessage());
         }
-        return Response::redirect(url('/admin/updates'));
+        return Response::redirect(url('/admin/updates') . '#backups');
+    }
+
+    public function updatesClean(Request $req): Response
+    {
+        $keep = max(1, (int) ($req->post['keep'] ?? 1));
+        $r = Updater::deleteOldBackups($keep);
+        if ($r['count']) {
+            Audit::log('system.backups_cleaned', 'backup', null, ['keep' => $keep, 'deleted' => $r['count'], 'freed' => $r['freed']]);
+            flash('ok', 'Видалено ' . plural($r['count'], 'стару копію', 'старі копії', 'старих копій') . ', звільнено ' . Updater::humanSize($r['freed']) . '. Залишилось ' . plural(count(Updater::backups()), 'копія', 'копії', 'копій') . '.');
+        } else {
+            flash('ok', 'Видаляти нічого: копій і так не більше ' . $keep . '.');
+        }
+        return Response::redirect(url('/admin/updates') . '#backups');
+    }
+
+    public function updatesKeep(Request $req): Response
+    {
+        try {
+            $n = (int) ($req->post['keep'] ?? 0);
+            $r = Updater::setKeepCount($n, App::auth()->id());
+            Audit::log('system.backups_keep', 'settings', 'updates.backups_keep', ['keep' => $n, 'deleted' => $r['count']]);
+            flash('ok', 'Тепер зберігаються останні ' . plural($n, 'копія', 'копії', 'копій') . '.' . ($r['count'] ? ' Зайві видалено: ' . $r['count'] . ', звільнено ' . Updater::humanSize($r['freed']) . '.' : ''));
+        } catch (\Throwable $e) {
+            flash('bad', $e->getMessage());
+        }
+        return Response::redirect(url('/admin/updates') . '#backups');
+    }
+
+    public function updatesDownload(Request $req): Response
+    {
+        $id = (string) ($req->query['id'] ?? '');
+        $part = ($req->query['part'] ?? '') === 'db' ? 'db' : 'files';
+        $path = Updater::backupPart($id, $part);
+        if (!$path) {
+            flash('bad', 'Резервну копію не знайдено.');
+            return Response::redirect(url('/admin/updates') . '#backups');
+        }
+        Audit::log('system.backup_downloaded', 'backup', $id, ['part' => $part]);
+        return Response::download($path, 'yework-backup-' . $id . ($part === 'db' ? '-baza.sql' : '-faily.zip'), $part === 'db' ? 'application/sql' : 'application/zip');
     }
 
     public function updatesSettings(Request $req): Response

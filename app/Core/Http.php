@@ -68,6 +68,8 @@ final class Request
 final class Response
 {
     private array $headers = ['Content-Type' => 'text/html; charset=utf-8'];
+    /** Файл, який віддаємо потоком (не читаючи весь у пам’ять). */
+    private ?string $file = null;
 
     public function __construct(public string $body = '', public int $status = 200) {}
 
@@ -85,6 +87,18 @@ final class Response
         return $r;
     }
 
+    /** Віддає файл на завантаження. */
+    public static function download(string $path, string $name, string $type = 'application/octet-stream'): self
+    {
+        $r = new self();
+        $r->file = $path;
+        $r->headers['Content-Type'] = $type;
+        $r->headers['Content-Length'] = (string) filesize($path);
+        $r->headers['Content-Disposition'] = 'attachment; filename="' . preg_replace('/[^\w.-]/', '_', $name) . '"';
+        $r->headers['Cache-Control'] = 'private, no-store';
+        return $r;
+    }
+
     public function header(string $k, string $v): self { $this->headers[$k] = $v; return $this; }
 
     public function send(): void
@@ -95,6 +109,11 @@ final class Response
             header('X-Content-Type-Options: nosniff');
             header('X-Frame-Options: DENY');
             header('Referrer-Policy: strict-origin-when-cross-origin');
+        }
+        if ($this->file !== null) {
+            while (ob_get_level() > 0) ob_end_clean();
+            readfile($this->file);
+            return;
         }
         echo $this->body;
     }
