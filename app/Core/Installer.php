@@ -87,8 +87,9 @@ final class Installer
             $c = Db::connect($db, true, $db['prefix']);
             $ver = (string) $c->value('SELECT VERSION()');
             $isMaria = stripos($ver, 'mariadb') !== false;
-            $num = (float) preg_replace('/^(\d+\.\d+).*/', '$1', $ver);
-            if ((!$isMaria && $num < 8.0) || ($isMaria && $num < 10.6)) {
+            // Порівнюємо як версії, а не як дробові числа: інакше MariaDB 10.11 вважалася «старішою» за 10.6.
+            $num = preg_match('/^(\d+\.\d+)/', $ver, $m) ? $m[1] : '0.0';
+            if (version_compare($num, $isMaria ? '10.6' : '8.0', '<')) {
                 return ['ok' => false, 'message' => "Версія бази даних $ver застара. Потрібен MySQL 8.0+ або MariaDB 10.6+."];
             }
             $existing = (int) $c->value('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?', [$db['prefix'] . 'users'])
