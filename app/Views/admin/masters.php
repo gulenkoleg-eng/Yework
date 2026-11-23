@@ -1,4 +1,4 @@
-<?php /* Майстри (0.5.24): компактний список із пошуком і фільтрами, подробиці розгортаються, «Редагувати» відкриває повну анкету. */
+<?php /* Майстри (0.5.25.1): компактний список із пошуком і фільтрами, подробиці розгортаються, «Редагувати» відкриває повну анкету. */
 use App\Core\Media; use App\Core\Services as S; use App\Controllers\Admin\ServicesAdminController as SA;
 $backQ = (string) (parse_url(SA::listUrl($f), PHP_URL_QUERY) ?? '') ?: 'status=' . $status;
 $filtered = $f['q'] !== '' || $f['cat'] || $f['place'] !== '' || $f['kind'] !== '';

@@ -119,7 +119,7 @@ $router->get('/admin/masters', [ServicesAdminController::class, 'index'], ['serv
 $router->post('/admin/demo', [ServicesAdminController::class, 'demo'], ['services.listing:moderate']);
 $router->post('/admin/masters/{id}', [ServicesAdminController::class, 'decide'], ['services.listing:moderate']);
 $router->post('/admin/reviews/{id}', [ServicesAdminController::class, 'review'], ['services.listing:moderate']);
-// Правка анкети майстра адміністрацією (0.5.24): профіль, прайс, галерея робіт.
+// Правка анкети майстра адміністрацією (0.5.25.1): профіль, прайс, галерея робіт.
 $router->get('/admin/masters/{id}/edit', [MasterEditController::class, 'form'], [MasterEditController::PERM]);
 $router->post('/admin/masters/{id}/edit', [MasterEditController::class, 'save'], [MasterEditController::PERM]);
 $router->get('/admin/masters/{id}/works/new', [MasterEditController::class, 'workForm'], [MasterEditController::PERM]);
@@ -143,6 +143,8 @@ $router->post('/admin/billing', [AdminController::class, 'billingSave'], ['billi
 // Люди (0.5.16): клієнти окремо від команди; адміністратор виправляє картку клієнта (ім’я, профіль роботодавця, логотип, фото майстра)
 $router->get('/admin/clients', [PeopleController::class, 'clients'], ['identity.user:view']);
 $router->get('/admin/team', [PeopleController::class, 'team'], ['identity.user:view']);
+// 0.5.23: «Перевірений роботодавець» одним натисканням (список клієнтів, картка клієнта, модерація)
+$router->post('/admin/employers/{id}/verified', [PeopleController::class, 'verifyToggle'], ['identity.user:update']);
 $router->get('/admin/users', [PeopleController::class, 'legacy'], ['identity.user:view']);
 $router->get('/admin/users/{id}', [AdminController::class, 'user'], ['identity.user:view']);
 $router->get('/admin/users/{id}/edit', [PeopleController::class, 'editForm'], ['identity.user:update']);

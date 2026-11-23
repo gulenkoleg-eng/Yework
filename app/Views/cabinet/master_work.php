@@ -1,5 +1,5 @@
 <?php use App\Core\Media; $nPh = $w ? count($w['photos']) : 0;
-// 0.5.24: в адмінці ця ж форма редагує галерею чужого майстра ($adminEdit, $ctx).
+// 0.5.25.1: в адмінці ця ж форма редагує галерею чужого майстра ($adminEdit, $ctx).
 $adminEdit = !empty($adminEdit);
 $ctx = $ctx ?? ['base' => url('/cabinet/master'), 'works' => '/cabinet/master/works', 'q' => []]; ?>
 <div class="cab">

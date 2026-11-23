@@ -3,7 +3,7 @@ use App\Core\App;
 use App\Core\Media;
 use App\Core\Services as S;
 $old = App::$old;
-// 0.5.24: та сама форма відкривається в адмінці для правки чужої анкети ($adminEdit, $ctx з Admin\MasterEditController).
+// 0.5.25.1: та сама форма відкривається в адмінці для правки чужої анкети ($adminEdit, $ctx з Admin\MasterEditController).
 $adminEdit = !empty($adminEdit);
 $ctx = $ctx ?? ['base' => url('/cabinet/master'), 'works' => '/cabinet/master/works', 'q' => []];
 $act = $ctx['base'];

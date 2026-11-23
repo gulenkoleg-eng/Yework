@@ -24,7 +24,7 @@ final class ServicesAdminController
     }
 
     public const TABS = ['pending' => 'Чекають', 'changed' => 'Змінені', 'published' => 'Опубліковані', 'rejected' => 'Відхилені', 'archived' => 'Архів', 'all' => 'Усі', 'reviews' => 'Відгуки'];
-    /** Умова кожної вкладки списку (0.5.24). «Усі» — разом із чернетками. */
+    /** Умова кожної вкладки списку (0.5.25.1). «Усі» — разом із чернетками. */
     private const TAB_SQL = [
         'pending' => "m.status = 'pending'", 'changed' => "m.status = 'published' AND m.needs_review = 1", 'published' => "m.status = 'published'",
         'rejected' => "m.status = 'rejected'", 'archived' => "m.status = 'archived'", 'all' => '1 = 1',
@@ -127,7 +127,7 @@ final class ServicesAdminController
         $m = $db->one('SELECT * FROM {p}masters WHERE id = ? AND deleted_at IS NULL', [(int) $req->params['id']]);
         if (!$m) throw new HttpException(404, 'Майстра не знайдено.');
         if ((int) $m['user_id'] === (int) $me['id']) throw new HttpException(403, 'Не можна модерувати власний профіль майстра.');
-        // Повертаємося в той самий список із тими самими фільтрами (0.5.24).
+        // Повертаємося в той самий список із тими самими фільтрами (0.5.25.1).
         parse_str($req->str('back', 600), $bq);
         $back = self::listUrl(self::filters(is_array($bq) ? $bq : []));
         $decision = $req->str('decision', 10);

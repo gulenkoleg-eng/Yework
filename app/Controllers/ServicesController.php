@@ -199,7 +199,7 @@ final class ServicesController
     }
 
     /**
-     * Чий профіль майстра редагуємо (0.5.24): свій у кабінеті або чужий — адміністрація (Admin\MasterEditController::ctx).
+     * Чий профіль майстра редагуємо (0.5.25.1): свій у кабінеті або чужий — адміністрація (Admin\MasterEditController::ctx).
      * uid — власник профілю, m — запис masters або null, base — адреса сторінки профілю, works — адреса портфоліо,
      * admin — правка від імені адміністрації (без повторної перевірки, власник отримує сповіщення).
      */
@@ -509,7 +509,7 @@ final class ServicesController
         return Response::redirect($ctx['base'] . '#works');
     }
 
-    /* ---------------- правка адміністрацією (0.5.24) ---------------- */
+    /* ---------------- правка адміністрацією (0.5.25.1) ---------------- */
 
     /** Профіль майстра зберігає адміністрація: стан і перевірка не змінюються, власник отримує перелік змін. */
     private function adminProfileSaved(Request $req, array $ctx, array $d, array $travel, bool $photoChanged): Response

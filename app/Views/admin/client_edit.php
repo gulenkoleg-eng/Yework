@@ -57,7 +57,7 @@ $isDemo = in_array((int) $u['id'], \App\Core\Demo::content()['users'], true); ?>
     <?= input_field('master_name', 'Ім’я або назва майстра', ['value' => $m['name'], 'maxlength' => 100]) ?>
   </div>
 
-  <?php /* 0.5.24: анкета майстра (опис, прайс, фото, виїзд) прямо в картці клієнта + кнопка повної правки. */
+  <?php /* 0.5.25.1: анкета майстра (опис, прайс, фото, виїзд) прямо в картці клієнта + кнопка повної правки. */
     $mf = \App\Core\Services::find((int) $m['id']) ?? $m; $mPrices = \App\Core\Services::prices((int) $m['id']); $mWorks = \App\Core\Services::works((int) $m['id']);
     $mTravel = \App\Core\Services::travelText($mf, \App\Core\Services::travelAreas((int) $m['id']));
     $mEdit = \App\Core\App::auth()->can(\App\Controllers\Admin\MasterEditController::PERM); $mSt = \App\Core\Services::STATUS[$m['status']] ?? ['—', 'muted']; ?>

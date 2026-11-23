@@ -1,6 +1,7 @@
 <?php /* Модерація вакансій (0.5.22): компактний список із фільтрами, деталі розгортаються, «Редагувати» для адміністрації. */
 use App\Controllers\Admin\AdminController as AC;
 $backQ = (string) (parse_url(AC::modUrl($f), PHP_URL_QUERY) ?? '') ?: 'status=' . $status;
+$modHere = url('/admin/moderation') . '?' . $backQ;
 $filtered = $f['q'] !== '' || $f['cat'] || $f['place'] !== '' || $f['emp'] || $f['author'];
 $tabs = ['pending' => 'Чекають', 'published' => 'Опубліковані', 'rejected' => 'Відхилені'];
 $byCommunity = [];
@@ -53,6 +54,7 @@ foreach ($places as $pl) $byCommunity[$pl['community_id']][] = $pl; ?>
       <span class="small muted mq-when" title="<?= e(local_date($when)) ?>"><?= e(ago($when)) ?></span>
       <span class="mq-act">
         <?php if ($v['status'] === 'pending' && !$own): ?><form method="post" action="<?= url('/admin/moderation/' . $v['id']) ?>"><?= csrf_field() ?><input type="hidden" name="decision" value="approve"><input type="hidden" name="back" value="<?= e($backQ) ?>"><button class="btn sm ok" title="Опублікувати"><?= icon('check', 15) ?><span class="mq-lbl">Опублікувати</span></button></form><?php endif ?>
+        <?php if ($canVerify): ?><?= verify_toggle((int) $v['employer_id'], (bool) $v['is_verified'], $modHere, true) ?><?php endif ?>
         <?php if ($canEdit): ?><a class="btn sm" href="<?= $edit ?>" title="Редагувати вакансію"><?= icon('tool', 15) ?><span class="mq-lbl">Редагувати</span></a><?php endif ?>
         <span class="mq-chev" aria-hidden="true"></span>
       </span>
@@ -78,7 +80,7 @@ foreach ($places as $pl) $byCommunity[$pl['community_id']][] = $pl; ?>
         <form method="post" action="<?= url('/admin/moderation/' . $v['id']) ?>" class="mq-reject"><?= csrf_field() ?><input type="hidden" name="decision" value="reject"><input type="hidden" name="back" value="<?= e($backQ) ?>">
           <input class="input" name="reason" placeholder="Причина відхилення (побачить роботодавець)" list="reasons" required minlength="5"><button class="btn sm bad">Відхилити</button></form>
         <?php endif ?>
-        <?php if (!$v['is_verified'] && $canVerify): ?><form method="post" action="<?= url('/admin/moderation/' . $v['id']) ?>"><?= csrf_field() ?><input type="hidden" name="decision" value="verify"><input type="hidden" name="back" value="<?= e($backQ) ?>"><button class="btn sm ghost"><?= icon('shield', 15) ?>Позначити роботодавця перевіреним</button></form><?php endif ?>
+        <?php if ($canVerify): ?><?= verify_toggle((int) $v['employer_id'], (bool) $v['is_verified'], $modHere) ?><?php endif ?>
       </div>
       <?php endif ?>
     </div>

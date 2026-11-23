@@ -86,8 +86,17 @@ final class PeopleController
         foreach ($types as $k => [, $sql]) {
             $counts[$k] = (int) $db->value('SELECT COUNT(*) FROM {p}users u WHERE ' . implode(' AND ', [...$base, $sql]), $p);
         }
-        $where = ' WHERE ' . implode(' AND ', [...$base, $types[$type][1]]);
-        $total = $counts[$type];
+        // 0.5.23: у вкладці «Роботодавці» — фільтр «Перевірені / Неперевірені»
+        $vers = ['yes' => 'EXISTS (SELECT 1 FROM {p}employers ev WHERE ev.owner_id = u.id AND ev.deleted_at IS NULL AND ev.is_verified = 1)'];
+        $vers['no'] = 'NOT ' . $vers['yes'];
+        $ver = (string) ($req->query['ver'] ?? '');
+        if ($type !== 'employers' || !isset($vers[$ver])) $ver = '';
+        $verCounts = [];
+        if ($type === 'employers') foreach ($vers as $k => $sql) {
+            $verCounts[$k] = (int) $db->value('SELECT COUNT(*) FROM {p}users u WHERE ' . implode(' AND ', [...$base, $types['employers'][1], $sql]), $p);
+        }
+        $where = ' WHERE ' . implode(' AND ', [...$base, $types[$type][1], ...($ver !== '' ? [$vers[$ver]] : [])]);
+        $total = $ver !== '' ? $verCounts[$ver] : $counts[$type];
         $page = max(1, (int) ($req->query['page'] ?? 1));
         $rows = $db->all('SELECT u.id, u.login, u.display_name, u.status, u.phone_hash, u.email_hash, u.created_at, u.last_login_at,
             (SELECT e.id FROM {p}employers e WHERE e.owner_id = u.id AND e.deleted_at IS NULL ORDER BY e.id LIMIT 1) AS emp_id,
@@ -101,7 +110,7 @@ final class PeopleController
             (SELECT COUNT(*) FROM {p}vacancies v WHERE v.author_id = u.id AND v.deleted_at IS NULL) AS vacancies
             FROM {p}users u' . $where . ' ORDER BY u.id DESC LIMIT ' . self::PER_PAGE . ' OFFSET ' . (($page - 1) * self::PER_PAGE), $p);
         return $this->render('clients', 'clients', ['title' => 'Клієнти', 'rows' => $rows, 'total' => $total, 'counts' => $counts, 'types' => $types,
-            'type' => $type, 'page' => $page, 'q' => $q, 'demo' => Demo::content()['users'], 'canEdit' => App::auth()->can('identity.user:update')]);
+            'type' => $type, 'ver' => $ver, 'verCounts' => $verCounts, 'page' => $page, 'q' => $q, 'demo' => Demo::content()['users'], 'canEdit' => App::auth()->can('identity.user:update')]);
     }
 
     public function team(Request $req): Response
@@ -116,6 +125,50 @@ final class PeopleController
             FROM {p}users u WHERE ' . implode(' AND ', $w) . ' ORDER BY u.owner_flag DESC, u.id', $p);
         return $this->render('team', 'team', ['title' => 'Команда', 'rows' => $rows, 'q' => $q,
             'rewards' => App::auth()->user()['is_owner'] ? \App\Core\Rewards::thisMonth() : null]);
+    }
+
+    /* ---------------- «Перевірений роботодавець» одним натисканням (0.5.23) ---------------- */
+
+    /**
+     * Ставить або знімає позначку з будь-якого місця адмінки: список клієнтів, картка клієнта, модерація.
+     * Після натискання повертає туди ж (з фільтрами й сторінкою). Коли позначку поставлено, власник отримує сповіщення.
+     */
+    public function verifyToggle(Request $req): Response
+    {
+        $db = App::db();
+        $id = (int) $req->params['id'];
+        $emp = $db->one('SELECT id, owner_id, name, legal_form, is_verified FROM {p}employers WHERE id = ? AND deleted_at IS NULL', [$id]);
+        if (!$emp) throw new HttpException(404, 'Роботодавця не знайдено.');
+        $on = (string) $req->input('on') === '1';
+        $name = employer_name($emp['legal_form'], $emp['name']);
+        if ((bool) (int) $emp['is_verified'] === $on) {
+            flash('info', $on ? "$name уже позначено перевіреним." : "У $name позначки вже немає.");
+        } else {
+            $db->update('employers', ['is_verified' => $on ? 1 : 0, 'updated_at' => Db::now()], 'id = ?', [$id]);
+            Audit::log($on ? 'jobs.employer_verified' : 'jobs.employer_unverified', 'employer', $id, ['owner' => (int) $emp['owner_id']]);
+            Stats::forget();
+            $uid = (int) $emp['owner_id'];
+            $sent = $on && $uid && $uid !== (int) App::auth()->user()['id'] && !in_array($uid, Demo::content()['users'], true);
+            if ($sent) {
+                try {
+                    Notices::add($uid, 'admin_edit', 'Вашу компанію позначено як перевіреного роботодавця',
+                        'Біля назви ' . $name . ' у вакансіях тепер показується позначка довіри «Перевірений роботодавець».', '/cabinet', 'user', $uid);
+                } catch (\Throwable $e) {
+                    error_log('[YEWORK] notice failed: ' . $e->getMessage());
+                }
+            }
+            flash('ok', $on ? "$name позначено як перевіреного роботодавця." . ($sent ? ' Власник отримав сповіщення в кабінеті.' : '') : "З $name знято позначку «Перевірений».");
+        }
+        return Response::redirect(self::safeBack($req->str('back', 800), url('/admin/users/' . (int) $emp['owner_id'])));
+    }
+
+    /** Повертаємо лише на сторінки адмінки цього ж сайту (захист від переходу на чужий сайт). */
+    private static function safeBack(string $back, string $default): string
+    {
+        $admin = url('/admin');
+        $ok = $back !== '' && str_starts_with($back, $admin) && !preg_match('#//|\\\\|[\r\n]#', $back)
+            && in_array(substr($back, strlen($admin), 1), ['', '/', '?', '#'], true);
+        return $ok ? $back : $default;
     }
 
     /* ---------------- виправлення картки клієнта ---------------- */

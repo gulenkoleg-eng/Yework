@@ -6,7 +6,7 @@
     <dl class="kv"><dt>Логін</dt><dd class="mono"><?= e($u['login']) ?></dd><dt>Телефон</dt><dd><?= e($phone ? ($masked ? $phone : phone_pretty($phone)) : '—') ?></dd><dt>Email</dt><dd><?= e($email ?? '—') ?></dd>
       <dt>Реєстрація</dt><dd><?= e(local_date($u['created_at'])) ?></dd><dt>Останній вхід</dt><dd><?= e($u['last_login_at'] ? local_date($u['last_login_at']) : '—') ?></dd>
       <dt>Вакансій / відгуків</dt><dd><?= $stats['vacancies'] ?> / <?= $stats['applications'] ?></dd>
-      <dt>Роботодавець</dt><dd><?php if ($employers): foreach ($employers as $x): ?><div class="row" style="gap:8px;flex-wrap:nowrap"><?= $x['logo'] ? employer_logo($x['logo'], $x['name'], 40) : '<span class="elogo ph" title="Логотипу немає">' . e(initials($x['name'])) . '</span>' ?><span><?= e(employer_name($x['legal_form'], $x['name'])) ?><?= $x['is_verified'] ? ' ✓' : '' ?></span></div><?php endforeach; else: ?>—<?php endif ?></dd>
+      <dt>Роботодавець</dt><dd><?php if ($employers): foreach ($employers as $x): ?><div class="row" style="gap:8px;flex-wrap:nowrap"><?= $x['logo'] ? employer_logo($x['logo'], $x['name'], 40) : '<span class="elogo ph" title="Логотипу немає">' . e(initials($x['name'])) . '</span>' ?><span><?= e(employer_name($x['legal_form'], $x['name'])) ?><?= $x['is_verified'] ? ' <span class="tag ok" title="Перевірений роботодавець">' . icon('shield', 12) . ' Перевірений</span>' : '' ?></span></div><?php endforeach; else: ?>—<?php endif ?></dd>
       <?php if ($master): ?><dt>Майстер</dt><dd><div class="row" style="gap:8px;flex-wrap:nowrap"><?= $master['photo'] ? '<img class="elogo" src="' . e(App\Core\Media::url('master', $master['photo'])) . '" alt="" width="40" height="40">' : '<span class="elogo ph">' . e(initials($master['name'])) . '</span>' ?><a href="<?= url('/services/' . $master['id']) ?>"><?= e($master['name']) ?></a><?php if (App\Core\App::auth()->can(App\Controllers\Admin\MasterEditController::PERM)): ?><a class="btn sm" href="<?= url('/admin/masters/' . $master['id'] . '/edit') ?>"><?= icon('tool', 14) ?>Анкета: опис, прайс, фото</a><?php endif ?></div></dd><?php endif ?></dl>
     <?php if ($masked): ?><p class="small muted">Контакти приховано: потрібне право «Перегляд телефонів і email».</p><?php endif ?>
     <?php if (!$isSelf && !$isOwner && $a->can('identity.user:update')): ?>
@@ -16,6 +16,14 @@
         <button class="btn <?= $u['status'] === 'active' ? 'bad' : 'ok' ?>"><?= $u['status'] === 'active' ? 'Заблокувати' : 'Розблокувати' ?></button>
       </form>
     <?php endif ?>
+    <?php if ($employers && $a->can('identity.user:update')): foreach ($employers as $x): $vOn = (bool) $x['is_verified']; ?>
+      <form method="post" action="<?= url('/admin/employers/' . $x['id'] . '/verified') ?>" class="verify-box<?= $vOn ? ' on' : '' ?>" id="verify-<?= (int) $x['id'] ?>"><?= csrf_field() ?>
+        <input type="hidden" name="on" value="<?= $vOn ? '0' : '1' ?>"><input type="hidden" name="back" value="<?= e(url('/admin/users/' . $u['id'])) ?>">
+        <span class="vb-ic"><?= icon('shield', 22) ?></span>
+        <div><b><?= $vOn ? 'Перевірений роботодавець' : 'Роботодавця ще не перевірено' ?></b><div class="small muted"><?= $vOn ? 'У вакансіях видно позначку довіри.' : 'Одне натискання, і у вакансіях з’явиться позначка довіри.' ?></div></div>
+        <button class="btn <?= $vOn ? '' : 'ok' ?>"><?= $vOn ? 'Зняти позначку' : icon('shield', 16) . 'Позначити перевіреним' ?></button>
+      </form>
+    <?php endforeach; endif ?>
   </div>
   <div class="card pad stack">
     <h3>Ролі</h3>
